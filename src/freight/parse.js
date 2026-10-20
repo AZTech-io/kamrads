@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 // Reading a job card's text: "Collect couch from Fyshwick and deliver to Lyneham  $80  Fyshwick ACT 2609
 // Lyneham ACT 2602  Posted about 17 hours ago" (Airtasker) or "Ebike  MACKSVILLE to SOUTHPORT  Distance 382km" (Truckit).
 import { parseMoney } from '../extract.js';
@@ -106,4 +107,40 @@ export function jobsFromJson(json, { site, urlFor }) {
   };
   walk(json, 0);
   return [...out.values()];
+}
+
+// ---- Truckit: /api/frontend/search/jobs records ----
+// { suburb1, state1, postcode1, suburb2, state2, postcode2, distance_estimate, item_label, category_label,
+//   created_at (epoch s), collection_date_earliest/latest, delivery_date_*, date_flexibility (html),
+//   active_quotes, min_quote, max_quote, user_max_price, book_now_value, status: "active" }
+// Logged out, jobs carry no id or link, so the id is built from what doesn't change.
+const stripHtml = s => tidy(String(s || '').replace(/<[^>]+>/g, ' '));
+const place = (sub, st, pc) => (sub ? tidy(`${titleCase(tidy(sub))} ${st || ''} ${pc || ''}`) : null);
+const shortDate = s => { const d = s ? new Date(String(s).replace(' ', 'T') + '+10:00') : null; return d && !isNaN(d) ? d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', timeZone: 'Australia/Sydney' }) : null; };
+const span = (a, b) => {
+  const x = shortDate(a), y = shortDate(b);
+  if (!x || !y || x === y) return x || y;
+  const [dx, mx] = x.split(' '), [dy, my] = y.split(' ');
+  return mx === my ? `${dx}–${dy} ${my}` : `${x}–${y}`; // "1–5 Dec", "30 Oct–2 Nov"
+};
+
+export function truckitJob(r) {
+  if (!r || !r.suburb1) return null;
+  const created = Number(r.created_at) ? Number(r.created_at) * 1000 : null;
+  const id = crypto.createHash('sha1').update([r.created_at, r.suburb1, r.postcode1, r.suburb2, r.postcode2, String(r.item_label || '').slice(0, 60)].join('|')).digest('hex').slice(0, 16);
+  const collect = r.collection_date_view === 'Ready Now' ? 'ready now' : span(r.collection_date_earliest, r.collection_date_latest) || stripHtml(r.date_flexibility);
+  const deliver = span(r.delivery_date_earliest, r.delivery_date_latest) || stripHtml(r.date_flex_delivery);
+  const min = parseMoney(r.min_quote), max = parseMoney(r.max_quote), quotes = Number(r.active_quotes) || 0;
+  const offer = parseMoney(r.book_now_value) ?? parseMoney(r.user_max_price);
+  return {
+    site: 'truckit', ext_id: id, url: 'https://www.truckit.net/search-for-jobs',
+    title: tidy(r.item_label || r.category_label || 'Freight').slice(0, 160), category: r.category_label || null,
+    from_text: place(r.suburb1, r.state1, r.postcode1), to_text: place(r.suburb2, r.state2, r.postcode2),
+    km: parseMoney(r.distance_estimate), posted_at: created,
+    price: offer ?? min ?? null,
+    price_kind: offer != null ? (r.book_now_value ? 'book now' : 'customer max') : min != null ? (max && max !== min ? `quotes $${Math.round(min)}–$${Math.round(max)}` : 'lowest quote') : null,
+    offers: quotes || (min != null ? 1 : 0),
+    due_text: [collect ? `collect ${collect}` : null, deliver ? `deliver ${deliver}` : null].filter(Boolean).join(' · ') || null,
+    status: !r.status || r.status === 'active' ? 'open' : 'taken',
+  };
 }

@@ -110,6 +110,7 @@ export const config = {
     truckit: {
       enabled: bool('TRUCKIT_ENABLED', true),
       pages: list('TRUCKIT_PAGES', ['https://www.truckit.net/search-for-jobs']),
+      maxPages: num('TRUCKIT_MAX_PAGES', 5),
     },
   },
 

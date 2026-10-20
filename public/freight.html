@@ -257,7 +257,7 @@ function visible() {
   const q = $('#q').value.trim().toLowerCase();
   return jobs.filter(j => {
     if (cat && j.category !== cat) return false;
-    if (q && !`${j.title} ${j.from} ${j.to}`.toLowerCase().includes(q)) return false;
+    if (q && !`${j.title} ${j.from} ${j.to} ${j.category}`.toLowerCase().includes(q)) return false;
     if (routeFilter != null && !j.fits.some(f => f.id === routeFilter)) return false;
     if (view === 'routes' && !j.fits.length) return false;
     if (view === 'near' && !(j.fromBase != null && j.fromBase <= NEAR_KM)) return false;
@@ -302,12 +302,12 @@ function render() {
     <tr class="${j.plan ? 'fit' : fresh(j) ? 'fresh' : ''}">
       <td class="c-posted"><div class="posted ${fresh(j) ? 'new' : ''}"><div class="t">${esc(ago(j.postedAt || j.firstSeen))}</div></div></td>
       <td class="c-job"><a class="job-t" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer" title="${esc(j.title)}">${esc(j.title || 'Job')}</a>
-        <div class="job-m"><span class="site">${esc(SITE_NAMES[j.site] || j.site)}</span>${j.category ? `<span>${esc(CAT_NAMES[j.category] || j.category)}</span>` : ''}${j.offers != null ? `<span>${j.offers} offers</span>` : ''}${j.fits.map(f => `<span class="tag i">${esc(f.name)}${f.how === 'back' ? ' (return)' : ''}</span>`).join('')}</div></td>
-      <td class="c-route"><div class="route"><span class="p">${esc(j.from || '—')}</span>${j.to ? `<span class="x">→</span><span class="p">${esc(j.to)}</span>` : ''}</div>${!j.located && j.from ? '<div class="sub">finding this place…</div>' : ''}</td>
+        <div class="job-m"><span class="site">${esc(SITE_NAMES[j.site] || j.site)}</span>${j.category ? `<span>${esc(CAT_NAMES[j.category] || j.category)}</span>` : ''}${j.offers ? `<span>${j.offers} ${j.site === 'truckit' ? 'quote' : 'offer'}${j.offers === 1 ? '' : 's'}</span>` : ''}${j.fits.map(f => `<span class="tag i">${esc(f.name)}${f.how === 'back' ? ' (return)' : ''}</span>`).join('')}</div></td>
+      <td class="c-route"><div class="route"><span class="p">${esc(j.from || '—')}</span>${j.to ? `<span class="x">→</span><span class="p">${esc(j.to)}</span>` : ''}</div>${j.due ? `<div class="sub">${esc(j.due)}</div>` : ''}${!j.located && j.from ? '<div class="sub">finding this place…</div>' : ''}</td>
       <td class="col-km r num">${j.km != null ? j.km.toLocaleString('en-AU') : ''}</td>
-      <td class="c-price r"><div class="money num">${money(j.price)}</div><div class="sub">${j.perKm != null && j.km >= 5 ? `$${j.perKm.toFixed(2)}/km` : j.priceKind === 'won quote' ? 'won quote' : 'budget'}</div></td>
+      <td class="c-price r"><div class="money num">${j.price != null ? money(j.price) : j.site === 'truckit' ? 'Quote' : '—'}</div><div class="sub">${j.price == null ? (j.site === 'truckit' ? 'no quotes yet' : '') : [j.priceKind && j.priceKind !== 'budget' ? esc(j.priceKind) : '', j.perKm != null && j.km >= 5 ? `$${j.perKm.toFixed(2)}/km` : ''].filter(Boolean).join(' · ') || 'budget'}</div></td>
       <td class="c-fit">${fitCell(j)}</td>
-      <td class="c-open r"><a class="btn sm" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer">Open</a></td>
+      <td class="c-open r"><a class="btn sm" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer" title="${j.site === 'truckit' ? 'Truckit job board (log in to see the job and quote)' : 'Open on Airtasker'}">${j.site === 'truckit' ? 'Board' : 'Open'}</a></td>
     </tr>`).join('')}</tbody></table>`;
 }
 
@@ -317,7 +317,9 @@ function renderSide() {
   $('#routes').innerHTML = alerts.length ? alerts.map(a => `<button class="nav" data-route="${a.id}" aria-pressed="${routeFilter === a.id}"><span class="t">${esc(a.name)}</span><span class="c num">${jobs.filter(j => j.fits.some(f => f.id === a.id)).length || ''}</span></button>`).join('')
     : '<div class="site-row dim" style="font-size:12.5px">None yet. Add your regular runs.</div>';
   const cc = {}; for (const j of jobs) if (j.category) cc[j.category] = (cc[j.category] || 0) + 1;
-  $('#cats').innerHTML = `<button class="nav" data-cat="" aria-pressed="${!cat}"><span class="t">All work</span></button>` + Object.keys(CAT_NAMES).map(k => `<button class="nav" data-cat="${k}" aria-pressed="${cat === k}"><span class="t">${CAT_NAMES[k]}</span><span class="c num">${cc[k] || ''}</span></button>`).join('');
+  const keys = Object.keys(cc).sort((a, b) => cc[b] - cc[a]).slice(0, 14);
+  if (cat && !keys.includes(cat)) keys.push(cat);
+  $('#cats').innerHTML = `<button class="nav" data-cat="" aria-pressed="${!cat}"><span class="t">All work</span></button>` + keys.map(k => `<button class="nav" data-cat="${esc(k)}" aria-pressed="${cat === k}"><span class="t">${esc(CAT_NAMES[k] || k)}</span><span class="c num">${cc[k] || ''}</span></button>`).join('');
   const sc = {}; for (const j of jobs) sc[j.site] = (sc[j.site] || 0) + 1;
   $('#sites').innerHTML = (status.enabled || []).map(s => {
     const x = status.sites.find(z => z.site === s.site) || {};

@@ -17,7 +17,7 @@ globalThis.fetch = async (url, opts = {}) => {
   return realFetch(url, opts);
 };
 
-const { jobFromCard, parseAgo, placesIn, jobsFromJson } = await import('../src/freight/parse.js');
+const { jobFromCard, parseAgo, placesIn, jobsFromJson, truckitJob } = await import('../src/freight/parse.js');
 const { upsertJob, fq } = await import('../src/freight/store.js');
 const { fit, runFreightAlerts } = await import('../src/freight/match.js');
 const geo = await import('../src/geo.js');
@@ -48,6 +48,23 @@ test('reading cards: places, price, posted time; Truckit-style towns', () => {
   assert.equal(t.from_text, 'Macksville'); assert.equal(t.km, 382); assert.equal(t.status, 'taken', 'a won quote is history, not open work');
   const fromJson = jobsFromJson({ data: { jobs: [{ jobId: 991, title: '2 pallets', pickup: { suburb: 'Fyshwick', state: 'ACT', postcode: '2609' }, delivery: { suburb: 'Parramatta', state: 'NSW', postcode: '2150' }, budget: 450 }] } }, { site: 'truckit', urlFor: (o, id) => `https://www.truckit.net/job/${id}` });
   assert.equal(fromJson[0].from_text, 'Fyshwick ACT 2609'); assert.equal(fromJson[0].price, 450);
+});
+
+test('Truckit job feed records: places, dates, distance, quotes; stable id without a job number', () => {
+  const rec = { status: 'active', category_label: 'Pallets', item_label: '1 x Pallet(s) - Light Fittings - Approx.  2.71m3', created_at: '1792526438',
+    collection_date_view: 'Date Range', collection_date_earliest: '2026-12-01 00:00:00', collection_date_latest: '2026-12-05 00:00:00',
+    delivery_date_earliest: '2026-12-02 00:00:00', delivery_date_latest: '2026-12-11 00:00:00',
+    suburb1: 'SEVEN HILLS', state1: 'NSW', postcode1: '2147', suburb2: 'BOWEN HILLS', state2: 'QLD', postcode2: '4006',
+    distance_estimate: '908', active_quotes: '2', min_quote: '793.00', max_quote: '853.00', user_max_price: null, book_now_value: null };
+  const j = truckitJob(rec);
+  assert.equal(j.from_text, 'Seven Hills NSW 2147'); assert.equal(j.to_text, 'Bowen Hills QLD 4006');
+  assert.equal(j.km, 908); assert.equal(j.price, 793); assert.equal(j.price_kind, 'quotes $793–$853'); assert.equal(j.offers, 2);
+  assert.equal(j.title, '1 x Pallet(s) - Light Fittings - Approx. 2.71m3'); assert.equal(j.category, 'Pallets');
+  assert.equal(j.posted_at, 1792526438000);
+  assert.equal(j.due_text, 'collect 1–5 Dec · deliver 2–11 Dec');
+  assert.equal(truckitJob({ ...rec }).ext_id, j.ext_id, 'same job, same id on every scan');
+  const ready = truckitJob({ ...rec, collection_date_view: 'Ready Now', collection_date_earliest: null, min_quote: null, max_quote: null, active_quotes: null });
+  assert.match(ready.due_text, /^collect ready now/); assert.equal(ready.price, null);
 });
 
 const route = { kind: 'route', a_lat: -35.2809, a_lon: 149.13, b_lat: -33.8688, b_lon: 151.2093, radius_km: 30, both_ways: 1, min_price: null };

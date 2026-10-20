@@ -122,6 +122,14 @@ const AIRTASKER = {
     + '${atCard('bike-transported-from-canberra-to-sydney', 'x01m56wfbad7fvjdcm4v3886770', 'Bike transported from Canberra to Sydney', 100, 'Canberra ACT 2604', '', '2 days ago')}';`),
 };
 
+const TRUCKIT = {
+  '/robots.txt': 'User-agent: *',
+  '/search-for-jobs': html('<div id="jobs"></div>', `fetch('/api/frontend/search/jobs?_=1&initial=true').then(r => r.json()).then(d => { document.getElementById('jobs').innerText = d.data.length + ' jobs'; });`),
+  '/api/frontend/search/jobs': u => JSON.stringify(u.searchParams.get('page') === '2'
+    ? { data: [{ status: 'active', item_label: 'Fridge', category_label: 'Furniture', created_at: '1792526000', suburb1: 'FYSHWICK', state1: 'ACT', postcode1: '2609', suburb2: 'PARRAMATTA', state2: 'NSW', postcode2: '2150', distance_estimate: '290' }], page_count: 2, page: 2 }
+    : { data: [{ status: 'active', item_label: 'crane hoist rope', category_label: 'Other General', created_at: '1792526930', collection_date_view: 'Ready Now', suburb1: 'SOMERSBY', state1: 'NSW', postcode1: '2250', suburb2: 'WILLIAMSTOWN', state2: 'VIC', postcode2: '3016', distance_estimate: '952' }], page_count: 2, page: 1, record_count: 2 }),
+};
+
 async function fakeSite(site, origin, pages) {
   const ctx = await getContext(site);
   await ctx.route(origin + '/**', route => {
@@ -273,6 +281,15 @@ test('Airtasker freight: category + city pages -> jobs with from/to, price, post
   const bike = jobs.find(j => /Bike/.test(j.title));
   assert.equal(bike.from_text, 'Canberra ACT 2604');
   assert.equal(bike.to_text, null);
+});
+
+test('Truckit freight: job feed read from the board page, more pages fetched directly', { skip: !chromeOk }, async () => {
+  const { truckit } = await import('../src/freight/sites.js');
+  await fakeSite('truckit', 'https://www.truckit.net', TRUCKIT);
+  const jobs = await truckit.discover();
+  assert.equal(jobs.length, 2);
+  assert.ok(jobs.some(j => j.from_text === 'Somersby NSW 2250' && j.to_text === 'Williamstown VIC 3016' && j.km === 952));
+  assert.ok(jobs.some(j => j.title === 'Fridge' && j.from_text === 'Fyshwick ACT 2609'), 'page 2');
 });
 
 test('login check: a "My Pickles" menu link alone is not a logged-in session', { skip: !chromeOk }, async () => {

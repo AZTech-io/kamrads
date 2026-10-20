@@ -19,7 +19,7 @@ const shapeJob = (j, alerts, plan, base) => {
     key: j.key, site: j.site, url: j.url, title: j.title, category: j.category, price: j.price, priceKind: j.price_kind,
     from: j.from_text, to: j.to_text, fromState: e.from?.state ?? null, toState: e.to?.state ?? null, located: !!e.from,
     km: jobKm, perKm: j.price != null && jobKm ? Math.round((j.price / jobKm) * 100) / 100 : null,
-    postedAt: j.posted_at ?? j.first_seen, firstSeen: j.first_seen, lastSeen: j.last_seen, offers: j.offers,
+    postedAt: j.posted_at ?? j.first_seen, firstSeen: j.first_seen, lastSeen: j.last_seen, offers: j.offers, due: j.due_text,
     fromBase: base && e.from ? Math.round(haversineKm([base.lat, base.lon], [e.from.lat, e.from.lon]) * 1.25) : null,
     fits, plan: plan ? fit(j, plan, e) : null,
   };

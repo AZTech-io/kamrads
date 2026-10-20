@@ -38,7 +38,8 @@ Same login, at **kamrads.katara.com.au/freight** (or the 🚚 Freight button). I
 - **Routes & alerts:** save runs ("Sydney run": Canberra ⇄ Sydney, 30 km detour) or areas ("within 25 km of Canberra, at least $100") and get a push the moment a new job fits. Each person has their own.
 - Each job shows its route, job km, price and $ per km, and how far the pickup is from your home base.
 - More cities: `AIRTASKER_CITIES=canberra|sydney|wollongong` in `.env`. Airtasker is read from its public category lists only (never individual task pages), every 10 minutes.
-- If Truckit's board needs a login, sign in on your own Chrome, export cookies with Cookie-Editor and run `docker compose exec kamrads npm run import-cookies -- truckit data/truckit-cookies.json`.
+- Truckit's job board is public: KAMRADS reads its job feed (pickup/delivery suburbs, collection and delivery dates, distance, quotes so far). Logged out, Truckit doesn't give each job a link, so **Board** opens the Truckit job board; log in there to view and quote.
+- `npm run probe-freight -- <url>` shows what a job board page loads, if a site changes.
 
 **History:** everything is kept in `data/auctions.db` on the server (every lot, every price change, every final price), with a daily copy in `data/backups/` (last 14 days). **Download all results (CSV)** at the bottom of the dashboard opens in Excel; bid history is at `/api/export/bids.csv`.
 
