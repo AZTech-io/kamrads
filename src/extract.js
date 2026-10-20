@@ -214,6 +214,7 @@ export function lotsFromJson(json, now = Date.now()) {
       const prev = found.get(lot.ext_id);
       if (!prev) found.set(lot.ext_id, lot);
       else for (const [k, val] of Object.entries(lot)) if (prev[k] == null && val != null) prev[k] = val;
+      return; // its nested objects (vehicle, auction, location...) belong to this lot, not separate lots
     }
     for (const x of Object.values(v)) walk(x, depth + 1);
   };

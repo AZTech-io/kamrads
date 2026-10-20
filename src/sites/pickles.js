@@ -17,7 +17,7 @@ function finish(lot) {
   // Prefer the public stock number as the id so JSON and page data merge.
   const fromUrl = idFromUrl(lot.url);
   if (fromUrl) lot.ext_id = fromUrl;
-  if (!lot.url || !DETAIL_RE.test(lot.url)) lot.url = `${ORIGIN}/used/details/items/${lot.ext_id}`;
+  if (lot.url && !DETAIL_RE.test(lot.url)) lot.url = null;
   lot.category = lot.category || categoryFromUrl(lot.url);
   lot.image = absUrl(lot.image, ORIGIN);
   lot.site = site;
@@ -40,8 +40,12 @@ export async function discover() {
       const url = withPaging(search, p, pageSize);
       const r = await withPage(site, url, page => domCards(page, DETAIL_RE));
       if (looksBlocked(r)) throw new Error(`blocked by Pickles (HTTP ${r.status}) - set PROXY_URL to an Australian proxy`);
-      const fromJson = lotsFromCapture(r).map(finish).filter(l => idFromUrl(l.url) || /^\d{6,9}$/.test(l.ext_id));
       const fromDom = (r.result || []).map(c => cardToLot(c, { idFromUrl })).filter(Boolean).map(finish);
+      // The page shows every lot as a card, so a JSON "lot" that isn't on the page is an internal record, not a lot.
+      const onPage = new Set(fromDom.map(l => l.ext_id));
+      const fromJson = lotsFromCapture(r).map(finish)
+        .filter(l => (onPage.size ? onPage.has(l.ext_id) : !!idFromUrl(l.url)));
+      if (p === 1 && search === searches[0] && fromJson[0]) log.info(site, `sample: ${JSON.stringify(fromJson[0]).slice(0, 400)}`);
       const lots = mergeLots(fromJson, fromDom);
       let fresh = 0;
       for (const l of lots) if (!all.has(l.ext_id)) { all.set(l.ext_id, l); fresh++; }
@@ -49,7 +53,7 @@ export async function discover() {
       if (fresh === 0 || lots.length < Math.min(pageSize, 30)) break;
     }
   }
-  return [...all.values()];
+  return [...all.values()].filter(l => l.url);
 }
 
 /** Re-read one lot's detail page for its live bid and close time. */

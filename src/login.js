@@ -5,7 +5,20 @@ import { q } from './db.js';
 import { log } from './log.js';
 import { config } from './config.js';
 
-const LOGGED_IN = /\b(log\s?out|sign\s?out|my account|my pickles|my manheim|my watchlist)\b/i;
+// Only an explicit log-out link proves a session: menus show "My Pickles" etc. to guests too.
+const LOGGED_IN = /\b(log\s?out|sign\s?out)\b/i;
+const GUEST = /^\s*(log\s?in|sign\s?in|sign\s?up|register)\s*$/i;
+
+async function isLoggedIn(page) {
+  return page.evaluate(([inSrc, guestSrc]) => {
+    const visible = el => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+    const all = [...document.querySelectorAll('a, button')];
+    const text = e => (e.innerText || e.textContent || '').trim();
+    if (all.filter(visible).some(e => new RegExp(inSrc, 'i').test(text(e)))) return true;
+    // No visible log-out link: only trust the session if the page offers no log-in link anywhere.
+    return !all.some(e => new RegExp(guestSrc, 'i').test(text(e)));
+  }, [LOGGED_IN.source, GUEST.source]);
+}
 const EMAIL_SEL = 'input[type="email"], input[autocomplete="username"], input[name*="email" i], input[id*="email" i], input[name*="user" i], input[id*="user" i]';
 const PASS_SEL = 'input[type="password"]';
 
@@ -22,7 +35,7 @@ export async function ensureLogin(site, startUrl) {
   try {
     await page.goto(startUrl, { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
-    if (LOGGED_IN.test(await page.evaluate(() => document.body.innerText))) {
+    if (await isLoggedIn(page)) {
       q.statusLogin.run(site, 1);
       log.info(site, 'already logged in (saved session)');
       return true;
@@ -54,9 +67,8 @@ export async function ensureLogin(site, startUrl) {
     await pass.press('Enter');
     await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
     await page.waitForTimeout(3000);
-    const text = await page.evaluate(() => document.body.innerText);
     const stillForm = await firstVisible(page, PASS_SEL);
-    if (stillForm && !LOGGED_IN.test(text)) throw new Error('login form still showing - wrong password, captcha or 2FA?');
+    if (stillForm || !(await isLoggedIn(page))) throw new Error('login form still showing - wrong password, captcha or 2FA?');
     await persist(site);
     q.statusLogin.run(site, 1);
     log.info(site, 'logged in and session saved');

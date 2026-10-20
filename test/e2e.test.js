@@ -31,10 +31,13 @@ const PICKLES = {
   '/api-website/search/products': JSON.stringify({ totalCount: 1, products: [{
     stockNumber: 62430579, title: '2011 Isuzu NPR 400 Medium', url: '/used/details/trucks/2011-isuzu-npr-400-medium/62430579',
     odometer: 288400, wovr: 'WOVR N/A', location: 'Altona North, VIC',
-    auction: { currentBid: { amount: 2200 }, bidCount: 4, bidEndDate: soon, buyMethod: 'Pickles Online' } }] }),
+    auction: { currentBid: { amount: 2200 }, bidCount: 4, bidEndDate: soon, buyMethod: 'Pickles Online' },
+    vehicle: { id: 55501234, title: 'Isuzu NPR', odometer: 288400 } },
+    { stockNumber: 99999999, title: 'Internal record not on page', currentBid: 5 }] }),
   '/used/details/trucks/2011-isuzu-npr-400-medium/62430579': html('<h1>2011 Isuzu NPR 400 Medium</h1><div id="bid"></div>', `
     setTimeout(() => { document.getElementById('bid').innerText = 'Current Bid\\n$2,450\\n5 bids\\nEnds in 00:08:30'; }, 400);`),
 };
+PICKLES['/'] = html('<nav><a href="/group/pickles/dashboard">My Pickles</a><a href="#">Login</a></nav>');
 const MANHEIM = {
   '/': html('<ul><li><a href="/events/statutory-write-off">Statutory Write off Vehicles</a> | (173) lots</li><li><a href="/events/classic-mercedes">Classic Mercedes Benz Auction</a> | (3) lots</li></ul>'),
   '/events/statutory-write-off': html('<div id="lots"></div>', `
@@ -64,6 +67,7 @@ test('Pickles: discovery merges JSON + DOM, refresh reads the live bid', { skip:
   assert.equal(isuzu.odometer, 288400);
   assert.equal(isuzu.category, 'trucks');
   assert.ok(Math.abs(isuzu.end_at - Date.parse(soon)) < 1000);
+  assert.equal(lots.length, 2, 'no duplicate or off-page records');
   assert.ok(mazda, 'DOM-only card found');
   assert.equal(mazda.bid, 650);
   assert.equal(mazda.wovr, 'Statutory Write-Off');
@@ -85,6 +89,11 @@ test('Manheim: finds matching events and their lots', { skip: !chromeOk }, async
   assert.equal(hilux.bid, 1100);
   assert.equal(hilux.wovr, 'Repairable Write-Off');
   assert.equal(hilux.sale_name, 'Statutory Write off Vehicles');
+});
+
+test('login check: a "My Pickles" menu link alone is not a logged-in session', { skip: !chromeOk }, async () => {
+  const { ensureLogin } = await import('../src/login.js');
+  assert.equal(await ensureLogin('pickles', 'https://www.pickles.com.au/'), false);
 });
 
 test.after(() => closeBrowser());

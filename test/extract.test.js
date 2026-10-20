@@ -103,3 +103,12 @@ test('vehicle detection', () => {
   assert.ok(isVehicle({ year: 2014, make: 'Mazda' }));
   assert.ok(!isVehicle({ title: 'Box of tools', category: 'general-goods' }));
 });
+
+test('a lot with a nested record of its own id is one lot, not two', () => {
+  const body = { items: [{ stockNumber: 62430579, title: '2011 Isuzu NPR', currentBid: 2200,
+    vehicle: { id: 55501234, make: 'Isuzu', model: 'NPR', odometer: 288400, title: 'Isuzu NPR' } }] };
+  const lots = lotsFromJson(body);
+  assert.equal(lots.length, 1);
+  assert.equal(lots[0].ext_id, '62430579');
+  assert.equal(lots[0].odometer, 288400);
+});
