@@ -58,3 +58,16 @@ test('refresh queue: closing-soon lots first, expensive ones skipped', () => {
   upsertLot({ site: 'manheim', ext_id: 'D', title: 'tomorrow', bid: 10, end_at: now + 26 * 3600000, url: 'https://x/d' });
   assert.deepEqual(dueForRefresh(now).map(l => l.ext_id), ['A', 'B']);
 });
+
+test('final price: a lot just past its close gets one last read, then is closed with that price', () => {
+  const now = Date.now();
+  upsertLot({ site: 'pickles', ext_id: 'F', title: 'just closed', bid: 800, end_at: now - 60000, url: 'https://x/f' });
+  assert.equal(dueForRefresh(now)[0].ext_id, 'F', 'final read goes first');
+  upsertLot({ site: 'pickles', ext_id: 'F', bid: 950 }, { checked: true });
+  assert.ok(!dueForRefresh(Date.now()).some(l => l.ext_id === 'F'), 'only one final read');
+  q.closeDue.all(Date.now(), Date.now() + 1);
+  const row = q.lot.get('pickles:F');
+  assert.equal(row.status, 'closed');
+  assert.equal(row.final_bid, 950);
+  assert.ok(row.final_seen_at >= now);
+});

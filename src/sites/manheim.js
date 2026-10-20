@@ -69,7 +69,7 @@ export async function discover() {
 }
 
 export async function refresh(lot) {
-  const r = await withPage(site, lot.url, null, { waitMs: 3000, high: true });
+  const r = await withPage(site, lot.url, null, { waitMs: 1500, high: true });
   if (looksBlocked(r)) throw new Error(`blocked by Manheim (HTTP ${r.status})`);
   const json = lotsFromCapture(r).map(l => finish(l, lot.sale_name));
   const match = json.find(l => l.ext_id === lot.ext_id) || (json.length === 1 ? json[0] : null);

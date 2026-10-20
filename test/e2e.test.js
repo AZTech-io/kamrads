@@ -11,12 +11,15 @@ process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'kamrads-e2e-'));
 process.env.PICKLES_SEARCHES = 'https://www.pickles.com.au/used/search/trucks?contentkey=trucks';
 process.env.PICKLES_MAX_PAGES = '1';
 process.env.MANHEIM_SCROLLS = '1';
+process.env.ALLBIDS_PAGES = 'https://www.allbids.com.au/closing-today';
+process.env.ALLBIDS_SCROLLS = '1';
 process.env.PAGE_TIMEOUT_MS = '15000';
 if (!process.env.CHROME_PATH && fs.existsSync('/opt/google/chrome/chrome')) process.env.CHROME_PATH = '/opt/google/chrome/chrome';
 
 const { getContext, closeBrowser } = await import('../src/browser.js');
 const pickles = await import('../src/sites/pickles.js');
 const manheim = await import('../src/sites/manheim.js');
+const allbids = await import('../src/sites/allbids.js');
 
 const soon = new Date(Date.now() + 9 * 60000).toISOString();
 const html = (body, script = '') => `<!doctype html><html><body>${body}<script>${script}</script></body></html>`;
@@ -42,6 +45,21 @@ const MANHEIM = {
   '/': html('<ul><li><a href="/events/statutory-write-off">Statutory Write off Vehicles</a> | (173) lots</li><li><a href="/events/classic-mercedes">Classic Mercedes Benz Auction</a> | (3) lots</li></ul>'),
   '/events/statutory-write-off': html('<div id="lots"></div>', `
     document.getElementById('lots').innerHTML = '<div class="lot"><a href="/damaged/vehicle-details/4471923"><h4>2019 Toyota Hilux SR</h4></a><span>143,200 km</span><span>Repairable Write-Off</span><span>Minto, NSW</span><span>Current bid $1,100</span></div>';`),
+};
+
+const utcNoZone = new Date(Date.now() + 25 * 60000).toISOString().slice(0, 19); // ALLBIDS style: UTC without a Z
+const ALLBIDS = {
+  '/closing-today': html('<ul id="l"></ul>', `
+    fetch('/Search/GetAuctions?tab=closingtoday').then(r => r.json()).then(d => {
+      document.getElementById('l').innerHTML = d.auctions.map(a =>
+        '<li><a href="/c/' + a.cat + '/' + a.slug + '-' + a.pageId + '"><h4>' + a.aucTitle + '</h4></a><b>$' + a.aucCurrentBid + '</b></li>').join('');
+    });`),
+  '/Search/GetAuctions': JSON.stringify({ total: 2, auctions: [
+    { aucID: 1100784, pageId: 1100784, cat: 'computers-it/notebooks-laptops', slug: 'dell-latitude-5420-i5-laptop', aucTitle: 'Dell Latitude 5420 i5 Laptop',
+      aucCurrentBid: 3, aucCloseUtc: utcNoZone, aucCity: 'Fyshwick', aucState: 'ACT', aucBidCount: 2, aucThumbnailUrl: '/img/1.jpg' },
+    { aucID: 77001, pageId: 1100999, cat: 'allbids-car-auctions/motor-vehicles-cars', slug: '2012-toyota-corolla', aucTitle: '2012 Toyota Corolla Ascent',
+      aucCurrentBid: 1250, aucCloseUtc: utcNoZone, aucCity: 'Mitchell', aucState: 'ACT' },
+  ] }),
 };
 
 async function fakeSite(site, origin, pages) {
@@ -89,6 +107,21 @@ test('Manheim: finds matching events and their lots', { skip: !chromeOk }, async
   assert.equal(hilux.bid, 1100);
   assert.equal(hilux.wovr, 'Repairable Write-Off');
   assert.equal(hilux.sale_name, 'Statutory Write off Vehicles');
+});
+
+test('ALLBIDS: lots, UTC close times and ids lined up with the page', { skip: !chromeOk }, async () => {
+  await fakeSite('allbids', 'https://www.allbids.com.au', ALLBIDS);
+  const lots = await allbids.discover();
+  assert.equal(lots.length, 2);
+  const dell = lots.find(l => l.ext_id === '1100784');
+  assert.equal(dell.bid, 3);
+  assert.equal(dell.state, 'ACT');
+  assert.equal(dell.bid_count, 2);
+  assert.ok(Math.abs(dell.end_at - Date.parse(utcNoZone + 'Z')) < 1000, 'aucCloseUtc read as UTC');
+  const corolla = lots.find(l => l.ext_id === '1100999');
+  assert.ok(corolla, 'JSON lot with a different internal id matched to its card by title');
+  assert.equal(corolla.bid, 1250);
+  assert.match(corolla.url, /2012-toyota-corolla-1100999$/);
 });
 
 test('login check: a "My Pickles" menu link alone is not a logged-in session', { skip: !chromeOk }, async () => {

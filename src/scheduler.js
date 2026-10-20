@@ -6,10 +6,12 @@ import { estimatePending } from './estimate.js';
 import { ensureLogin } from './login.js';
 import * as pickles from './sites/pickles.js';
 import * as manheim from './sites/manheim.js';
+import * as allbids from './sites/allbids.js';
 
-export const adapters = { pickles, manheim };
+export const adapters = { pickles, manheim, allbids };
 const enabled = () => Object.values(adapters).filter(a => config.sites[a.site]?.enabled);
 
+const FINAL_GRACE_MS = 6 * 60000; // soft-close extensions + one final read before we mark a lot closed
 const LIVE_FIELDS = ['bid', 'bid_count', 'end_at', 'buy_now', 'start_price', 'buy_method'];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let stopping = false;
@@ -41,20 +43,25 @@ async function discoveryLoop() {
 
 /** Pick the lots that need a fresh look: closing within the hot/warm windows. */
 export function dueForRefresh(now = Date.now()) {
-  const rows = q.openWindow.all(now - 60000, now + config.warmWindowMin * 60000);
-  return rows.filter(l => {
+  const rows = q.openWindow.all(now - FINAL_GRACE_MS, now + config.warmWindowMin * 60000);
+  const due = rows.filter(l => {
     if (!adapters[l.site] || !config.sites[l.site]?.enabled || !l.url) return false;
     if (!l.starred && l.bid != null && l.bid > config.hotMaxBid) return false;
     const mins = (l.end_at - now) / 60000;
     const since = now - (l.last_checked || 0);
+    // Past its close: one last read to capture the final price (sites hide it once sold).
+    if (mins <= 0) return (l.last_checked || 0) < l.end_at;
     if (mins <= config.hotWindowMin) return since >= config.hotEverySec * 900;
     return since >= config.warmEveryMin * 60000;
-  }).slice(0, config.hotBatch);
+  });
+  // Final reads first (they can't wait), then whatever closes soonest.
+  due.sort((a, b) => ((a.end_at <= now) === (b.end_at <= now) ? a.end_at - b.end_at : a.end_at <= now ? -1 : 1));
+  return due.slice(0, config.hotBatch);
 }
 
 async function hotCycle() {
   const now = Date.now();
-  const closed = q.closeDue.all(now, now - 3 * 60000);
+  const closed = q.closeDue.all(now, now - FINAL_GRACE_MS);
   if (closed.length) log.info('hot', `${closed.length} lots closed`);
   const due = dueForRefresh(now);
   await Promise.all(due.map(async lot => {
@@ -94,7 +101,7 @@ async function estimateLoop() {
 }
 
 export async function startScheduler() {
-  for (const a of enabled()) await ensureLogin(a.site, a.loginUrl).catch(e => log.warn(a.site, e.message));
+  for (const a of enabled()) if (a.loginUrl) await ensureLogin(a.site, a.loginUrl).catch(e => log.warn(a.site, e.message));
   discoveryLoop();
   hotLoop();
   estimateLoop();

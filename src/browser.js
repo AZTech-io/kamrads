@@ -8,8 +8,9 @@ import { log } from './log.js';
 let browser = null;
 let startedAt = 0;
 const contexts = new Map();
-let active = 0;
-const waiters = [];
+// Two lanes so neither starves the other: 'hot' re-checks closing lots, 'bg' does the regular scan.
+const lanes = { hot: { active: 0, waiters: [] }, bg: { active: 0, waiters: [] } };
+const busy = () => lanes.hot.active + lanes.bg.active;
 
 const statePath = site => path.join(config.dataDir, `state-${site}.json`);
 export const debugDir = path.join(config.dataDir, 'debug');
@@ -17,8 +18,15 @@ fs.mkdirSync(debugDir, { recursive: true });
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36';
 
+let launching = null;
 async function getBrowser() {
-  const tooOld = browser && Date.now() - startedAt > config.browserRecycleMin * 60000 && active === 0;
+  if (launching) return launching;
+  launching = launchBrowser().finally(() => { launching = null; });
+  return launching;
+}
+
+async function launchBrowser() {
+  const tooOld = browser && Date.now() - startedAt > config.browserRecycleMin * 60000 && busy() === 0;
   if (tooOld) await closeBrowser();
   if (browser?.isConnected()) return browser;
   const launch = {
@@ -39,7 +47,7 @@ async function getBrowser() {
 }
 
 export async function closeBrowser() {
-  for (const [site, ctx] of contexts) { await saveState(site, ctx).catch(() => {}); }
+  for (const [site, p] of contexts) { await p.then(ctx => saveState(site, ctx)).catch(() => {}); }
   contexts.clear();
   if (browser) await browser.close().catch(() => {});
   browser = null;
@@ -52,7 +60,11 @@ async function saveState(site, ctx) {
 
 export async function getContext(site) {
   const b = await getBrowser();
-  if (contexts.has(site)) return contexts.get(site);
+  if (!contexts.has(site)) contexts.set(site, makeContext(b, site).catch(e => { contexts.delete(site); throw e; }));
+  return contexts.get(site);
+}
+
+async function makeContext(b, site) {
   const opts = { userAgent: UA, locale: 'en-AU', timezoneId: 'Australia/Sydney', viewport: { width: 1366, height: 900 } };
   if (fs.existsSync(statePath(site))) opts.storageState = statePath(site);
   const ctx = await b.newContext(opts);
@@ -65,29 +77,30 @@ export async function getContext(site) {
     if (/google-analytics|googletagmanager|doubleclick|facebook\.net|hotjar|clarity\.ms|newrelic|nr-data|segment\.io|tiktok|bing\.com\/bat/.test(u)) return route.abort();
     return route.continue();
   });
-  contexts.set(site, ctx);
   return ctx;
 }
 
 export async function persist(site) {
-  const ctx = contexts.get(site);
+  const ctx = await contexts.get(site);
   if (ctx) await saveState(site, ctx).catch(e => log.warn('browser', `save state ${site}: ${e.message}`));
 }
 
-// Hot (closing-soon) refreshes jump the queue ahead of background discovery.
-async function acquire(high) {
-  if (active < config.maxOpenPages && waiters.length === 0) { active++; return; }
-  await new Promise(res => (high ? waiters.unshift(res) : waiters.push(res)));
-  active++;
+async function acquire(lane) {
+  const l = lanes[lane];
+  const cap = lane === 'hot' ? config.hotPages : config.maxOpenPages;
+  if (l.active < cap && l.waiters.length === 0) { l.active++; return; }
+  await new Promise(res => l.waiters.push(res));
+  l.active++;
 }
-function release() { active--; const next = waiters.shift(); if (next) next(); }
+function release(lane) { const l = lanes[lane]; l.active--; const next = l.waiters.shift(); if (next) next(); }
 
 /**
  * Open a URL, capture every JSON response the page loads, run `fn(page)` and close the tab.
  * Returns { json: [{url, body}], html, text, finalUrl, result }.
  */
 export async function withPage(site, url, fn = null, { scrolls = 0, waitMs = 2500, high = false } = {}) {
-  await acquire(high);
+  const lane = high ? 'hot' : 'bg';
+  await acquire(lane);
   let page;
   try {
     const ctx = await getContext(site);
@@ -118,7 +131,7 @@ export async function withPage(site, url, fn = null, { scrolls = 0, waitMs = 250
     return { status, json, html, text, finalUrl: page.url(), result };
   } finally {
     if (page) await page.close().catch(() => {});
-    release();
+    release(lane);
   }
 }
 

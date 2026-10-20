@@ -62,3 +62,24 @@ export function mergeLots(...groups) {
 }
 
 export const absUrl = (u, origin) => (!u ? null : u.startsWith('http') ? u : u.startsWith('//') ? 'https:' + u : origin + (u.startsWith('/') ? '' : '/') + u);
+
+const normTitle = t => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+/**
+ * Line JSON lots up with the cards on the page. A JSON lot whose id is on the page keeps it;
+ * otherwise it adopts the id + url of the one card with the same title. Anything left over is an
+ * internal record (not a lot on this page) and is dropped.
+ */
+export function alignToCards(jsonLots, cardLots) {
+  if (!cardLots.length) return jsonLots;
+  const byId = new Set(cardLots.map(c => c.ext_id));
+  const byTitle = new Map();
+  for (const c of cardLots) { const k = normTitle(c.title); byTitle.set(k, byTitle.has(k) ? null : c); }
+  const out = [];
+  for (const l of jsonLots) {
+    if (byId.has(l.ext_id)) { out.push(l); continue; }
+    const c = byTitle.get(normTitle(l.title));
+    if (c) out.push({ ...l, ext_id: c.ext_id, url: c.url });
+  }
+  return out;
+}

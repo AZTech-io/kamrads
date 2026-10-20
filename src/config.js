@@ -13,7 +13,8 @@ export const config = {
 
   // Browser
   proxy: env.PROXY_URL || '',              // e.g. http://user:pass@au.proxy.example:8000 (only if blocked)
-  maxOpenPages: num('MAX_OPEN_PAGES', 1),  // keep at 1 on a 2 GB box
+  maxOpenPages: num('MAX_OPEN_PAGES', 1),  // tabs for the regular scan
+  hotPages: num('HOT_PAGES', 1),           // tabs for closing-soon re-checks (separate, so the scan never stalls)
   pageTimeoutMs: num('PAGE_TIMEOUT_MS', 45000),
   browserRecycleMin: num('BROWSER_RECYCLE_MIN', 180),
   headless: bool('HEADLESS', true),
@@ -25,7 +26,7 @@ export const config = {
   hotWindowMin: num('HOT_WINDOW_MIN', 15),     // lots closing within this get re-checked every HOT_EVERY_SEC
   warmWindowMin: num('WARM_WINDOW_MIN', 60),   // lots closing within this get re-checked every WARM_EVERY_MIN
   warmEveryMin: num('WARM_EVERY_MIN', 5),
-  hotBatch: num('HOT_BATCH', 6),               // max detail pages per hot cycle
+  hotBatch: num('HOT_BATCH', 4),               // max detail pages per hot cycle
   hotMaxBid: num('HOT_MAX_BID', 25000),        // don't waste browser time on lots already above this
 
   // Alerts
@@ -60,6 +61,15 @@ export const config = {
         'https://www.pickles.com.au/used/search/cars?filter=and%255B0%255D%255Bor%255D%255B0%255D%255BbuyMethod%255D%3DPickles%2520Online&contentkey=all-cars',
         // Trucks (the Isuzu NPR type of lot)
         'https://www.pickles.com.au/used/search/trucks?contentkey=trucks',
+      ]),
+    },
+    allbids: {
+      enabled: bool('ALLBIDS_ENABLED', true),
+      scrolls: num('ALLBIDS_SCROLLS', 12),
+      pages: list('ALLBIDS_PAGES', [
+        'https://www.allbids.com.au/closing-today',                                  // everything closing today, all categories
+        'https://www.carbids.com.au/c/allbids-car-auctions/motor-vehicles-cars',     // cars (close on weekdays)
+        'https://www.allbids.com.au/c/trucks-trailers',
       ]),
     },
     manheim: {

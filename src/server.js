@@ -51,7 +51,18 @@ export function startServer() {
     for (const a of q.alertKinds.all(now - 7 * 86400000)) alertKinds.set(a.key, [...(alertKinds.get(a.key) || []), a.kind]);
     res.json({ now, lots: rows.map(l => shape(l, alertKinds)) });
   });
-  app.get('/api/closed', (_req, res) => res.json(q.recentClosed.all(Date.now() - 86400000).map(l => shape(l, new Map()))));
+  app.get('/api/closed', (req, res) => {
+    const hours = Math.min(Number(req.query.hours) || 24, 24 * 90);
+    const rows = q.recentClosed.all(Date.now() - hours * 3600000);
+    res.json({ now: Date.now(), lots: rows.map(l => {
+      const out = shape({ ...l, bid: l.final_bid }, new Map());
+      out.finalBid = l.final_bid;
+      out.closedAt = l.closed_at;
+      // How close to the end our last look was: 0-1 min = the real hammer price, more = it may have gone higher.
+      out.seenMinsBeforeClose = l.final_seen_at && l.end_at ? Math.max(0, Math.round((l.end_at - l.final_seen_at) / 60000)) : null;
+      return out;
+    }) });
+  });
   app.get('/api/status', (_req, res) => res.json({ sites: q.statusAll.all(), alerts: q.recentAlerts.all(), ai: !!config.anthropicKey, push: !!config.ntfyUrl }));
   app.get('/api/lots/:key/bids', (req, res) => res.json(q.bidHistory.all(req.params.key)));
   app.post('/api/lots/:key/star', (req, res) => { q.star.run(req.body.starred ? 1 : 0, req.params.key); res.json({ ok: true }); });

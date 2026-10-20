@@ -117,3 +117,12 @@ test('a $0 listing bid means no bid yet', () => {
   const [l] = lotsFromJson({ p: [{ stockNumber: 62423903, title: '2013 Ford Focus', currentBid: 0, startingBid: 0, odometer: 227319 }] });
   assert.equal(l.bid, null);
 });
+
+test('ALLBIDS close times and calendar text', async () => {
+  const [l] = lotsFromJson({ a: [{ aucID: 1, aucTitle: 'Drill', aucCurrentBid: 4, aucCloseUtc: '2026-10-20T09:30:00' }] });
+  assert.equal(l.end_at, Date.parse('2026-10-20T09:30:00Z'));
+  const { relativeSydney } = await import('../src/extract.js');
+  // 20 Oct 2026 14:00 Sydney (03:00Z); "Today at 7:12 PM" Sydney = 08:12Z
+  assert.equal(relativeSydney('Today', 7, 12, 'PM', NOW), Date.parse('2026-10-20T08:12:00Z'));
+  assert.equal(factsFromText('Closes Tomorrow at 9:00 AM', NOW).end_at, Date.parse('2026-10-20T22:00:00Z'));
+});

@@ -23,6 +23,7 @@ CREATE INDEX IF NOT EXISTS bids_key ON bids(key, at);
 CREATE TABLE IF NOT EXISTS alerts (key TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL, message TEXT, PRIMARY KEY(key, kind));
 CREATE TABLE IF NOT EXISTS site_status (site TEXT PRIMARY KEY, last_ok INTEGER, last_count INTEGER, last_error TEXT, last_error_at INTEGER, logged_in INTEGER);
 `);
+for (const col of ['final_seen_at INTEGER']) { try { db.exec(`ALTER TABLE lots ADD COLUMN ${col}`); } catch { /* exists */ } }
 // v1.1 cleanup: drop duplicate Pickles records created from internal ids
 db.exec(`DELETE FROM lots WHERE site = 'pickles' AND url LIKE '%/used/details/items/%'`);
 
@@ -57,8 +58,8 @@ export const q = {
   lot: db.prepare('SELECT * FROM lots WHERE key = ?'),
   openWindow: db.prepare(`SELECT * FROM lots WHERE status = 'open' AND end_at IS NOT NULL AND end_at BETWEEN ? AND ? ORDER BY end_at`),
   dashboard: db.prepare(`SELECT * FROM lots WHERE status = 'open' AND (end_at IS NULL OR end_at > ?) AND (end_at IS NULL OR end_at < ?) ORDER BY end_at IS NULL, end_at LIMIT ?`),
-  recentClosed: db.prepare(`SELECT * FROM lots WHERE status = 'closed' AND closed_at > ? ORDER BY closed_at DESC LIMIT 100`),
-  closeDue: db.prepare(`UPDATE lots SET status = 'closed', final_bid = bid, closed_at = ? WHERE status = 'open' AND end_at < ? RETURNING key`),
+  recentClosed: db.prepare(`SELECT * FROM lots WHERE status = 'closed' AND closed_at > ? AND final_bid IS NOT NULL ORDER BY end_at DESC LIMIT 1000`),
+  closeDue: db.prepare(`UPDATE lots SET status = 'closed', final_bid = bid, final_seen_at = last_checked, closed_at = ? WHERE status = 'open' AND end_at < ? RETURNING key`),
   star: db.prepare('UPDATE lots SET starred = ? WHERE key = ?'),
   manualEstimate: db.prepare('UPDATE lots SET manual_estimate = ? WHERE key = ?'),
   setEstimate: db.prepare('UPDATE lots SET est_low = ?, est_high = ?, est_note = ?, est_at = ? WHERE key = ?'),

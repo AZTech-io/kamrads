@@ -58,7 +58,7 @@ export async function discover() {
 
 /** Re-read one lot's detail page for its live bid and close time. */
 export async function refresh(lot) {
-  const r = await withPage(site, lot.url, null, { waitMs: 3000, high: true });
+  const r = await withPage(site, lot.url, null, { waitMs: 1500, high: true });
   if (looksBlocked(r)) throw new Error(`blocked by Pickles (HTTP ${r.status})`);
   const json = lotsFromCapture(r).map(finish);
   const match = json.find(l => l.ext_id === lot.ext_id) || (json.length === 1 ? json[0] : null);

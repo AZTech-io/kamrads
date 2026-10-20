@@ -5,16 +5,16 @@
 
 const norm = k => String(k).toLowerCase().replace(/[^a-z0-9]/g, '');
 
-const ID_KEYS = ['stocknumber', 'stockno', 'stockid', 'stock', 'itemid', 'productid', 'vehicleid', 'assetid',
+const ID_KEYS = ['stocknumber', 'stockno', 'stockid', 'stock', 'aucid', 'auctionid', 'itemid', 'productid', 'vehicleid', 'assetid',
   'listingid', 'auctionitemid', 'salelotid', 'lotid', 'inventoryid', 'id'];
-const LOTNO_KEYS = ['lotnumber', 'lotno', 'lot', 'lotnum'];
-const TITLE_KEYS = ['title', 'name', 'heading', 'displayname', 'producttitle', 'vehicletitle', 'shortdescription', 'description'];
-const URL_KEYS = ['url', 'detailsurl', 'detailurl', 'producturl', 'permalink', 'link', 'href', 'canonicalurl', 'seourl', 'slug'];
-const IMG_KEYS = ['image', 'imageurl', 'thumbnail', 'thumbnailurl', 'mainimage', 'primaryimage', 'photo', 'photourl', 'images', 'photos', 'media'];
+const LOTNO_KEYS = ['lotnumber', 'lotno', 'lot', 'lotnum', 'aucreferenceno', 'referenceno'];
+const TITLE_KEYS = ['title', 'auctitle', 'name', 'heading', 'displayname', 'producttitle', 'vehicletitle', 'shortdescription', 'description'];
+const URL_KEYS = ['url', 'aucurl', 'auclink', 'aucseourl', 'detailsurl', 'detailurl', 'producturl', 'permalink', 'link', 'href', 'canonicalurl', 'seourl', 'slug'];
+const IMG_KEYS = ['image', 'aucthumbnailurl', 'aucimageurl', 'imageurl', 'thumbnail', 'thumbnailurl', 'mainimage', 'primaryimage', 'photo', 'photourl', 'images', 'photos', 'media'];
 const ODO_KEYS = ['odometer', 'odometerreading', 'odometervalue', 'kms', 'kilometres', 'kilometers', 'mileage', 'odo'];
 const WOVR_KEYS = ['wovr', 'wovrstatus', 'writeoff', 'writeofftype', 'writeoffstatus', 'writtenoff', 'wovrtype'];
-const LOC_KEYS = ['location', 'locationname', 'branch', 'branchname', 'suburb', 'city', 'yard', 'yardname', 'salelocation', 'itemlocation', 'site'];
-const STATE_KEYS = ['state', 'statecode', 'locationstate', 'region'];
+const LOC_KEYS = ['location', 'auccity', 'locationname', 'branch', 'branchname', 'suburb', 'city', 'yard', 'yardname', 'salelocation', 'itemlocation', 'site'];
+const STATE_KEYS = ['state', 'aucstate', 'statecode', 'locationstate', 'region'];
 const BUYMETHOD_KEYS = ['buymethod', 'sellingmethod', 'sellingmethodname', 'saletype', 'saleschannel', 'channel', 'auctiontype'];
 const SALE_KEYS = ['salename', 'auctionname', 'eventname', 'saletitle', 'eventtitle'];
 const CAT_KEYS = ['category', 'producttype', 'producttypetitle', 'itemtype', 'assettype', 'vehicletype', 'lineofbusiness'];
@@ -24,7 +24,7 @@ const isBidKey = k => k.includes('bid') && /current|highest|high|top|leading|win
 const isPriceFallbackKey = k => ['currentprice', 'highestoffer', 'currentoffer', 'price'].includes(k);
 const isBuyNowKey = k => k.includes('buynow') && /price|amount|value/.test(k);
 const isStartKey = k => /^(starting|start|opening|minimum|min)(bid|price)(amount|value)?$/.test(k);
-const isBidCountKey = k => /^(bidcount|numberofbids|numbids|totalbids|bidscount|bids)$/.test(k);
+const isBidCountKey = k => k === 'bids' || /(bidcount|bidscount|numberofbids|numbids|totalbids)$/.test(k);
 const isEndKey = k => (/(end|close|closing|expir|finish)/.test(k) && /(date|time|utc|at|on)$/.test(k))
   || ['bidend', 'auctionend', 'enddate', 'endtime', 'closedate', 'closetime', 'closingdate', 'expirydate', 'productbidend', 'endsat', 'closesat'].includes(k);
 const STATES = ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT'];
@@ -138,6 +138,7 @@ function flatFields(obj) {
 
 const firstOf = (f, keys) => { for (const k of keys) { const v = f.get(k); if (v != null && v !== '') return v; } return null; };
 const firstWhere = (f, pred) => { for (const [k, v] of f) if (pred(k) && v != null && v !== '') return v; return null; };
+const keyWhere = (f, pred) => { for (const [k, v] of f) if (pred(k) && v != null && v !== '') return k; return null; };
 
 /** Turn one candidate object into a normalised lot, or null if it isn't lot-shaped. */
 export function lotFromObject(obj, now = Date.now()) {
@@ -195,7 +196,8 @@ export function lotFromObject(obj, now = Date.now()) {
     bid_count: parseInt0(firstWhere(f, isBidCountKey)),
     buy_now: parseMoney(buyNowRaw),
     start_price: (b => (b > 0 ? b : null))(parseMoney(startRaw)),
-    end_at: parseTime(endRaw, now),
+    // a field named ...Utc holding a zone-less time (ALLBIDS aucCloseUtc) is UTC, not Sydney time
+    end_at: parseTime(typeof endRaw === 'string' && /utc/.test(keyWhere(f, isEndKey) || '') && /\d{2}:\d{2}(:\d{2})?(\.\d+)?$/.test(endRaw) ? endRaw.replace(' ', 'T') + 'Z' : endRaw, now),
   };
 }
 
@@ -244,11 +246,23 @@ export function factsFromText(text, now = Date.now()) {
   else {
     const dt = /(?:ends?|closes?|closing|auction\s*end)\s*(?:on|at)?\s*:?\s*([A-Z][a-z]{2,8},?\s+\d{1,2}\s+[A-Z][a-z]{2,8}\s+\d{4}[^\n]{0,20}|\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2}\s*(?:am|pm)?)/i.exec(t);
     if (dt) out.end_at = parseAuDate(dt[1]);
+    else {
+      const rel = /\b(today|tomorrow)\s*(?:at)?\s*(\d{1,2}):(\d{2})\s*(am|pm)\b/i.exec(t);
+      if (rel) out.end_at = relativeSydney(rel[1], +rel[2], +rel[3], rel[4], now);
+    }
   }
   const loc = /([A-Z][A-Za-z .'-]{2,30}),\s*(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b/.exec(t);
   if (loc) { out.location = `${loc[1].trim()}, ${loc[2]}`; out.state = loc[2]; }
   for (const k of Object.keys(out)) if (out[k] == null) delete out[k];
   return out;
+}
+
+/** "Today at 7:12 PM" as shown in the browser (Sydney time) -> ms */
+export function relativeSydney(day, h, mi, ampm, now = Date.now()) {
+  if (/pm/i.test(ampm) && h < 12) h += 12;
+  if (/am/i.test(ampm) && h === 12) h = 0;
+  const ymd = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date(now + (/tomorrow/i.test(day) ? 86400000 : 0)));
+  return parseTime(`${ymd}T${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}:00`);
 }
 
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
