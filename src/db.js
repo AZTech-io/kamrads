@@ -23,7 +23,7 @@ CREATE INDEX IF NOT EXISTS bids_key ON bids(key, at);
 CREATE TABLE IF NOT EXISTS alerts (key TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL, message TEXT, PRIMARY KEY(key, kind));
 CREATE TABLE IF NOT EXISTS site_status (site TEXT PRIMARY KEY, last_ok INTEGER, last_count INTEGER, last_error TEXT, last_error_at INTEGER, logged_in INTEGER);
 `);
-for (const col of ['final_seen_at INTEGER']) { try { db.exec(`ALTER TABLE lots ADD COLUMN ${col}`); } catch { /* exists */ } }
+for (const col of ['final_seen_at INTEGER', 'est_avg REAL', 'est_comps TEXT', 'est_method TEXT']) { try { db.exec(`ALTER TABLE lots ADD COLUMN ${col}`); } catch { /* exists */ } }
 db.exec(`UPDATE lots SET title = NULL WHERE title IS NOT NULL AND (trim(title) = '' OR title LIKE '%{{%')`);
 db.exec(`UPDATE lots SET bid_count = NULL WHERE bid_count > 500`); // bad counts read from site-wide text
 // v1.1 cleanup: drop duplicate Pickles records created from internal ids
@@ -71,6 +71,10 @@ export const q = {
     ON CONFLICT(key) DO UPDATE SET starred = 1, status = CASE WHEN lots.end_at IS NULL OR lots.end_at > ? THEN 'open' ELSE lots.status END`),
   manualEstimate: db.prepare('UPDATE lots SET manual_estimate = ? WHERE key = ?'),
   setEstimate: db.prepare('UPDATE lots SET est_low = ?, est_high = ?, est_note = ?, est_at = ? WHERE key = ?'),
+  setResearch: db.prepare('UPDATE lots SET est_low = ?, est_high = ?, est_avg = ?, est_comps = ?, est_note = ?, est_method = ?, est_at = ? WHERE key = ?'),
+  researchToday: db.prepare(`SELECT count(*) AS n FROM lots WHERE est_method = 'web' AND est_at > ?`),
+  researchQueue: db.prepare(`SELECT * FROM lots WHERE status = 'open' AND est_at IS NULL AND manual_estimate IS NULL
+    AND (starred = 1 OR (end_at BETWEEN ? AND ?)) ORDER BY starred DESC, end_at LIMIT 200`),
   needsEstimate: db.prepare(`SELECT * FROM lots WHERE status = 'open' AND est_at IS NULL AND manual_estimate IS NULL AND end_at BETWEEN ? AND ? ORDER BY end_at LIMIT ?`),
   alertSent: db.prepare('SELECT 1 FROM alerts WHERE key = ? AND kind = ?'),
   addAlert: db.prepare('INSERT OR IGNORE INTO alerts (key, kind, at, message) VALUES (?, ?, ?, ?)'),

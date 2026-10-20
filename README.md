@@ -2,6 +2,8 @@
 
 Watches Pickles, Manheim and ALLBIDS (incl. CARBIDS), lists every lot by what ends soonest, and pushes an alert to your phone when something is still cheap in its final 10 minutes.
 
+**Market research:** add your Claude API key under **Settings** (bottom of the dashboard — it's stored on the server only). Claude then searches carsales, Gumtree, Drive, RedBook and others for comparable listings, gives a market average and a realistic resale range for each lot, and flags great prices. Press **Research** on any lot to run it on demand. Automatic lookups have a daily cap (default 60, about 5–10c each).
+
 **My watchlist** sits at the top of the dashboard: star any lot (or paste its link) and its price is re-checked every 60 seconds until it closes.
 
 Every lot gets one last read just after it closes, so the **Sold** tab shows what things actually went for — the auction sites hide this once a lot ends.

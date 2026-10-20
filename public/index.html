@@ -30,6 +30,19 @@ header { background: var(--navy); border-bottom: 1px solid var(--line); position
 input[type=search], select { background: var(--navy-2); border: 1px solid var(--line); color: var(--ink); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; }
 input[type=search] { flex: 1 1 180px; min-width: 140px; }
 main { max-width: 1240px; margin: 0 auto; padding: 12px 16px 60px; }
+dialog#settings { background: var(--navy); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; width: min(520px, calc(100vw - 32px)); }
+dialog#settings::backdrop { background: rgba(0,0,0,.55); }
+#settings h2 { margin: 0 0 4px; font-size: 18px; }
+#settings label { display: block; margin: 14px 0 0; font-size: 13.5px; }
+#settings input[type=password], #settings input[type=url], #settings input[type=number] { display: block; width: 100%; margin-top: 6px; background: var(--navy-2); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 8px 10px; font: inherit; }
+#settings .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+#settings .row.end { justify-content: flex-end; margin-top: 18px; }
+#settings .save { background: var(--green); color: #06281a; border: 0; border-radius: 8px; padding: 7px 16px; font: inherit; font-weight: 700; cursor: pointer; }
+.research { margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+.research summary { cursor: pointer; color: var(--ink); }
+.research ul { margin: 6px 0 4px; padding-left: 18px; }
+.research a { color: var(--blue); }
+.research.err { color: var(--amber); }
 .capture { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 12.5px; }
 .capture b { color: var(--ink); }
 .summary { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 14px; }
@@ -126,14 +139,28 @@ footer { color: var(--muted); font-size: 12px; text-align: center; padding: 20px
   <div class="summary" id="summary"></div>
   <div id="list"></div>
 </main>
-<footer>Spot it. Track it. Win it. · <a href="#" id="testAlert">Send a test alert</a> · <span id="updated"></span></footer>
+<footer>Spot it. Track it. Win it. · <a href="#" id="openSettings">Settings</a> · <a href="#" id="testAlert">Send a test alert</a> · <span id="updated"></span></footer>
+<dialog id="settings">
+  <form method="dialog" id="settingsForm">
+    <h2>Settings</h2>
+    <p class="sub">Saved on this KAMRADS server only — never in GitHub. The key is never shown in full again.</p>
+    <label>Claude API key <span class="sub" id="keyState"></span>
+      <input id="sKey" type="password" autocomplete="off" placeholder="sk-ant-… (leave blank to keep the saved key)"></label>
+    <div class="row"><button type="button" class="icon" id="testKey">Test key</button><button type="button" class="icon" id="clearKey">Remove key</button><span class="sub" id="keyResult"></span></div>
+    <label><input id="sResearch" type="checkbox"> Research prices automatically (watchlist, vehicles, and lots over $50 closing within 6 h)</label>
+    <label>Daily limit on automatic lookups <span class="sub">(each about 5–10c)</span>
+      <input id="sPerDay" type="number" min="0" max="1000" step="10"></label>
+    <label>Phone alert link (ntfy) <input id="sNtfy" type="url" placeholder="https://ntfy.sh/kamrads-your-secret-topic"></label>
+    <div class="row end"><button type="button" class="icon" id="closeSettings">Cancel</button><button class="save" id="saveSettings">Save</button></div>
+  </form>
+</dialog>
 
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = n => n == null ? '—' : '$' + Math.round(n).toLocaleString('en-AU');
 const SLEEPER = 0.25;
-let soldStats = [], watch = [], lastBid = {}, curBid = {}, lots = [], filter = 'all', clockSkew = 0, mode = 'live';
+let aiOn = false, soldStats = [], watch = [], lastBid = {}, curBid = {}, lots = [], filter = 'all', clockSkew = 0, mode = 'live';
 const pref = (k, d) => { try { return JSON.parse(localStorage.getItem('k_' + k)) ?? d; } catch { return d; } };
 const save = (k, v) => { try { localStorage.setItem('k_' + k, JSON.stringify(v)); } catch {} };
 filter = pref('filter', 'all'); if (filter === 'starred') filter = 'all';
@@ -207,6 +234,16 @@ function ago(t) {
 
 const slugName = u => { const w = String(u || '').split(/[?#]/)[0].replace(/\/$/, '').split('/').pop().replace(/-?\d{5,}$/, '').split('-').filter(Boolean); return w.length > 1 ? w.map(x => x[0].toUpperCase() + x.slice(1)).join(' ') : ''; };
 
+function compsBlock(l) {
+  if (l.estMethod === 'error') return `<div class="research err">Research failed: ${esc((l.estNote || '').replace(/^error: /, ''))}</div>`;
+  if (l.estMethod !== 'web') return '';
+  const pct = l.marketAvg && (l.bid ?? l.startPrice) != null ? Math.round(((l.bid ?? l.startPrice) / l.marketAvg) * 100) : null;
+  const flag = pct != null && pct <= 50 ? `<span class="tag ok">${pct}% of market — great price</span>` : pct != null && pct <= 75 ? `<span class="tag rep">${pct}% of market</span>` : '';
+  return `<details class="research"><summary>Market ${l.marketAvg ? '~' + money(l.marketAvg) : 'n/a'} · resale ${money(l.estLow)}–${money(l.estHigh).slice(1)} · ${l.comps.length} comparable${l.comps.length === 1 ? '' : 's'} ${flag}</summary>
+    <ul>${l.comps.map(c => `<li><a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.title || c.url)}</a>${c.price ? ` — ${money(c.price)}` : ''}${c.km ? ` · ${Number(c.km).toLocaleString('en-AU')} km` : ''}</li>`).join('')}</ul>
+    <div class="sub">${esc(l.estNote || '')}</div></details>`;
+}
+
 function renderWatch() {
   const now = Date.now() + clockSkew;
   $('#watchList').innerHTML = !watch.length
@@ -220,9 +257,9 @@ function renderWatch() {
       return `<div class="wrow ${closed ? 'sold' : ''}">
         <div class="clock ${cls}">${closed ? '<div class="t">SOLD</div>' : `<div class="t" data-end="${l.endAt ?? ''}">${ms == null ? '…' : left(ms)}</div>`}<div class="d">${l.endAt ? esc(fmtClose(l.endAt)) : 'reading lot…'}</div></div>
         <div><a class="wt" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title || slugName(l.url) || 'Loading lot details…')}</a>
-          <div class="wm"><span class="tag site">${esc(l.site)}</span> ${esc([l.location, l.state].filter(Boolean).join(' '))}${l.odometer ? ' · ' + l.odometer.toLocaleString('en-AU') + ' km' : ''}${l.wovr ? ' · ' + esc(l.wovr) : ''} · ${closed ? (l.seenMinsBeforeClose != null && l.seenMinsBeforeClose <= 1 ? 'hammer price' : 'final price seen') : ago(l.lastChecked)}</div></div>
+          <div class="wm"><span class="tag site">${esc(l.site)}</span> ${esc([l.location, l.state].filter(Boolean).join(' '))}${l.odometer ? ' · ' + l.odometer.toLocaleString('en-AU') + ' km' : ''}${l.wovr ? ' · ' + esc(l.wovr) : ''} · ${closed ? (l.seenMinsBeforeClose != null && l.seenMinsBeforeClose <= 1 ? 'hammer price' : 'final price seen') : ago(l.lastChecked)}</div>${compsBlock(l)}</div>
         <div class="wp"><b>${money(price)}</b><div class="sub">${closed ? 'sold' : l.bidCount != null ? l.bidCount + (l.bidCount === 1 ? ' bid' : ' bids') : l.bid == null ? 'no bid seen' : 'current bid'}</div>${moved ? `<div class="up">▲ was ${money(lastBid[l.key])}</div>` : ''}${l.estimate ? `<div class="sub">est ${money(l.estimate)}</div>` : ''}</div>
-        <div class="wx"><button class="icon on" data-unwatch="${esc(l.key)}" title="Stop watching">★</button></div>
+        <div class="wx"><button class="icon on" data-unwatch="${esc(l.key)}" title="Stop watching">★</button>${closed ? '' : ` <button class="icon" data-research="${esc(l.key)}" title="Search the market for comparable prices">${l.estMethod === 'web' ? 'Re-check' : 'Research'}</button>`}</div>
       </div>`;
     }).join('');
   $('#watchHint').textContent = `${watch.filter(l => l.status === 'open').length} watching · re-checked every ${watchEvery} s`;
@@ -281,12 +318,14 @@ function render() {
           ${l.sale ? `<span>${esc(l.sale)}</span>` : ''}
           ${l.alerts.length ? `<span class="tag stat">ALERT · ${esc(l.alerts.join(', '))}</span>` : ''}
         </div>
+        ${compsBlock(l)}
       </div>
       <div class="price">
         <div><div class="bid">${money(p)}</div><div class="sub">${mode === 'sold' ? (l.finalBid == null ? 'price not captured' : l.seenMinsBeforeClose == null ? 'price from listing' : l.seenMinsBeforeClose <= 1 ? 'hammer price' : `last seen ${l.seenMinsBeforeClose} min before close`) : l.bid == null && l.startPrice != null ? 'start price' : l.bidCount != null ? l.bidCount + (l.bidCount === 1 ? ' bid' : ' bids') : l.bid == null ? 'bid not visible yet' : 'current bid'}</div>${est}</div>
         <div class="acts">
           <button class="icon ${l.starred ? 'on' : ''}" data-star="${esc(l.key)}" title="Star: alert me in the final minutes">★</button>
           <button class="icon" data-est="${esc(l.key)}" title="Set your own resale estimate">Est</button>
+          ${mode === 'sold' ? '' : `<button class="icon" data-research="${esc(l.key)}" title="Search the market for comparable prices">${l.estMethod === 'web' ? 'Re-check' : 'Research'}</button>`}
         </div>
       </div>
     </div>`;
@@ -316,6 +355,7 @@ async function load() {
     }).catch(() => {});
     const [r, s] = await Promise.all([fetch(sold ? '/api/closed?hours=' + Math.max(24, Number($('#hours').value)) : '/api/lots?hours=' + $('#hours').value), fetch('/api/status')]);
     const data = await r.json(), st = await s.json();
+    aiOn = !!st.ai;
     clockSkew = data.now - Date.now();
     lots = data.lots;
     soldStats = data.stats || [];
@@ -373,6 +413,15 @@ $('#watchList').addEventListener('click', async e => {
   await fetch(`/api/lots/${encodeURIComponent(b.dataset.unwatch)}/star`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ starred: false }) });
   load();
 });
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-research]'); if (!b) return;
+  if (!aiOn) { openSettings(); return alert('Add your Claude API key in Settings first.'); }
+  b.disabled = true; b.textContent = 'Searching…';
+  const r = await fetch(`/api/lots/${encodeURIComponent(b.dataset.research)}/research`, { method: 'POST' });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) alert(j.error || 'Research failed.');
+  load();
+});
 $('#watchAdd').addEventListener('submit', async e => {
   e.preventDefault();
   const url = $('#watchUrl').value.trim(); if (!url) return;
@@ -382,6 +431,34 @@ $('#watchAdd').addEventListener('submit', async e => {
   $('#watchUrl').value = '';
   load();
 });
+function openSettings() {
+  fetch('/api/settings').then(r => r.json()).then(st => {
+    $('#keyState').textContent = st.anthropicKeySet ? `· saved ${st.anthropicKeyMasked}${st.anthropicKeyFrom === '.env' ? ' (from .env)' : ''}` : '· not set';
+    $('#sKey').value = ''; $('#keyResult').textContent = '';
+    $('#sResearch').checked = st.researchEnabled; $('#sPerDay').value = st.researchPerDay; $('#sNtfy').value = st.ntfyUrl;
+    $('#settings').showModal();
+  });
+}
+$('#openSettings').addEventListener('click', e => { e.preventDefault(); openSettings(); });
+$('#closeSettings').addEventListener('click', () => $('#settings').close());
+async function saveSettings(extra = {}) {
+  const body = { researchEnabled: $('#sResearch').checked, researchPerDay: Number($('#sPerDay').value), ntfyUrl: $('#sNtfy').value.trim(), ...extra };
+  if ($('#sKey').value.trim()) body.anthropicKey = $('#sKey').value.trim();
+  const r = await fetch('/api/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json();
+  if (!r.ok) { alert(j.error || 'Could not save.'); return false; }
+  $('#keyState').textContent = j.anthropicKeySet ? `· saved ${j.anthropicKeyMasked}` : '· not set';
+  $('#sKey').value = '';
+  return true;
+}
+$('#saveSettings').addEventListener('click', async e => { e.preventDefault(); if (await saveSettings()) { $('#settings').close(); load(); } });
+$('#testKey').addEventListener('click', async () => {
+  if ($('#sKey').value.trim() && !(await saveSettings())) return;
+  $('#keyResult').textContent = 'Testing…';
+  const j = await (await fetch('/api/settings/test-key', { method: 'POST' })).json();
+  $('#keyResult').textContent = j.ok ? '✓ Key works' : '✗ ' + (j.error || 'Key rejected');
+});
+$('#clearKey').addEventListener('click', async () => { if (confirm('Remove the saved Claude API key?')) { await saveSettings({ clearKey: true }); } });
 $('#testAlert').addEventListener('click', async e => {
   e.preventDefault();
   const r = await (await fetch('/api/test-alert', { method: 'POST' })).json();

@@ -45,7 +45,10 @@ export const config = {
 
   // AI resale estimate (optional)
   anthropicKey: env.ANTHROPIC_API_KEY || '',
-  anthropicModel: env.ANTHROPIC_MODEL || 'claude-haiku-5-5',
+  anthropicModel: env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',   // market research with web search
+  researchPerDay: num('RESEARCH_PER_DAY', 60),                  // cap on automatic lookups (each ~5-10c)
+  researchWithinHours: num('RESEARCH_WITHIN_HOURS', 6),         // auto-research lots closing within this
+  researchMinBid: num('RESEARCH_MIN_BID', 50),                  // skip junk lots below this (vehicles always qualify)
   estimatesPerHour: num('ESTIMATES_PER_HOUR', 60),
   estimateWithinHours: num('ESTIMATE_WITHIN_HOURS', 24),
 

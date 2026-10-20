@@ -7,6 +7,8 @@ import { estimateOf } from './alerts.js';
 import { isVehicle } from './extract.js';
 import { push } from './notify.js';
 import { watchUrl } from './scheduler.js';
+import * as settings from './settings.js';
+import { researchLot, testKey } from './estimate.js';
 import { log } from './log.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -34,6 +36,8 @@ const shape = (l, alertKinds) => {
     estimate: est, ratio: est && price != null ? price / est : null,
     profit: est && price != null ? est - price : null,
     vehicle: isVehicle(l), alerts: alertKinds.get(l.key) || [],
+    marketAvg: l.est_avg ?? null, estMethod: l.est_method ?? null,
+    comps: (() => { try { return l.est_comps ? JSON.parse(l.est_comps) : []; } catch { return []; } })(),
   };
 };
 
@@ -78,7 +82,35 @@ export function startServer() {
     try { res.json({ ok: true, key: watchUrl(String(req.body.url || '').trim()) }); }
     catch (e) { res.status(400).json({ error: e.message }); }
   });
-  app.get('/api/status', (_req, res) => res.json({ sites: q.statusAll.all(), alerts: q.recentAlerts.all(), ai: !!config.anthropicKey, push: !!config.ntfyUrl }));
+  app.get('/api/settings', (_req, res) => res.json(settings.publicView()));
+  app.post('/api/settings', (req, res) => {
+    const b = req.body || {};
+    const patch = {};
+    if (typeof b.anthropicKey === 'string' && b.anthropicKey.trim()) {
+      if (!/^sk-ant-[A-Za-z0-9_-]{20,}$/.test(b.anthropicKey.trim())) return res.status(400).json({ error: 'That does not look like a Claude API key (it should start with sk-ant-).' });
+      patch.anthropicKey = b.anthropicKey;
+    }
+    if (b.clearKey) patch.anthropicKey = '';
+    if (typeof b.ntfyUrl === 'string') {
+      if (b.ntfyUrl && !/^https:\/\/\S+$/.test(b.ntfyUrl.trim())) return res.status(400).json({ error: 'The alert link should start with https://' });
+      patch.ntfyUrl = b.ntfyUrl;
+    }
+    if (b.researchPerDay != null) patch.researchPerDay = Math.max(0, Math.min(1000, Number(b.researchPerDay) || 0));
+    if (b.researchEnabled != null) patch.researchEnabled = !!b.researchEnabled;
+    settings.set(patch);
+    res.json(settings.publicView());
+  });
+  app.post('/api/settings/test-key', async (_req, res) => {
+    const key = settings.get('anthropicKey');
+    if (!key) return res.json({ ok: false, error: 'No key saved yet.' });
+    try { res.json({ ok: await testKey(key) }); } catch (e) { res.json({ ok: false, error: e.message.slice(0, 200) }); }
+  });
+  app.post('/api/lots/:key/research', async (req, res) => {
+    const lot = q.lot.get(req.params.key);
+    if (!lot) return res.status(404).json({ error: 'Lot not found' });
+    try { res.json({ ok: true, result: await researchLot(lot) }); } catch (e) { res.status(400).json({ error: e.message.slice(0, 200) }); }
+  });
+  app.get('/api/status', (_req, res) => res.json({ sites: q.statusAll.all(), alerts: q.recentAlerts.all(), ai: !!settings.get('anthropicKey'), push: !!settings.get('ntfyUrl') }));
   app.get('/api/lots/:key/bids', (req, res) => res.json(q.bidHistory.all(req.params.key)));
   app.post('/api/lots/:key/star', (req, res) => { q.star.run(req.body.starred ? 1 : 0, req.params.key); res.json({ ok: true }); });
   app.post('/api/lots/:key/estimate', (req, res) => {
@@ -89,7 +121,7 @@ export function startServer() {
   });
   app.post('/api/test-alert', async (_req, res) => {
     const ok = await push({ title: 'KAMRADS test alert', message: 'If you can read this on your phone, alerts are working.', url: config.dashboardPublicUrl || undefined, priority: 'default', tags: 'satellite' });
-    res.json({ ok, configured: !!config.ntfyUrl });
+    res.json({ ok, configured: !!settings.get('ntfyUrl') });
   });
 
   app.listen(config.port, config.host, () => log.info('web', `dashboard on http://${config.host}:${config.port}${config.dashPass ? '' : ' (WARNING: no DASH_PASS set)'}`));

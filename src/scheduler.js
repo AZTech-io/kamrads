@@ -131,7 +131,7 @@ async function hotLoop() {
 async function estimateLoop() {
   while (!stopping) {
     try { await estimatePending(); } catch (e) { log.warn('estimate', e.message); }
-    await sleep(120000);
+    await sleep(60000);
   }
 }
 
