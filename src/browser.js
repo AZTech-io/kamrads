@@ -47,6 +47,7 @@ async function launchBrowser() {
 }
 
 export async function closeBrowser() {
+  fetchers.clear();
   for (const [site, p] of contexts) { await p.then(ctx => saveState(site, ctx)).catch(() => {}); }
   contexts.clear();
   if (browser) await browser.close().catch(() => {});
@@ -140,6 +141,33 @@ export async function withPage(site, url, fn = null, { scrolls = 0, waitMs = 250
     if (page) await page.close().catch(() => {});
     release(lane);
   }
+}
+
+// One tiny tab per site origin, parked on /robots.txt, used to make same-origin fetches.
+// Requests then look like the site's own page traffic (cookies, headers, TLS) - no rendering.
+const fetchers = new Map();
+async function fetcherFor(site, origin) {
+  const key = `${site}|${origin}`;
+  let p = fetchers.get(key);
+  if (p && !p.isClosed()) return p;
+  const ctx = await getContext(site);
+  p = await ctx.newPage();
+  await p.goto(origin + '/robots.txt', { waitUntil: 'domcontentloaded', timeout: config.pageTimeoutMs }).catch(() => {});
+  fetchers.set(key, p);
+  return p;
+}
+
+/** Fetch a URL from inside the site's own origin. Returns { status, text }. */
+export async function browserFetch(site, url, accept = 'application/json, text/plain, */*') {
+  const page = await fetcherFor(site, new URL(url).origin);
+  return page.evaluate(async ([u, a]) => {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 15000);
+    try {
+      const r = await fetch(u, { headers: { accept: a }, credentials: 'include', signal: ctl.signal });
+      return { status: r.status, text: await r.text() };
+    } finally { clearTimeout(t); }
+  }, [url, accept]);
 }
 
 /** Save a screenshot + HTML for debugging a failed page. */

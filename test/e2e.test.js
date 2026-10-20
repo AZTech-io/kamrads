@@ -41,6 +41,9 @@ const PICKLES = {
     setTimeout(() => { document.getElementById('bid').innerText = 'Current Bid\\n$2,450\\n5 bids\\nEnds in 00:08:30'; }, 400);`),
 };
 PICKLES['/'] = html('<nav><a href="/group/pickles/dashboard">My Pickles</a><a href="#">Login</a></nav>');
+PICKLES['/used/details/cars/2014-mazda-3/62442387'] = html('<h1>2014 Mazda 3 Maxx</h1>', `fetch('/api-website/buyer/product/62442387').then(r => r.json())`);
+PICKLES['/api-website/buyer/product/62442387'] = JSON.stringify({ product: { stockNumber: 62442387, title: 'Mazda 3', currentBid: { amount: 700 }, bidCount: 9, bidEndDate: soon } });
+PICKLES['/api-website/buyer/product/62430579'] = JSON.stringify({ product: { stockNumber: 62430579, title: 'internal', currentBid: { amount: 2600 }, bidCount: 6, bidEndDate: soon } });
 const MANHEIM = {
   '/': html('<ul><li><a href="/events/statutory-write-off">Statutory Write off Vehicles</a> | (173) lots</li><li><a href="/events/classic-mercedes">Classic Mercedes Benz Auction</a> | (3) lots</li></ul>'),
   '/events/statutory-write-off': html('<div id="lots"></div>', `
@@ -98,6 +101,24 @@ test('Pickles: discovery merges JSON + DOM, refresh reads the live bid', { skip:
   assert.equal(fresh.bid, 2450);
   assert.equal(fresh.bid_count, 5);
   assert.ok(Math.abs(fresh.end_at - (Date.now() + 510000)) < 15000);
+});
+
+test('fast price feed: learned from one page read, then used without loading pages', { skip: !chromeOk }, async () => {
+  const fast = await import('../src/fast.js');
+  const mazda = { site: 'pickles', ext_id: '62442387', url: 'https://www.pickles.com.au/used/details/cars/2014-mazda-3/62442387' };
+  const first = await pickles.refresh(mazda);
+  assert.equal(first.bid, 700);
+  assert.ok(!first.fast, 'first read is a full page read');
+  assert.equal(fast.feedOf('pickles').template, 'https://www.pickles.com.au/api-website/buyer/product/{id}');
+  const isuzu = { site: 'pickles', ext_id: '62430579', url: 'https://www.pickles.com.au/used/details/trucks/2011-isuzu-npr-400-medium/62430579' };
+  const t0 = Date.now();
+  const second = await pickles.refresh(isuzu);
+  assert.ok(second.fast, 'second read uses the feed');
+  assert.equal(second.bid, 2600);
+  assert.equal(second.bid_count, 6);
+  assert.equal(second.title, undefined, 'feed never supplies titles');
+  assert.ok(Date.now() - t0 < 3000);
+  fast.forget('pickles');
 });
 
 test('Manheim: finds matching events and their lots', { skip: !chromeOk }, async () => {

@@ -4,6 +4,7 @@ import { log } from './log.js';
 import { checkAlerts } from './alerts.js';
 import { estimatePending } from './estimate.js';
 import { ensureLogin } from './login.js';
+import { hasFeed } from './fast.js';
 import * as pickles from './sites/pickles.js';
 import * as manheim from './sites/manheim.js';
 import * as allbids from './sites/allbids.js';
@@ -13,6 +14,11 @@ const enabled = () => Object.values(adapters).filter(a => config.sites[a.site]?.
 
 const FINAL_GRACE_MS = 6 * 60000; // soft-close extensions + one final read before we mark a lot closed
 const LIVE_FIELDS = ['bid', 'bid_count', 'end_at', 'buy_now', 'start_price', 'buy_method'];
+/** Run fn over items with at most n at a time (page reads still queue for their browser tab). */
+async function pool(items, n, fn) {
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) await fn(items[i++]); }));
+}
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let stopping = false;
 export const stop = () => { stopping = true; };
@@ -48,24 +54,32 @@ export function dueForRefresh(now = Date.now()) {
   const watched = q.watchedOpen.all().filter(l => usable(l) && (l.end_at == null || l.end_at > now - FINAL_GRACE_MS)).filter(l => {
     const since = now - (l.last_checked || 0);
     if (l.end_at && l.end_at <= now) return (l.last_checked || 0) < l.end_at;
-    const every = l.end_at && l.end_at - now <= config.hotWindowMin * 60000 ? Math.min(config.hotEverySec, config.watchEverySec) : config.watchEverySec;
+    const left = l.end_at ? l.end_at - now : Infinity;
+    const every = left <= config.finalWindowMin * 60000 ? config.finalEverySec
+      : left <= config.hotWindowMin * 60000 ? Math.min(config.hotEverySec, config.watchEverySec) : config.watchEverySec;
     return since >= every * 900;
   });
   const rows = q.openWindow.all(now - FINAL_GRACE_MS, now + config.warmWindowMin * 60000).filter(l => !l.starred);
   const due = rows.filter(l => {
     if (!adapters[l.site] || !config.sites[l.site]?.enabled || !l.url) return false;
-    if (!l.starred && l.bid != null && l.bid > config.hotMaxBid) return false;
+    // Expensive lots aren't worth a slow page read; with a fast feed they're cheap, so keep them (final prices).
+    if (!hasFeed(l.site) && !l.starred && l.bid != null && l.bid > config.hotMaxBid) return false;
     const mins = (l.end_at - now) / 60000;
     const since = now - (l.last_checked || 0);
     // Past its close: one last read to capture the final price (sites hide it once sold).
     if (mins <= 0) return (l.last_checked || 0) < l.end_at;
+    // Final minutes: as often as the loop runs (every FINAL_EVERY_SEC) so the stored price is as close to the hammer as we can get.
+    if (mins <= config.finalWindowMin && hasFeed(l.site)) return since >= config.finalEverySec * 800;
     if (mins <= config.hotWindowMin) return since >= config.hotEverySec * 900;
     return since >= config.warmEveryMin * 60000;
   });
   // Final reads first (they can't wait), then whatever closes soonest.
   due.sort((a, b) => ((a.end_at <= now) === (b.end_at <= now) ? a.end_at - b.end_at : a.end_at <= now ? -1 : 1));
-  // Watchlist always goes first and doesn't count against the batch limit.
-  return [...watched, ...due.slice(0, config.hotBatch)];
+  // Sites with a fast price feed can take many reads a cycle; full page reads are limited to HOT_BATCH.
+  const fast = due.filter(l => hasFeed(l.site)).slice(0, config.fastBatch);
+  const paged = due.filter(l => !hasFeed(l.site)).slice(0, config.hotBatch);
+  // Watchlist always goes first and doesn't count against the limits.
+  return [...watched, ...fast, ...paged];
 }
 
 async function hotCycle() {
@@ -73,7 +87,8 @@ async function hotCycle() {
   const closed = q.closeDue.all(now, now - FINAL_GRACE_MS);
   if (closed.length) log.info('hot', `${closed.length} lots closed`);
   const due = dueForRefresh(now);
-  await Promise.all(due.map(async lot => {
+  let viaFeed = 0;
+  await pool(due, 6, async lot => {
     try {
       const fresh = await adapters[lot.site].refresh(lot);
       // Detail pages often carry worse titles ("CP: 01/2014,Hino,...") - only take live fields,
@@ -82,6 +97,7 @@ async function hotCycle() {
       for (const k of LIVE_FIELDS) if (fresh[k] != null) update[k] = fresh[k];
       for (const [k, v] of Object.entries(fresh)) if (!(k in update) && lot[k] == null && v != null) update[k] = v;
       upsertLot(update, { checked: true });
+      if (fresh.fast) { viaFeed++; return; } // fast reads are too frequent to log one by one
       const row = q.lot.get(lot.key);
       const mins = row.end_at ? Math.round((row.end_at - Date.now()) / 60000) : '?';
       log.info('hot', `${lot.key} ${row.title?.slice(0, 40)} · bid ${row.bid ?? '-'} · ${mins} min left`);
@@ -89,7 +105,8 @@ async function hotCycle() {
       upsertLot({ site: lot.site, ext_id: lot.ext_id }, { checked: true }); // don't hammer a failing page
       log.warn('hot', `${lot.key}: ${e.message}`);
     }
-  }));
+  });
+  if (viaFeed) log.info('hot', `${viaFeed} lots re-read via fast price feed`);
   // Alerts run on everything in the alert window, refreshed or not.
   for (const lot of q.openWindow.all(Date.now(), Date.now() + config.alertMinutes * 60000)) await checkAlerts(lot);
 }
@@ -98,7 +115,11 @@ async function hotLoop() {
   while (!stopping) {
     const t0 = Date.now();
     try { await hotCycle(); } catch (e) { log.error('hot', e.stack || e.message); }
-    await sleep(Math.max(config.hotEverySec * 1000 - (Date.now() - t0), 5000));
+    // Speed up while anything we can read cheaply is in its final minutes (or a watched lot is).
+    const now = Date.now();
+    const closing = q.openWindow.all(now - 60000, now + config.finalWindowMin * 60000).some(l => l.starred || hasFeed(l.site));
+    const every = closing ? config.finalEverySec : config.hotEverySec;
+    await sleep(Math.max(every * 1000 - (Date.now() - t0), 3000));
   }
 }
 

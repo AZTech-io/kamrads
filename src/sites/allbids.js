@@ -1,6 +1,7 @@
 // ALLBIDS family (allbids, carbids, boatbids, ehva): AngularJS pages that load lots as JSON.
 // Bids and close times are public, so no login is needed.
 import { withPage, looksBlocked } from '../browser.js';
+import { fastRead, learn } from '../fast.js';
 import { factsFromText } from '../extract.js';
 import { config } from '../config.js';
 import { log } from '../log.js';
@@ -49,8 +50,11 @@ export async function discover() {
 }
 
 export async function refresh(lot) {
+  const quick = await fastRead(site, lot);
+  if (quick) return { ...quick, ext_id: lot.ext_id, url: lot.url, site, fast: true };
   const r = await withPage(site, lot.url, null, { waitMs: 1500, high: true });
   if (looksBlocked(r)) throw new Error(`blocked by ALLBIDS (HTTP ${r.status})`);
+  learn(site, lot.ext_id, r);
   const json = lotsFromCapture(r).map(l => finish(l, new URL(lot.url).origin));
   const match = json.find(l => l.ext_id === lot.ext_id) || (json.length === 1 ? json[0] : null);
   const facts = factsFromText(r.text);

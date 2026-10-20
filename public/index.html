@@ -233,13 +233,14 @@ function render() {
   const sortBy = $('#sort').value;
   const rows = visible().sort(mode === 'sold' && sortBy === 'ending' ? (a, b) => (b.endAt ?? 0) - (a.endAt ?? 0) : SORTS[sortBy] || SORTS.hot);
   if (mode === 'sold') {
-    const bargains = lots.filter(l => l.ratio != null && l.ratio <= 0.5);
-    const under500 = lots.filter(l => l.finalBid != null && l.finalBid <= 500);
-    const exact = lots.filter(l => l.seenMinsBeforeClose != null && l.seenMinsBeforeClose <= 1);
+    const shown = visible();
+    const bargains = shown.filter(l => l.ratio != null && l.ratio <= 0.5);
+    const under500 = shown.filter(l => l.finalBid != null && l.finalBid <= 500);
+    const exact = shown.filter(l => l.seenMinsBeforeClose != null && l.seenMinsBeforeClose <= 1);
     $('#summary').innerHTML = `
       <div class="stat hot"><div class="n">${bargains.length}</div><div class="l">Sold under half the estimate</div></div>
       <div class="stat"><div class="n">${under500.length}</div><div class="l">Sold for $500 or less</div></div>
-      <div class="stat"><div class="n">${lots.length.toLocaleString('en-AU')}</div><div class="l">Results captured</div></div>
+      <div class="stat"><div class="n">${shown.length.toLocaleString('en-AU')}</div><div class="l">Results shown${shown.length < lots.length ? ` (of ${lots.length})` : ''}</div></div>
       <div class="stat"><div class="n">${exact.length}</div><div class="l">Read in the final minute</div></div>`;
   }
   const hour = lots.filter(l => l.endAt && l.endAt - now < 3600000);
@@ -250,7 +251,9 @@ function render() {
     <div class="stat"><div class="n">${lots.length.toLocaleString('en-AU')}</div><div class="l">Lots tracked</div></div>
     <div class="stat"><div class="n">${lots.filter(l => l.starred).length}</div><div class="l">Starred</div></div>`;
   if (!rows.length) {
-    $('#list').innerHTML = `<div class="empty">${lots.length ? 'Nothing matches these filters.' : '<b>Scanning the auction sites…</b><br>The first full pass takes a few minutes. This page refreshes on its own.'}</div>`;
+    const hiddenStat = lots.filter(l => /statutory/i.test(l.wovr || '')).length;
+    const hideOn = $('#hideStat').getAttribute('aria-pressed') === 'true';
+    $('#list').innerHTML = `<div class="empty">${lots.length ? (hideOn && hiddenStat ? `${hiddenStat} result${hiddenStat === 1 ? ' is a statutory write-off' : 's are statutory write-offs'}, hidden by <b>Hide statutory</b>. <a href="#" id="showStat">Show them</a>` : 'Nothing matches these filters.') : '<b>Scanning the auction sites…</b><br>The first full pass takes a few minutes. This page refreshes on its own.'}</div>`;
     return;
   }
   $('#list').innerHTML = rows.slice(0, 400).map(l => {
@@ -354,6 +357,10 @@ $('#list').addEventListener('click', async e => {
     await fetch(`/api/lots/${encodeURIComponent(l.key)}/estimate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ value: v.replace(/[$,\s]/g, '') }) });
     load();
   }
+});
+$('#list').addEventListener('click', e => {
+  if (e.target.id !== 'showStat') return;
+  e.preventDefault(); $('#hideStat').setAttribute('aria-pressed', 'false'); save('hideStat', false); render();
 });
 $('#watchList').addEventListener('click', async e => {
   const b = e.target.closest('[data-unwatch]'); if (!b) return;

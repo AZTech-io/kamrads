@@ -97,3 +97,16 @@ test('a blank title never overwrites or blocks a real one', () => {
   upsertLot({ site: 'allbids', ext_id: '1678440', title: '   ' });
   assert.equal(q.lot.get('allbids:1678440').title, 'Intel Xeon Silver 4110 Server CPU (Lot of Four)');
 });
+
+test('final minutes: a lot on a fast feed is re-read every ~10 s', async () => {
+  const fast = await import('../src/fast.js');
+  const now = Date.now();
+  upsertLot({ site: 'allbids', ext_id: 'Z9', title: 'closing', bid: 20, end_at: now + 2 * 60000, url: 'https://x/z9' });
+  dbMod.db.prepare('UPDATE lots SET last_checked = ? WHERE key = ?').run(now - 12000, 'allbids:Z9');
+  assert.ok(!dueForRefresh(now).some(l => l.ext_id === 'Z9'), 'without a feed: 30 s cadence');
+  const feedsFile = (await import('node:path')).join(process.env.DATA_DIR, 'fast-feeds.json');
+  fast.learn('allbids', '555', { json: [{ url: 'https://www.allbids.com.au/api/a/555', body: { aucID: 555, aucTitle: 'x', aucCurrentBid: 5 } }] });
+  assert.ok(fast.hasFeed('allbids') && fs.existsSync(feedsFile));
+  assert.ok(dueForRefresh(now).some(l => l.ext_id === 'Z9'), 'with a feed: due after 10 s');
+  fast.forget('allbids');
+});

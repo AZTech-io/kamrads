@@ -24,10 +24,13 @@ export const config = {
   discoveryEveryMin: num('DISCOVERY_EVERY_MIN', 10),
   hotEverySec: num('HOT_EVERY_SEC', 30),
   watchEverySec: num('WATCH_EVERY_SEC', 60),   // your watchlist is re-checked this often until it closes
-  hotWindowMin: num('HOT_WINDOW_MIN', 15),     // lots closing within this get re-checked every HOT_EVERY_SEC
+  hotWindowMin: num('HOT_WINDOW_MIN', 15),
+  finalWindowMin: num('FINAL_WINDOW_MIN', 3),  // last N minutes of a lot...
+  finalEverySec: num('FINAL_EVERY_SEC', 10),   // ...are re-read this often (fast feed / watchlist)     // lots closing within this get re-checked every HOT_EVERY_SEC
   warmWindowMin: num('WARM_WINDOW_MIN', 60),   // lots closing within this get re-checked every WARM_EVERY_MIN
   warmEveryMin: num('WARM_EVERY_MIN', 5),
-  hotBatch: num('HOT_BATCH', 4),               // max detail pages per hot cycle
+  hotBatch: num('HOT_BATCH', 4),
+  fastBatch: num('FAST_BATCH', 80),          // max fast-feed reads per cycle (each ~0.3 s)               // max detail pages per hot cycle
   hotMaxBid: num('HOT_MAX_BID', 25000),        // don't waste browser time on lots already above this
 
   // Alerts
