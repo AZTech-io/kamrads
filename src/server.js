@@ -3,14 +3,19 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
 import { q } from './db.js';
-import { estimateOf } from './alerts.js';
+import { estimateOf, estimateSource } from './alerts.js';
+import { allIn } from './costs.js';
+import { baseByName, bases } from './geo.js';
+import { soldLike } from './history.js';
+import { checkListing } from './inspect.js';
+import { buildDigest } from './digest.js';
 import { isVehicle } from './extract.js';
 import { push } from './notify.js';
 import { watchUrl } from './scheduler.js';
 import * as settings from './settings.js';
 import { researchLot, testKey } from './estimate.js';
 import { log } from './log.js';
-import { watch, unwatch, setMyBid, bidStatus } from './users.js';
+import { watch, unwatch, setMyBid, bidStatus, warnRivals } from './users.js';
 import { addSearch } from './searches.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -35,9 +40,13 @@ const sendCsv = (res, name, rows) => {
   res.set('content-type', 'text/csv; charset=utf-8').set('content-disposition', `attachment; filename="${name}"`);
   res.send([cols.join(','), ...rows.map(r => cols.map(c => cell(iso(c, r[c]))).join(','))].join('\n'));
 };
-const shape = (l, alertKinds) => {
+const json = s => { try { return s ? JSON.parse(s) : null; } catch { return null; } };
+const baseOf = user => baseByName(settings.getUser(user, 'base'));
+const shape = (l, alertKinds, base = null) => {
   const est = estimateOf(l);
   const price = l.bid ?? l.start_price;
+  const cost = allIn(l, base, price);
+  const hist = soldLike(l);
   return {
     key: l.key, site: l.site, url: l.url, title: l.title, image: l.image, category: l.category,
     year: l.year, odometer: l.odometer, wovr: l.wovr, location: l.location, state: l.state,
@@ -45,8 +54,13 @@ const shape = (l, alertKinds) => {
     bid: l.bid, bidCount: l.bid_count, startPrice: l.start_price, buyNow: l.buy_now,
     endAt: l.end_at, lastChecked: l.last_checked, starred: !!l.starred,
     estLow: l.est_low, estHigh: l.est_high, estNote: l.est_note, manualEstimate: l.manual_estimate,
-    estimate: est, ratio: est && price != null ? price / est : null,
-    profit: est && price != null ? est - price : null,
+    estimate: est, estSource: est ? estimateSource(l) : null,
+    // judged on what you'd pay the auction house; profit also takes off transport home
+    ratio: est && cost ? cost.landed / est : null,
+    profit: est && cost ? Math.round(est - cost.total) : null,
+    cost, distanceKm: cost?.km ?? null, distanceApprox: cost?.kmApprox ?? null,
+    history: hist ? { n: hist.n, median: hist.median, low: hist.low, high: hist.high, label: hist.label } : null,
+    check: l.check_verdict ? { verdict: l.check_verdict, ...(json(l.check_note) || {}), at: l.check_at } : null,
     vehicle: isVehicle(l), alerts: alertKinds.get(l.key) || [],
     marketAvg: l.est_avg ?? null, estMethod: l.est_method ?? null,
     comps: (() => { try { return l.est_comps ? JSON.parse(l.est_comps) : []; } catch { return []; } })(),
@@ -67,7 +81,8 @@ export function startServer() {
     const alertKinds = new Map();
     for (const a of q.alertKinds.all(now - 7 * 86400000)) alertKinds.set(a.key, [...(alertKinds.get(a.key) || []), a.kind]);
     const mine = new Set(q.myWatchKeys.all(req.user).map(w => w.key));
-    res.json({ now, lots: rows.map(l => ({ ...shape(l, alertKinds), starred: mine.has(l.key) })) });
+    const base = baseOf(req.user);
+    res.json({ now, base: base?.name, lots: rows.map(l => ({ ...shape(l, alertKinds, base), starred: mine.has(l.key) })) });
   });
   app.get('/api/me', (req, res) => res.json({ user: req.user, users: Object.keys(config.users) }));
   // Deals that got away: closed lots whose final price was a bargain.
@@ -90,7 +105,7 @@ export function startServer() {
       if (!why) continue;
       const myBid = mine.get(l.key);
       if (myBid != null && price <= myBid) continue; // you won it, not missed
-      out.push({ ...shape({ ...l, bid: price }, new Map()), finalBid: price, closedAt: l.closed_at, seenMinsBeforeClose: seen, why,
+      out.push({ ...shape({ ...l, bid: price }, new Map(), baseOf(req.user)), finalBid: price, closedAt: l.closed_at, seenMinsBeforeClose: seen, why,
         saving: (est || market) ? Math.round((est || market) - price) : null });
     }
     out.sort((a, b) => (b.saving ?? -1) - (a.saving ?? -1) || b.endAt - a.endAt);
@@ -121,13 +136,13 @@ export function startServer() {
   app.get('/api/searches/:id/lots', (req, res) => {
     const s = q.searchesOf.all(req.user).find(x => x.id === Number(req.params.id));
     if (!s) return res.status(404).json({ error: 'not found' });
-    res.json(q.hitsOf.all(s.id).map(l => shape(l, new Map())));
+    res.json(q.hitsOf.all(s.id).map(l => shape(l, new Map(), baseOf(req.user))));
   });
   app.get('/api/closed', (req, res) => {
     const hours = Math.min(Number(req.query.hours) || 24, 24 * 90);
     const rows = q.recentClosed.all(Date.now() - hours * 3600000);
     res.json({ now: Date.now(), stats: q.closedStats.all(Date.now() - hours * 3600000), lots: rows.map(l => {
-      const out = shape({ ...l, bid: l.final_bid }, new Map());
+      const out = shape({ ...l, bid: l.final_bid }, new Map(), baseOf(req.user));
       out.finalBid = l.final_bid;
       out.closedAt = l.closed_at;
       // How close to the end our last look was: 0-1 min = the real hammer price, more = it may have gone higher.
@@ -140,7 +155,8 @@ export function startServer() {
     const alertKinds = new Map();
     for (const a of q.alertKinds.all(now - 7 * 86400000)) alertKinds.set(a.key, [...(alertKinds.get(a.key) || []), a.kind]);
     res.json({ now, every: config.watchEverySec, lots: q.userWatchlist.all(req.user, now - 24 * 3600000).map(l => ({
-      ...shape(l.status === 'closed' ? { ...l, bid: l.final_bid ?? l.bid } : l, alertKinds),
+      ...shape(l.status === 'closed' ? { ...l, bid: l.final_bid ?? l.bid } : l, alertKinds, baseOf(req.user)),
+      rivals: q.rivals.all(l.key, req.user).map(r => ({ user: r.user, myBid: r.my_bid })),
       status: l.status, finalBid: l.final_bid, closedAt: l.closed_at,
       seenMinsBeforeClose: l.final_seen_at && l.end_at ? Math.max(0, Math.round((l.end_at - l.final_seen_at) / 60000)) : null,
       starred: true, myBid: l.my_bid, bidStatus: bidStatus(l, l.my_bid),
@@ -151,7 +167,10 @@ export function startServer() {
     try { res.json({ ok: true, key: watchUrl(String(req.body.url || '').trim(), req.user) }); }
     catch (e) { res.status(400).json({ error: e.message }); }
   });
-  app.get('/api/settings', (req, res) => res.json({ ...settings.publicView(), user: req.user, myNtfyUrl: settings.getUser(req.user, 'ntfyUrl') || '' }));
+  const mySettings = user => ({ user, myNtfyUrl: settings.getUser(user, 'ntfyUrl') || '', base: baseOf(user)?.name, bases: bases().map(b => b.name),
+    digestHour: settings.getUser(user, 'digestHour') ?? config.digestHour, digestTz: settings.getUser(user, 'digestTz') || config.digestTz,
+    digestOn: !settings.getUser(user, 'digestOff') });
+  app.get('/api/settings', (req, res) => res.json({ ...settings.publicView(), ...mySettings(req.user) }));
   app.post('/api/settings', (req, res) => {
     const b = req.body || {};
     const patch = {};
@@ -170,14 +189,30 @@ export function startServer() {
       if (b.myNtfyUrl && !/^https:\/\/\S+$/.test(b.myNtfyUrl.trim())) return res.status(400).json({ error: 'Your alert link should start with https://' });
       settings.setUser(req.user, { ntfyUrl: b.myNtfyUrl });
     }
+    if (typeof b.base === 'string' && bases().some(x => x.name === b.base)) settings.setUser(req.user, { base: b.base });
+    if (b.digestHour != null && Number(b.digestHour) >= 0 && Number(b.digestHour) <= 23) settings.setUser(req.user, { digestHour: Number(b.digestHour) });
+    if (typeof b.digestTz === 'string' && /^(Australia|Asia|Pacific|Europe|America)\/[A-Za-z_]+$/.test(b.digestTz)) settings.setUser(req.user, { digestTz: b.digestTz });
+    if (b.digestOn != null) settings.setUser(req.user, { digestOff: !b.digestOn });
     settings.set(patch);
-    res.json({ ...settings.publicView(), user: req.user, myNtfyUrl: settings.getUser(req.user, 'ntfyUrl') || '' });
+    res.json({ ...settings.publicView(), ...mySettings(req.user) });
   });
   app.post('/api/settings/test-key', async (_req, res) => {
     const key = settings.get('anthropicKey');
     if (!key) return res.json({ ok: false, error: 'No key saved yet.' });
     try { res.json({ ok: await testKey(key) }); } catch (e) { res.json({ ok: false, error: e.message.slice(0, 200) }); }
   });
+  // What similar lots sold for here
+  app.get('/api/lots/:key/history', (req, res) => {
+    const lot = q.lot.get(req.params.key);
+    if (!lot) return res.status(404).json({ error: 'Lot not found' });
+    res.json(soldLike(lot) || { n: 0, examples: [] });
+  });
+  app.post('/api/lots/:key/check', async (req, res) => {
+    const lot = q.lot.get(req.params.key);
+    if (!lot) return res.status(404).json({ error: 'Lot not found' });
+    try { res.json({ ok: true, result: await checkListing(lot) }); } catch (e) { res.status(400).json({ error: e.message.slice(0, 200) }); }
+  });
+  app.get('/api/digest/preview', (req, res) => res.json({ text: buildDigest(req.user) }));
   app.post('/api/lots/:key/research', async (req, res) => {
     const lot = q.lot.get(req.params.key);
     if (!lot) return res.status(404).json({ error: 'Lot not found' });
@@ -196,8 +231,9 @@ export function startServer() {
     const v = raw === '' || raw == null ? null : Number(String(raw).replace(/[$,\s]/g, ''));
     if (v != null && !(v > 0)) return res.status(400).json({ error: 'Enter your bid in dollars, e.g. 5000.' });
     if (!q.lot.get(req.params.key)) return res.status(404).json({ error: 'Lot not found' });
-    setMyBid(req.user, req.params.key, v);
-    res.json({ ok: true });
+    const rivals = setMyBid(req.user, req.params.key, v);
+    warnRivals(req.user, req.params.key, v).catch(e => log.warn('alert', e.message));
+    res.json({ ok: true, rivals: rivals.map(r => ({ user: r.user, myBid: r.my_bid })) });
   });
   app.post('/api/lots/:key/estimate', (req, res) => {
     const v = req.body.value === '' || req.body.value == null ? null : Number(req.body.value);

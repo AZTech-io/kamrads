@@ -20,6 +20,8 @@ process.env.LLOYDS_MAX_PAGES = '2';
 process.env.LLOYDS_PAGE_SIZE = '3';
 const { getContext, closeBrowser } = await import('../src/browser.js');
 const lloyds = await import('../src/sites/lloyds.js');
+process.env.GRAYS_MAX_PAGES = '3';
+const extra = await import('../src/sites/extra.js');
 const pickles = await import('../src/sites/pickles.js');
 const manheim = await import('../src/sites/manheim.js');
 const allbids = await import('../src/sites/allbids.js');
@@ -88,6 +90,27 @@ const LLOYDS = {
     <tr><td>Estimated time until auction:</td><td>00:08:30</td></tr>
     <tr><td>Location of item:</td><td>Yard 3/263 Connors Road, Paget, QLD, Australia</td></tr>
     <tr><td>Bidder(s)</td><td>There are no bids on this lot.</td></tr></table><ul><li>Manufacture Year: 2004</li><li>Kms: 889724</li></ul>`),
+};
+
+const graysCard = (no, sale, slug, title, bid) => `<div class="card"><a href="/lot/${no}-${sale}/motor-vehicles-motor-cycles/${slug}"><h3>${title}</h3></a><p>Current bid: $${bid}</p><p>Dandenong South, VIC</p></div>`;
+const GRAYS = {
+  '/search/automotive-trucks-and-marine': u => html(u.searchParams.get('page') === '2'
+    ? graysCard('0005', '23502659', '2015-bmw-220i-sport-line-petrol', '2015 BMW 220i Sport Line', '10,050')
+    : u.searchParams.get('page') === '3' ? '<p>No more results</p>'
+    : graysCard('0007', '23502659', '2016-hyundai-accent-active-petrol', '2016 Hyundai Accent Active', '2,809')
+      + graysCard('0006', '23502659', '2011-volkswagen-golf-trendline-petrol', '2011 Volkswagen Golf Trendline', '3,200')
+      + '<a href="/redirection/interimPage?x=1">Slattery lot</a>'),
+  '/lot/0007-23502659/motor-vehicles-motor-cycles/2016-hyundai-accent-active-petrol': html(`<h1>2016 Hyundai Accent Active Petrol</h1>
+    <p>Current bid: $2,950</p><p>12 bids</p><p>Closes in 0d 00:07:10</p><p>Odometer: 98,412 km</p><p>Buyer's Premium 16.5%</p>`),
+};
+const BARN_HOME = { '/upcoming-auctions': html('<a href="https://bidding.theauctionbarn.com.au/auction-items/2564">Weekly Online Vehicle Auction</a><a href="https://bidding.theauctionbarn.com.au/auction-items/2565">Machinery Clearance</a>') };
+const BARN = {
+  '/auction-items/2564': html('<div id="lots"></div>', `fetch('/api/auctions/2564/items').then(r => r.json()).then(d => {
+      document.getElementById('lots').innerHTML = d.items.map(i => '<div class="lot"><a href="/lot-details/2564/' + i.lotId + '"><h4>' + i.title + '</h4></a><span>Current Top Bid: $' + i.currentBid + '</span></div>').join(''); });`),
+  '/api/auctions/2564/items': JSON.stringify({ items: [
+    { lotId: 689027, lotNumber: '12', title: '2012 Ford Ranger XL Cab Chassis', currentBid: 1550, endTime: soon, bidCount: 3 },
+    { lotId: 689605, lotNumber: '13', title: 'Honda EU22i Generator', currentBid: 210, endTime: soon } ] }),
+  '/auction-items/2565': html('<a href="/lot-details/2565/689061"><h4>Kubota Ride-on Mower</h4></a><span>Current Top Bid: $800</span>'),
 };
 
 async function fakeSite(site, origin, pages) {
@@ -194,6 +217,36 @@ test('Lloyds: auctions -> lots with their own countdowns; lot page read by a qui
   assert.ok(fresh.fast);
   assert.ok(Math.abs(fresh.end_at - (Date.now() + 510000)) < 15000);
   assert.ok(lloyds.owns(volvo.url) && lloyds.idFromUrl(volvo.url) === '6098920');
+});
+
+test('Grays (generic adapter): pages until no new lots, ids from links, page read gets fees', { skip: !chromeOk }, async () => {
+  await fakeSite('grays', 'https://www.grays.com', GRAYS);
+  const lots = await extra.grays.discover();
+  assert.deepEqual(lots.map(l => l.ext_id).sort(), ['0005-23502659', '0006-23502659', '0007-23502659']);
+  const hyundai = lots.find(l => l.ext_id === '0007-23502659');
+  assert.equal(hyundai.title, '2016 Hyundai Accent Active');
+  assert.equal(hyundai.bid, 2809);
+  assert.equal(hyundai.state, 'VIC');
+  const fresh = await extra.grays.refresh(hyundai);
+  assert.equal(fresh.bid, 2950);
+  assert.equal(fresh.bid_count, 12);
+  assert.equal(fresh.buyer_premium, 16.5);
+  assert.equal(fresh.odometer, 98412);
+  assert.ok(Math.abs(fresh.end_at - (Date.now() + 430000)) < 15000);
+  assert.ok(extra.grays.owns(hyundai.url));
+});
+
+test('The Auction Barn (generic adapter): auctions page -> each auction -> lots from JSON + cards', { skip: !chromeOk }, async () => {
+  await fakeSite('auctionbarn', 'https://theauctionbarn.com.au', BARN_HOME);
+  await fakeSite('auctionbarn', 'https://bidding.theauctionbarn.com.au', BARN);
+  const lots = await extra.auctionbarn.discover();
+  assert.deepEqual(lots.map(l => l.ext_id).sort(), ['689027', '689061', '689605']);
+  const ranger = lots.find(l => l.ext_id === '689027');
+  assert.equal(ranger.bid, 1550);
+  assert.equal(ranger.sale_name, 'Weekly Online Vehicle Auction');
+  assert.ok(Math.abs(ranger.end_at - Date.parse(soon)) < 1000);
+  assert.equal(ranger.url, 'https://bidding.theauctionbarn.com.au/lot-details/2564/689027');
+  assert.equal(lots.find(l => l.ext_id === '689061').bid, 800);
 });
 
 test('login check: a "My Pickles" menu link alone is not a logged-in session', { skip: !chromeOk }, async () => {

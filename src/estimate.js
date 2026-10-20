@@ -9,6 +9,7 @@ import { q } from './db.js';
 import { log } from './log.js';
 import { isVehicle } from './extract.js';
 import * as settings from './settings.js';
+import { soldLike } from './history.js';
 
 const VEHICLE_SITES = ['carsales.com.au', 'gumtree.com.au', 'drive.com.au', 'redbook.com.au', 'autotrader.com.au',
   'carsguide.com.au', 'cars.com.au', 'pickles.com.au', 'manheim.com.au', 'trucksales.com.au', 'bikesales.com.au'];
@@ -35,6 +36,8 @@ export async function estimatePending() {
 function worthIt(lot) {
   if (lot.starred) return true;
   if (lot.wovr === 'Statutory Write-Off' && !config.includeStatutory) return false;
+  // Enough of our own results for this make/model already: no need to pay for a web search.
+  if (soldLike(lot, { minN: 5 })) return false;
   if (isVehicle(lot)) return true;
   return (lot.bid ?? lot.start_price ?? 0) >= config.researchMinBid;
 }

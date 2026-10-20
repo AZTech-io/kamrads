@@ -11,10 +11,14 @@ import * as pickles from './sites/pickles.js';
 import * as manheim from './sites/manheim.js';
 import * as allbids from './sites/allbids.js';
 import * as lloyds from './sites/lloyds.js';
+import { grays, slattery, auctionbarn } from './sites/extra.js';
 import { checkBidders, announceResult } from './users.js';
 import { runSearches, searchFinalAlert } from './searches.js';
+import { geocodePending } from './geo.js';
+import { digestTick } from './digest.js';
+import { checkPending } from './inspect.js';
 
-export const adapters = { pickles, manheim, allbids, lloyds };
+export const adapters = { pickles, manheim, allbids, lloyds, grays, slattery, auctionbarn };
 // Sites where a re-read is cheap (learned JSON feed, or plain-HTML lot pages)
 const quick = site => hasFeed(site) || !!adapters[site]?.cheapRefresh;
 const enabled = () => Object.values(adapters).filter(a => config.sites[a.site]?.enabled);
@@ -160,6 +164,17 @@ async function backupLoop() {
   }
 }
 
+// Small jobs: morning digests (every minute), listing checks, suburb lookups (every 5 minutes).
+async function choresLoop() {
+  let n = 0;
+  while (!stopping) {
+    try { await digestTick(); } catch (e) { log.warn('digest', e.message); }
+    try { await checkPending(); } catch (e) { log.warn('check', e.message); }
+    if (n++ % 5 === 0) { try { await geocodePending(q.openLots.all(Date.now())); } catch (e) { log.warn('geo', e.message); } }
+    await sleep(60000);
+  }
+}
+
 async function estimateLoop() {
   while (!stopping) {
     try { await estimatePending(); } catch (e) { log.warn('estimate', e.message); }
@@ -170,7 +185,7 @@ async function estimateLoop() {
 /** Add any lot by its link. Returns the stored key, or throws if the site isn't supported. */
 export function watchUrl(url, user = config.dashUser) {
   const a = Object.values(adapters).find(x => x.owns(url));
-  if (!a) throw new Error('That link is not a lot page on Pickles, Manheim, ALLBIDS or Lloyds.');
+  if (!a) throw new Error('That link is not a lot page on a site KAMRADS watches (Pickles, Manheim, ALLBIDS, Lloyds, Grays, Slattery, The Auction Barn).');
   const id = a.idFromUrl(url);
   if (!id) throw new Error('Could not find the lot number in that link.');
   const now = Date.now();
@@ -187,4 +202,5 @@ export async function startScheduler() {
   hotLoop();
   estimateLoop();
   backupLoop();
+  choresLoop();
 }

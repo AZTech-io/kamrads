@@ -23,6 +23,36 @@ export const config = {
 
   backupKeep: num('BACKUP_KEEP', 14),          // daily database copies kept in data/backups
 
+  // Where you are: distance filter, transport estimates. "Name:lat,lon|Name:lat,lon"
+  homeBases: (env.HOME_BASES || 'Karnup WA:-32.369,115.857|Canberra ACT:-35.281,149.129').split('|').map(p => {
+    const [name, ll] = p.split(':'); const [lat, lon] = String(ll || '').split(',').map(Number);
+    return { name: name.trim(), lat, lon };
+  }).filter(b => b.name && Number.isFinite(b.lat) && Number.isFinite(b.lon)),
+  geocode: bool('GEOCODE', true),               // look suburbs up on OpenStreetMap (cached)
+  transport: {
+    pickupKm: num('TRANSPORT_PICKUP_KM', 80),     // closer than this: you collect it yourself, $0
+    vehicleBase: num('TRANSPORT_VEHICLE_BASE', 250),
+    vehiclePerKm: num('TRANSPORT_VEHICLE_PER_KM', 0.35),  // ~Perth-Sydney car carrier $1.6k
+    heavyFactor: num('TRANSPORT_HEAVY_FACTOR', 2.2),       // trucks, machinery, trailers
+    goodsBase: num('TRANSPORT_GOODS_BASE', 60),
+    goodsPerKm: num('TRANSPORT_GOODS_PER_KM', 0.08),       // ~a pallet Perth-Sydney $370
+  },
+  // Buyer's fees by site. A lot's own "Buyer's Premium x%" (read from its page) wins over these.
+  fees: {
+    // vehicles: flat fee by price band; general goods: a percentage
+    pickles: { tiers: env.PICKLES_FEES || '1000:110,5000:275,15000:440,*:660', goodsPct: num('PICKLES_GOODS_PREMIUM', 16.5) },
+    manheim: { tiers: env.MANHEIM_FEES || '1000:110,5000:275,15000:440,*:660', goodsPct: num('MANHEIM_GOODS_PREMIUM', 16.5) },
+    allbids: { premiumPct: num('ALLBIDS_PREMIUM', 15) },
+    lloyds: { premiumPct: num('LLOYDS_PREMIUM', 16.5) },
+    grays: { premiumPct: num('GRAYS_PREMIUM', 16.5) },
+    slattery: { premiumPct: num('SLATTERY_PREMIUM', 12) },
+    auctionbarn: { premiumPct: num('AUCTIONBARN_PREMIUM', 16.5) },
+  },
+
+  // Morning digest push (each person can change hour / time zone in Settings)
+  digestHour: num('DIGEST_HOUR', 7),
+  digestTz: env.DIGEST_TZ || 'Australia/Sydney',
+
   // Browser
   proxy: env.PROXY_URL || '',              // e.g. http://user:pass@au.proxy.example:8000 (only if blocked)
   maxOpenPages: num('MAX_OPEN_PAGES', 1),  // tabs for the regular scan
@@ -100,11 +130,27 @@ export const config = {
       // Auctions whose name matches this are skipped (regex): property tenders etc.
       skipFilter: env.LLOYDS_SKIP || 'real estate|hectares?|acres?|property|land for sale|house and land|tender',
     },
+    grays: {
+      enabled: bool('GRAYS_ENABLED', true),
+      listings: list('GRAYS_LISTINGS', ['https://www.grays.com/search/automotive-trucks-and-marine']),
+      maxPages: num('GRAYS_MAX_PAGES', 5),
+    },
+    slattery: {
+      enabled: bool('SLATTERY_ENABLED', true),
+      auctionsFrom: env.SLATTERY_AUCTIONS || 'https://slatteryauctions.com.au/auctions?categoryGroups=Motor%20Vehicles',
+      maxAuctions: num('SLATTERY_MAX_AUCTIONS', 12),
+    },
+    auctionbarn: {
+      enabled: bool('AUCTIONBARN_ENABLED', true),
+      auctionsFrom: env.AUCTIONBARN_AUCTIONS || 'https://theauctionbarn.com.au/upcoming-auctions',
+      maxAuctions: num('AUCTIONBARN_MAX_AUCTIONS', 8),
+    },
     manheim: {
       enabled: bool('MANHEIM_ENABLED', true),
       email: env.MANHEIM_EMAIL || '',
       password: env.MANHEIM_PASSWORD || '',
       home: env.MANHEIM_HOME || 'https://www.manheim.com.au/',
+      proxy: env.MANHEIM_PROXY_URL || '',   // Australian proxy for Manheim only (it blocks US servers)
       // Only events whose name matches this are scanned (regex, case-insensitive)
       eventFilter: env.MANHEIM_EVENT_FILTER || 'statutory|damage|bidnow|clearing|government|fleet|motorcyc|transport|general goods',
       maxEvents: num('MANHEIM_MAX_EVENTS', 12),

@@ -1,6 +1,6 @@
 # KAMRADS — Auction Intelligence
 
-Watches Pickles, Manheim, ALLBIDS (incl. CARBIDS) and Lloyds Auctions, lists every lot by what ends soonest, and pushes an alert to your phone when something is still cheap in its final 10 minutes.
+Watches Pickles, Manheim, ALLBIDS (incl. CARBIDS), Lloyds, Grays, Slattery and The Auction Barn, lists every lot by what ends soonest, and pushes an alert to your phone when something is still cheap in its final 10 minutes.
 
 **Market research:** add your Claude API key under **Settings** (bottom of the dashboard — it's stored on the server only). Claude then searches carsales, Gumtree, Drive, RedBook and others for comparable listings, gives a market average and a realistic resale range for each lot, and flags great prices. Press **Research** on any lot to run it on demand. Automatic lookups have a daily cap (default 60, about 5–10c each).
 
@@ -13,6 +13,18 @@ Watches Pickles, Manheim, ALLBIDS (incl. CARBIDS) and Lloyds Auctions, lists eve
 **More filters:** price range, year, km, type (cars, vans, trucks, bikes, machinery, boats, goods), write-off status, bids, closing day and state.
 
 **Missed deals** tab: bargains that closed without you — under half the estimate or market price, vehicles under $3,000, penny lots. Only lots read within 15 minutes of the close count, so the prices are real.
+
+**All-in cost:** every lot shows what you'd really pay: bid + buyer's premium / fee (+GST where listed) + rough transport to your home base, and deals and profit are judged on that. Fees are estimates from each site's usual terms (a lot's own "Buyer's Premium x%" wins); change them in `.env`.
+
+**Distance:** 📍 km from your home base (Karnup or Canberra, set in Settings), a **Max distance** filter and **Nearest first** sort. Suburbs are looked up once on OpenStreetMap and cached.
+
+**Sold here:** for vehicles, what similar lots (same make/model, similar year, same write-off class) actually went for in our own results. With 3+ results it becomes the estimate, and paid research is skipped when there are 5+.
+
+**Check listing:** Claude reads the description and photos for deal-breakers (won't start, no keys, flood, hail, missing parts) and gives OK / check / red flags. It runs by itself once for any lot someone has bid on.
+
+**Bidding against each other:** if you and Matthew both enter a bid on the same lot, both of you see a warning and the other person gets a push.
+
+**Morning digest:** one push at 7am (change hour, time zone or turn it off in Settings): your alert matches closing today, the best deals, your watchlist, yesterday's missed deals.
 
 **History:** everything is kept in `data/auctions.db` on the server (every lot, every price change, every final price), with a daily copy in `data/backups/` (last 14 days). **Download all results (CSV)** at the bottom of the dashboard opens in Excel; bid history is at `/api/export/bids.csv`.
 
@@ -69,7 +81,8 @@ then browse to http://localhost:8787. For a permanent link on your phone, create
 
 | Symptom | Fix |
 | --- | --- |
-| Status pill red, log says "blocked" | The site is refusing the US server. Set `PROXY_URL` to an Australian proxy and restart. |
+| Status pill red, log says "blocked" | The site is refusing the US server. Set `MANHEIM_PROXY_URL` (or `PROXY_URL` for every site) to an Australian residential proxy and restart. |
+| Grays / Slattery / Auction Barn find 0 lots | Their link patterns are in `src/sites/extra.js`; run the probe on one lot and send the developer `data/probe/`. |
 | "login failed" in the log | Run `docker compose exec kamrads npm run login -- pickles`. If it still fails (captcha / 2FA), log in on your own Chrome, export cookies with the Cookie-Editor extension, copy the file to `data/`, then `docker compose exec kamrads npm run import-cookies -- pickles data/pickles-cookies.json` and `docker compose restart`. |
 | Lots appear but with no bid or close time | Run the probe on one lot and send the developer the folder it creates: `docker compose exec kamrads npm run probe -- <lot url>` (output in `data/probe/`). |
 | Server memory | `docker stats kamrads` — the container is capped at 1.2 GB. |

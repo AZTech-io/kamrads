@@ -13,9 +13,9 @@ const NOW = Date.parse('2026-10-20T03:00:00Z');
 const lot = o => ({ status: 'open', starred: 0, last_checked: NOW - 30000, wovr: null, bid: null, start_price: null, end_at: NOW + 8 * 60000, url: 'https://www.pickles.com.au/used/details/trucks/x/1', ...o });
 
 test("Aaron's Isuzu: $2,200 at T-8 with a $15k estimate is a sleeper", () => {
-  const hit = classify(lot({ bid: 2200, manual_estimate: 15000, title: '2011 Isuzu NPR 400' }), NOW);
+  const hit = classify(lot({ site: 'pickles', bid: 2200, manual_estimate: 15000, title: '2011 Isuzu NPR 400' }), NOW);
   assert.equal(hit.kind, 'sleeper');
-  assert.match(hit.why, /15%/);
+  assert.match(hit.why, /17% of est \$15,000 \(incl\. \$275 fees\)/);
 });
 
 test('no estimate: a cheap vehicle still alerts at T-10', () => {

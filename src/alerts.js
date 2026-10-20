@@ -3,12 +3,16 @@ import { q } from './db.js';
 import { push } from './notify.js';
 import { isVehicle } from './extract.js';
 import { finalMinutes } from './users.js';
+import { historyEstimate } from './history.js';
+import { allIn } from './costs.js';
 
 const FRESH_MS = 3 * 60000;
 const money = n => (n == null ? '?' : '$' + Math.round(n).toLocaleString('en-AU'));
 
-/** The estimate the alert rules use: a manual one beats the AI's low figure. */
-export const estimateOf = lot => lot.manual_estimate ?? lot.est_low ?? null;
+/** The estimate the alert rules use: yours, then the AI's low resale figure, then what similar lots sold for here. */
+export const estimateOf = lot => lot.manual_estimate ?? lot.est_low ?? historyEstimate(lot) ?? null;
+/** Where an estimate came from, for the dashboard. */
+export const estimateSource = lot => (lot.manual_estimate != null ? 'yours' : lot.est_low != null ? 'research' : historyEstimate(lot) != null ? 'history' : null);
 
 /** Which alert (if any) this lot deserves right now. Pure function: easy to test. */
 export function classify(lot, now = Date.now()) {
@@ -23,8 +27,10 @@ export function classify(lot, now = Date.now()) {
   const price = lot.bid ?? lot.start_price;
   if (statutory && !config.includeStatutory) return null;
   const est = estimateOf(lot);
-  if (est && price <= est * config.sleeperRatio) {
-    return { kind: 'sleeper', why: `${Math.round((price / est) * 100)}% of est ${money(est)}` };
+  // Judge deals on what you'd pay the auction house (bid + buyer's premium / fees), not the bid alone.
+  const paid = allIn(lot, null, price)?.landed ?? price;
+  if (est && paid <= est * config.sleeperRatio) {
+    return { kind: 'sleeper', why: `${Math.round((paid / est) * 100)}% of est ${money(est)}${paid > price ? ` (incl. ${money(paid - price)} fees)` : ''}` };
   }
   if (!est && isVehicle(lot) && price <= config.cheapVehicleMax) {
     return { kind: 'cheap', why: `vehicle still under ${money(config.cheapVehicleMax)}` };

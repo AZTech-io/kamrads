@@ -61,7 +61,7 @@ test('research: web search for comparables, then resale range, market average an
   // $2,400 vs resale low $6,500 = 37%: not a SLEEPER (25%) but a vehicle under $3k with no estimate would have been CHEAP;
   // with research it is judged on value instead
   assert.equal(classify({ ...row, last_checked: Date.now(), end_at: Date.now() + 5 * 60000 }), null);
-  assert.equal(classify({ ...row, bid: 1500, last_checked: Date.now(), end_at: Date.now() + 5 * 60000 }).kind, 'sleeper');
+  assert.equal(classify({ ...row, bid: 1400, last_checked: Date.now(), end_at: Date.now() + 5 * 60000 }).kind, 'sleeper');
 });
 
 test('daily cap stops automatic lookups', async () => {

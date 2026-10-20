@@ -68,6 +68,13 @@ export async function getContext(site) {
 async function makeContext(b, site) {
   const opts = { userAgent: UA, locale: 'en-AU', timezoneId: 'Australia/Sydney', viewport: { width: 1366, height: 900 } };
   if (fs.existsSync(statePath(site))) opts.storageState = statePath(site);
+  // A proxy just for one site (e.g. MANHEIM_PROXY_URL), so paid proxy data is only spent where needed.
+  const own = config.sites[site]?.proxy;
+  if (own) {
+    const u = new URL(own);
+    opts.proxy = { server: `${u.protocol}//${u.host}`, username: decodeURIComponent(u.username) || undefined, password: decodeURIComponent(u.password) || undefined };
+    log.info('browser', `${site} goes through its own proxy ${u.host}`);
+  }
   const ctx = await b.newContext(opts);
   // Save RAM and bandwidth: skip images, fonts, video and trackers.
   await ctx.route('**/*', route => {

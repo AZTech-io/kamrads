@@ -116,6 +116,18 @@ dialog.box h2 { margin: 0 0 4px; font-size: 18px; }
 @media (max-width: 720px) { .sform { grid-template-columns: 1fr 1fr; } .sform input:first-child { grid-column: 1 / -1; } }
 .searchbar { display: flex; gap: 8px; align-items: center; margin: -4px 0 12px; color: var(--muted); font-size: 13px; }
 .who { color: var(--muted); font-size: 12px; }
+.price .cost { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+.price .cost b { color: var(--ink); font-weight: 600; }
+.tag.good { background: var(--green-dim); color: var(--green); }
+.tag.caution { background: rgba(245,182,66,.14); color: var(--amber); }
+.tag.avoid { background: var(--red-dim); color: var(--red); }
+.rival { color: var(--amber); font-size: 12px; font-weight: 600; margin-top: 3px; }
+.hist { margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+.hist summary { cursor: pointer; color: var(--ink); }
+.hist ul { margin: 6px 0 4px; padding-left: 18px; }
+.hist a { color: var(--blue); }
+.check { margin-top: 5px; font-size: 12.5px; color: var(--muted); }
+#settings select { display: block; margin-top: 6px; background: var(--navy-2); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 8px 10px; font: inherit; }
 .watch-empty { color: var(--muted); font-size: 13px; padding: 6px 0 2px; }
 @media (max-width: 720px) { .wrow { grid-template-columns: 64px 1fr auto; } .wrow .wx { grid-column: 1 / -1; display: flex; gap: 6px; justify-content: flex-end; } .watch-add { max-width: none; } }
 footer { color: var(--muted); font-size: 12px; text-align: center; padding: 20px; }
@@ -151,8 +163,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; padding: 20px
     <button class="chip" data-f="sold" aria-pressed="false">Sold</button>
     <button class="chip" data-f="missed" aria-pressed="false" title="Bargains that closed without us">Missed deals</button>
     <button class="chip" id="hideStat" aria-pressed="true">Hide statutory</button>
-    <select id="site"><option value="">All sites</option><option value="pickles">Pickles</option><option value="manheim">Manheim</option><option value="allbids">ALLBIDS</option><option value="lloyds">Lloyds</option></select>
-    <select id="sort"><option value="hot">Hottest deals first</option><option value="ending">Ends soonest</option><option value="price">Lowest price</option><option value="profit">Biggest est. profit</option></select>
+    <select id="site"><option value="">All sites</option><option value="pickles">Pickles</option><option value="manheim">Manheim</option><option value="allbids">ALLBIDS</option><option value="lloyds">Lloyds</option><option value="grays">Grays</option><option value="slattery">Slattery</option><option value="auctionbarn">Auction Barn</option></select>
+    <select id="sort"><option value="hot">Hottest deals first</option><option value="ending">Ends soonest</option><option value="price">Lowest price</option><option value="profit">Biggest est. profit</option><option value="near">Nearest first</option></select>
     <select id="hours"><option value="3">Next 3 h</option><option value="24">Next 24 h</option><option value="48" selected>Next 48 h</option><option value="168">Next 7 days</option></select>
     <input type="search" id="q" placeholder="Search: hilux, tipper, Perth…">
     <button class="chip" id="moreBtn" aria-pressed="false">More filters<span class="n" id="moreN" hidden></span></button>
@@ -167,6 +179,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; padding: 20px
       <label>Type <select id="fType"><option value="">Anything</option><option value="vehicle">Any vehicle</option><option value="car">Cars &amp; utes</option><option value="van">Vans &amp; buses</option><option value="truck">Trucks &amp; trailers</option><option value="bike">Motorbikes</option><option value="machinery">Machinery &amp; plant</option><option value="boat">Boats &amp; caravans</option><option value="goods">General goods</option></select></label>
       <label>Write-off status <select id="fWovr"><option value="">Any</option><option value="clean">Clean only (no write-off)</option><option value="repairable">Repairable write-offs</option><option value="statutory">Statutory only (parts)</option></select></label>
       <label>Bids <select id="fBids"><option value="">Any</option><option value="none">No bids yet</option><option value="some">Has bids</option><option value="hot">5+ bids (popular)</option></select></label>
+      <label>Max distance <span class="sub" id="baseName"></span><input id="fDist" inputmode="numeric" placeholder="km, e.g. 150"></label>
       <label>Ends <select id="fEnds"><option value="">Any time</option><option value="60">Within 1 hour</option><option value="today">Today</option><option value="tomorrow">Tomorrow</option></select></label>
       <label style="grid-column: span 2">State <span class="states" id="fStates"><button class="chip" type="button" data-state="NSW" aria-pressed="false">NSW</button><button class="chip" type="button" data-state="VIC" aria-pressed="false">VIC</button><button class="chip" type="button" data-state="QLD" aria-pressed="false">QLD</button><button class="chip" type="button" data-state="WA" aria-pressed="false">WA</button><button class="chip" type="button" data-state="SA" aria-pressed="false">SA</button><button class="chip" type="button" data-state="TAS" aria-pressed="false">TAS</button><button class="chip" type="button" data-state="ACT" aria-pressed="false">ACT</button><button class="chip" type="button" data-state="NT" aria-pressed="false">NT</button></span></label>
       <div class="wide"><span id="moreHint">Filters apply to the list below and the Sold / Missed tabs.</span><button class="icon" type="button" id="moreReset">Clear filters</button></div>
@@ -177,7 +190,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; padding: 20px
   <section class="watch" id="watch">
     <div class="watch-head">
       <h2>★ My watchlist</h2><span class="hint" id="watchHint">re-checked every 60 s</span>
-      <form class="watch-add" id="watchAdd"><input id="watchUrl" type="url" placeholder="Paste a Pickles / ALLBIDS / Manheim / Lloyds lot link to watch it"><button>Watch</button></form>
+      <form class="watch-add" id="watchAdd"><input id="watchUrl" type="url" placeholder="Paste any lot link (Pickles, ALLBIDS, Manheim, Lloyds, Grays, Slattery, Auction Barn)"><button>Watch</button></form>
     </div>
     <div id="watchList"></div>
   </section>
@@ -192,7 +205,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; padding: 20px
   <form class="sform" id="sForm">
     <input id="sTerms" placeholder="renault master, mercedes sprinter, van -crash" required>
     <input id="sMax" inputmode="numeric" placeholder="Max price (optional)">
-    <select id="sSite"><option value="">All sites</option><option value="pickles">Pickles</option><option value="manheim">Manheim</option><option value="allbids">ALLBIDS</option><option value="lloyds">Lloyds</option></select>
+    <select id="sSite"><option value="">All sites</option><option value="pickles">Pickles</option><option value="manheim">Manheim</option><option value="allbids">ALLBIDS</option><option value="lloyds">Lloyds</option><option value="grays">Grays</option><option value="slattery">Slattery</option><option value="auctionbarn">Auction Barn</option></select>
     <button>Add alert</button>
   </form>
   <div id="sList"></div>
@@ -209,6 +222,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; padding: 20px
     <label>Daily limit on automatic lookups <span class="sub">(each about 5–10c)</span>
       <input id="sPerDay" type="number" min="0" max="1000" step="10"></label>
     <label>Shared phone alert link (ntfy) — deals for everyone <input id="sNtfy" type="url" placeholder="https://ntfy.sh/kamrads-your-secret-topic"></label>
+    <label>My home base <span class="sub">(distances and transport costs)</span><select id="sBase"></select></label>
+    <label><input id="sDigest" type="checkbox"> Morning digest push at <select id="sDigestHour" style="display:inline-block;width:auto"></select> <select id="sDigestTz" style="display:inline-block;width:auto"><option value="Australia/Sydney">Canberra/Sydney time</option><option value="Australia/Perth">Perth time</option><option value="Australia/Brisbane">Brisbane time</option><option value="Australia/Adelaide">Adelaide time</option><option value="Asia/Makassar">Bali time</option></select> <a href="#" id="previewDigest">preview</a></label>
     <label>My own alert link <span class="sub" id="meName"></span> — outbid, my watchlist, my searches <input id="sMyNtfy" type="url" placeholder="https://ntfy.sh/kamrads-yourname-secret (blank = use the shared one)"></label>
     <div class="row end"><button type="button" class="icon" id="closeSettings">Cancel</button><button class="save" id="saveSettings">Save</button></div>
   </form>
@@ -230,7 +245,7 @@ $('#sort').value = pref('sort', 'hot');
 $('#hours').value = String(pref('hours', 48));
 more = pref('more', {});
 const closedMode = () => mode === 'sold' || mode === 'missed';
-const SITE_NAMES = { pickles: 'Pickles', manheim: 'Manheim', allbids: 'ALLBIDS', lloyds: 'Lloyds' };
+const SITE_NAMES = { pickles: 'Pickles', manheim: 'Manheim', allbids: 'ALLBIDS', lloyds: 'Lloyds', grays: 'Grays', slattery: 'Slattery', auctionbarn: 'Auction Barn' };
 
 // Same rules as the server's saved searches: commas = or, all words in one part must appear, -word excludes.
 function matcher(terms) {
@@ -256,7 +271,7 @@ function typeOf(l) {
 }
 const n0 = v => { const x = Number(String(v ?? '').replace(/[$,\s]/g, '')); return v === '' || v == null || !Number.isFinite(x) ? null : x; };
 function moreActive() {
-  return ['min', 'max', 'year', 'km', 'type', 'wovr', 'bids', 'ends'].filter(k => more[k] != null && more[k] !== '').length + ((more.states || []).length ? 1 : 0);
+  return ['min', 'max', 'year', 'km', 'type', 'wovr', 'bids', 'ends', 'dist'].filter(k => more[k] != null && more[k] !== '').length + ((more.states || []).length ? 1 : 0);
 }
 function passMore(l, now) {
   const p = closedMode() ? l.finalBid : l.bid ?? l.startPrice;
@@ -273,6 +288,7 @@ function passMore(l, now) {
   if (more.bids === 'some' && !(l.bidCount > 0 || (l.bid != null && l.bidCount == null))) return false;
   if (more.bids === 'hot' && !(l.bidCount >= 5)) return false;
   if ((more.states || []).length && !more.states.includes(l.state || (/\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b/.exec(l.location || '') || [])[1])) return false;
+  if (n0(more.dist) != null && (l.distanceKm == null || l.distanceKm > n0(more.dist))) return false;
   if (more.ends && !closedMode()) {
     if (!l.endAt) return false;
     const day = t => new Date(t).toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
@@ -296,7 +312,7 @@ const CHEAP_VEHICLE = 3000;
 function strength(l) {
   const p = l.bid ?? l.startPrice;
   if (p == null) return null;
-  if (l.estimate) return p / l.estimate;
+  if (l.estimate) return l.ratio ?? p / l.estimate;   // ratio = (bid + fees) / estimate, from the server
   if (l.vehicle) return (p / CHEAP_VEHICLE) * SLEEPER;   // no estimate: a $3,000 vehicle scores the same as 25% of value
   if (p <= 5) return 0;                                   // penny lot
   return null;
@@ -307,6 +323,7 @@ const SORTS = {
   ending: (a, b) => (a.endAt ?? Infinity) - (b.endAt ?? Infinity),
   price: (a, b) => (priceOf(a) ?? Infinity) - (priceOf(b) ?? Infinity) || SORTS.ending(a, b),
   profit: (a, b) => (b.profit ?? -Infinity) - (a.profit ?? -Infinity) || SORTS.ending(a, b),
+  near: (a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity) || SORTS.ending(a, b),
   hot: (a, b) => {
     const da = isDeal(a), db = isDeal(b);
     if (da !== db) return da ? -1 : 1;
@@ -352,6 +369,31 @@ function ago(t) {
 
 const slugName = u => { const w = String(u || '').split(/[?#]/)[0].replace(/\/$/, '').split('/').pop().replace(/-?\d{5,}$/, '').split('-').filter(Boolean); return w.length > 1 ? w.map(x => x[0].toUpperCase() + x.slice(1)).join(' ') : ''; };
 
+function costLine(l) {
+  const c = l.cost; if (!c || closedMode()) return '';
+  const bits = [];
+  if (c.fees) bits.push(`+${money(c.fees)} ${c.premiumPct ? c.premiumPct + '% premium' : 'fees'}${c.gst ? ' & GST' : ''}`);
+  if (c.transport) bits.push(`+${money(c.transport)} ${c.how || 'transport'}`);
+  else if (c.transport === 0) bits.push('pick up');
+  if (!bits.length) return '';
+  return `<div class="cost" title="Estimated: buyer's fees from each site's usual terms, transport from distance. Check the lot's own terms.">all-in <b>~${money(c.total)}</b> · ${bits.join(' · ')}</div>`;
+}
+const distTag = l => l.distanceKm == null ? '' : `<span title="${l.distanceApprox ? 'Approximate (state capital) until the suburb is looked up' : 'Rough road distance'} from ${esc(myBase)}">📍 ${l.distanceApprox ? '~' : ''}${Number(l.distanceKm).toLocaleString('en-AU')} km</span>`;
+function histBlock(l) {
+  const h = l.history; if (!h) return '';
+  const p = l.bid ?? l.startPrice;
+  const pct = p != null && h.median ? Math.round((p / h.median) * 100) : null;
+  return `<details class="hist" data-hist="${esc(l.key)}"><summary>Sold here: ${h.n} similar ${esc(h.label)} went for ${money(h.low)}–${money(h.high).slice(1)}, median ${money(h.median)}${pct != null && !closedMode() ? ` · now ${pct}% of that` : ''}</summary><ul><li class="sub">Loading…</li></ul></details>`;
+}
+function checkBlock(l) {
+  const c = l.check; if (!c) return '';
+  if (c.verdict === 'error') return `<div class="check">Listing check failed: ${esc(c.summary || '')}</div>`;
+  const label = { good: '✓ Listing looks OK', caution: '⚠ Check before bidding', avoid: '✗ Red flags' }[c.verdict] || c.verdict;
+  const facts = [c.starts && c.starts !== 'unknown' ? `starts: ${c.starts}` : '', c.keys && c.keys !== 'unknown' ? `keys: ${c.keys}` : ''].filter(Boolean).join(' · ');
+  return `<div class="check"><span class="tag ${esc(c.verdict)}">${label}</span> ${esc(c.summary || '')}${(c.flags || []).length ? ` — <i>${esc(c.flags.join(', '))}</i>` : ''}${facts ? ` (${esc(facts)})` : ''}</div>`;
+}
+let myBase = '';
+
 function compsBlock(l) {
   if (l.estMethod === 'error') return `<div class="research err">Research failed: ${esc((l.estNote || '').replace(/^error: /, ''))}</div>`;
   if (l.estMethod !== 'web') return '';
@@ -377,9 +419,9 @@ function renderWatch() {
       return `<div class="wrow ${closed ? 'sold' : ''} ${l.bidStatus || ''}">
         <div class="clock ${cls}">${closed ? '<div class="t">SOLD</div>' : `<div class="t" data-end="${l.endAt ?? ''}">${ms == null ? '…' : left(ms)}</div>`}<div class="d">${l.endAt ? esc(fmtClose(l.endAt)) : 'reading lot…'}</div></div>
         <div><a class="wt" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title || slugName(l.url) || 'Loading lot details…')}</a>
-          <div class="wm"><span class="tag site">${esc(l.site)}</span> ${esc([l.location, l.state].filter(Boolean).join(' '))}${l.odometer ? ' · ' + l.odometer.toLocaleString('en-AU') + ' km' : ''}${l.wovr ? ' · ' + esc(l.wovr) : ''}${l.others?.length ? ' · also watched by ' + esc(l.others.join(', ')) : ''} · ${closed ? (l.seenMinsBeforeClose != null && l.seenMinsBeforeClose <= 1 ? 'hammer price' : 'final price seen') : ago(l.lastChecked)}</div>${compsBlock(l)}</div>
-        <div class="wp"><b>${money(price)}</b><div class="sub">${closed ? 'sold' : l.bidCount != null ? l.bidCount + (l.bidCount === 1 ? ' bid' : ' bids') : l.bid == null ? 'no bid seen' : 'current bid'}</div>${moved ? `<div class="up">▲ was ${money(lastBid[l.key])}</div>` : ''}${l.estimate ? `<div class="sub">est ${money(l.estimate)}</div>` : ''}${bs}</div>
-        <div class="wx">${closed ? '' : `<button class="icon mybid" data-mybid="${esc(l.key)}" title="Tell KAMRADS the most you've bid, to see if you're winning">${l.myBid != null ? 'My bid ' + money(l.myBid) : "I'm bidding"}</button> `}<button class="icon on" data-unwatch="${esc(l.key)}" title="Stop watching">★</button>${closed ? '' : ` <button class="icon" data-research="${esc(l.key)}" title="Search the market for comparable prices">${l.estMethod === 'web' ? 'Re-check' : 'Research'}</button>`}</div>
+          <div class="wm"><span class="tag site">${esc(l.site)}</span> ${esc([l.location, l.state].filter(Boolean).join(' '))}${l.odometer ? ' · ' + l.odometer.toLocaleString('en-AU') + ' km' : ''}${l.wovr ? ' · ' + esc(l.wovr) : ''}${l.others?.length ? ' · also watched by ' + esc(l.others.join(', ')) : ''} · ${closed ? (l.seenMinsBeforeClose != null && l.seenMinsBeforeClose <= 1 ? 'hammer price' : 'final price seen') : ago(l.lastChecked)}${l.distanceKm != null ? ' · ' + distTag(l) : ''}</div>${checkBlock(l)}${compsBlock(l)}${histBlock(l)}</div>
+        <div class="wp"><b>${money(price)}</b><div class="sub">${closed ? 'sold' : l.bidCount != null ? l.bidCount + (l.bidCount === 1 ? ' bid' : ' bids') : l.bid == null ? 'no bid seen' : 'current bid'}</div>${moved ? `<div class="up">▲ was ${money(lastBid[l.key])}</div>` : ''}${l.estimate ? `<div class="sub">est ${money(l.estimate)}</div>` : ''}${bs}${(l.rivals || []).length ? `<div class="rival">⚠ ${esc(l.rivals.map(r => `${r.user} has bid (max ${money(r.myBid)})`).join(', '))} — you're bidding against each other</div>` : ''}</div>
+        <div class="wx">${closed ? '' : `<button class="icon mybid" data-mybid="${esc(l.key)}" title="Tell KAMRADS the most you've bid, to see if you're winning">${l.myBid != null ? 'My bid ' + money(l.myBid) : "I'm bidding"}</button> `}<button class="icon on" data-unwatch="${esc(l.key)}" title="Stop watching">★</button>${closed ? '' : ` <button class="icon" data-research="${esc(l.key)}" title="Search the market for comparable prices">${l.estMethod === 'web' ? 'Re-check' : 'Research'}</button> <button class="icon" data-check="${esc(l.key)}" title="Claude reads the description and photos for deal-breakers">Check listing</button>`}</div>
       </div>`;
     }).join('');
   const out = watch.filter(l => l.bidStatus === 'outbid').length, win = watch.filter(l => l.bidStatus === 'winning' || l.bidStatus === 'atmax').length;
@@ -438,7 +480,7 @@ function render() {
     const p = closedMode() ? l.finalBid : l.bid ?? l.startPrice;
     const pct = l.ratio != null ? Math.round(l.ratio * 100) : null;
     const est = l.estimate != null
-      ? `<div class="est ${l.ratio != null && l.ratio <= SLEEPER ? 'good' : ''}">est ${money(l.manualEstimate ?? l.estLow)}${l.manualEstimate == null && l.estHigh ? '–' + money(l.estHigh).slice(1) : ''}${pct != null ? ` · ${pct}%` : ''}${l.profit != null && l.profit > 0 ? ` · +${money(l.profit)}` : ''}</div>`
+      ? `<div class="est ${l.ratio != null && l.ratio <= SLEEPER ? 'good' : ''}" title="${l.estSource === 'history' ? 'Median of similar lots sold here' : l.estSource === 'yours' ? 'Your estimate' : 'Market research'}">${l.estSource === 'history' ? 'sold here ~' : 'est '}${money(l.estSource === 'history' ? l.estimate : l.manualEstimate ?? l.estLow)}${l.estSource === 'research' && l.estHigh ? '–' + money(l.estHigh).slice(1) : ''}${pct != null ? ` · ${pct}%` : ''}${l.profit != null && l.profit > 0 && !closedMode() ? ` · +${money(l.profit)}` : ''}</div>`
       : `<div class="est sub">no estimate</div>`;
     const dealCls = mode === 'missed' ? 'deal' : mode === 'sold' ? (l.ratio != null && l.ratio <= 0.5 ? 'deal' : '') : (isDeal(l) ? 'deal' : '');
     return `<div class="lot ${dealCls} ${l.alerts.length ? 'alerted' : ''}">
@@ -449,19 +491,21 @@ function render() {
           <span class="tag site">${esc(l.site)}</span>
           ${l.location || l.state ? `<span>${esc([l.location, l.location?.includes(l.state) ? '' : l.state].filter(Boolean).join(' '))}</span>` : ''}
           ${l.odometer ? `<span>${l.odometer.toLocaleString('en-AU')} km</span>` : ''}
+          ${distTag(l)}
           ${wovrTag(l.wovr)}
           ${l.sale ? `<span>${esc(l.sale)}</span>` : ''}
           ${l.alerts.length ? `<span class="tag stat">ALERT · ${esc(l.alerts.join(', '))}</span>` : ''}
           ${mode === 'missed' ? `<span class="tag ok">${esc(l.why)}${l.saving > 0 ? ` · ${money(l.saving)} under` : ''}</span>` : ''}
         </div>
-        ${compsBlock(l)}
+        ${checkBlock(l)}${compsBlock(l)}${histBlock(l)}
       </div>
       <div class="price">
-        <div><div class="bid">${money(p)}</div><div class="sub">${closedMode() ? (l.finalBid == null ? 'price not captured' : l.seenMinsBeforeClose == null ? 'price from listing' : l.seenMinsBeforeClose <= 1 ? 'hammer price' : `last seen ${l.seenMinsBeforeClose} min before close`) : l.bid == null && l.startPrice != null ? 'start price' : l.bidCount != null ? l.bidCount + (l.bidCount === 1 ? ' bid' : ' bids') : l.bid == null ? 'bid not visible yet' : 'current bid'}</div>${est}</div>
+        <div><div class="bid">${money(p)}</div><div class="sub">${closedMode() ? (l.finalBid == null ? 'price not captured' : l.seenMinsBeforeClose == null ? 'price from listing' : l.seenMinsBeforeClose <= 1 ? 'hammer price' : `last seen ${l.seenMinsBeforeClose} min before close`) : l.bid == null && l.startPrice != null ? 'start price' : l.bidCount != null ? l.bidCount + (l.bidCount === 1 ? ' bid' : ' bids') : l.bid == null ? 'bid not visible yet' : 'current bid'}</div>${est}${costLine(l)}</div>
         <div class="acts">
           <button class="icon ${l.starred ? 'on' : ''}" data-star="${esc(l.key)}" title="Star: alert me in the final minutes">★</button>
           ${closedMode() ? '' : `<button class="icon mybid" data-mybid="${esc(l.key)}" title="I've bid on this: track if I'm winning">Bid</button>`}
           <button class="icon" data-est="${esc(l.key)}" title="Set your own resale estimate">Est</button>
+          ${closedMode() ? '' : `<button class="icon" data-check="${esc(l.key)}" title="Claude reads the description and photos for deal-breakers">Check</button>`}
           ${closedMode() ? '' : `<button class="icon" data-research="${esc(l.key)}" title="Search the market for comparable prices">${l.estMethod === 'web' ? 'Re-check' : 'Research'}</button>`}
         </div>
       </div>
@@ -497,11 +541,13 @@ async function load() {
     aiOn = !!st.ai;
     clockSkew = data.now - Date.now();
     lots = data.lots;
+    if (data.base) { myBase = data.base; $('#baseName').textContent = 'from ' + myBase; }
     soldStats = data.stats || [];
     mode = missed ? 'missed' : sold ? 'sold' : 'live';
     await wl;
-    $('#status').innerHTML = ['pickles', 'manheim', 'allbids', 'lloyds'].map(site => {
+    $('#status').innerHTML = Object.keys(SITE_NAMES).map(site => {
       const x = st.sites.find(z => z.site === site) || {};
+      if (!x.site && ['slattery', 'auctionbarn', 'grays'].includes(site) && !st.sites.length) return '';
       const age = x.last_ok ? (Date.now() - x.last_ok) / 60000 : Infinity;
       const err = x.last_error_at && (!x.last_ok || x.last_error_at > x.last_ok);
       const cls = err ? 'bad' : age < 30 ? 'ok' : 'warn';
@@ -571,15 +617,30 @@ document.addEventListener('click', async e => {
   if (!r.ok) return alert((await r.json().catch(() => ({}))).error || 'Could not save.');
   load();
 });
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-check]'); if (!b) return;
+  if (!aiOn) { openSettings(); return alert('Add your Claude API key in Settings first.'); }
+  b.disabled = true; b.textContent = 'Reading…';
+  const r = await fetch(`/api/lots/${encodeURIComponent(b.dataset.check)}/check`, { method: 'POST' });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) alert(j.error || 'Listing check failed.');
+  load();
+});
+document.addEventListener('toggle', async e => {
+  const d = e.target; if (!d.matches?.('details[data-hist]') || !d.open || d.dataset.loaded) return;
+  d.dataset.loaded = '1';
+  const h = await (await fetch(`/api/lots/${encodeURIComponent(d.dataset.hist)}/history`)).json();
+  d.querySelector('ul').innerHTML = (h.examples || []).map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a> — <b>${money(x.price)}</b>${x.km ? ` · ${Number(x.km).toLocaleString('en-AU')} km` : ''} · ${new Date(x.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} · ${esc(SITE_NAMES[x.site] || x.site)}</li>`).join('') || '<li>No details</li>';
+}, true);
 // ---- More filters ----
 function syncMore() {
-  $('#fMin').value = more.min ?? ''; $('#fMax').value = more.max ?? ''; $('#fYear').value = more.year ?? ''; $('#fKm').value = more.km ?? '';
+  $('#fMin').value = more.min ?? ''; $('#fMax').value = more.max ?? ''; $('#fYear').value = more.year ?? ''; $('#fKm').value = more.km ?? ''; $('#fDist').value = more.dist ?? '';
   $('#fType').value = more.type || ''; $('#fWovr').value = more.wovr || ''; $('#fBids').value = more.bids || ''; $('#fEnds').value = more.ends || '';
   document.querySelectorAll('[data-state]').forEach(x => x.setAttribute('aria-pressed', String((more.states || []).includes(x.dataset.state))));
   const n = moreActive(); $('#moreN').hidden = !n; $('#moreN').textContent = n;
 }
 const readMore = () => {
-  more = { ...more, min: $('#fMin').value.trim(), max: $('#fMax').value.trim(), year: $('#fYear').value.trim(), km: $('#fKm').value.trim(),
+  more = { ...more, min: $('#fMin').value.trim(), max: $('#fMax').value.trim(), year: $('#fYear').value.trim(), km: $('#fKm').value.trim(), dist: $('#fDist').value.trim(),
     type: $('#fType').value, wovr: $('#fWovr').value, bids: $('#fBids').value, ends: $('#fEnds').value };
   save('more', more); syncMore(); render();
 };
@@ -638,13 +699,16 @@ function openSettings() {
     $('#sKey').value = ''; $('#keyResult').textContent = '';
     $('#sResearch').checked = st.researchEnabled; $('#sPerDay').value = st.researchPerDay; $('#sNtfy').value = st.ntfyUrl;
     $('#sMyNtfy').value = st.myNtfyUrl || ''; $('#meName').textContent = `(${st.user})`;
+    $('#sBase').innerHTML = (st.bases || []).map(b => `<option ${b === st.base ? 'selected' : ''}>${esc(b)}</option>`).join('');
+    $('#sDigestHour').innerHTML = Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${h === st.digestHour ? 'selected' : ''}>${h === 0 ? '12 am' : h < 12 ? h + ' am' : h === 12 ? '12 pm' : h - 12 + ' pm'}</option>`).join('');
+    $('#sDigestTz').value = st.digestTz; $('#sDigest').checked = st.digestOn;
     $('#settings').showModal();
   });
 }
 $('#openSettings').addEventListener('click', e => { e.preventDefault(); openSettings(); });
 $('#closeSettings').addEventListener('click', () => $('#settings').close());
 async function saveSettings(extra = {}) {
-  const body = { researchEnabled: $('#sResearch').checked, researchPerDay: Number($('#sPerDay').value), ntfyUrl: $('#sNtfy').value.trim(), myNtfyUrl: $('#sMyNtfy').value.trim(), ...extra };
+  const body = { researchEnabled: $('#sResearch').checked, researchPerDay: Number($('#sPerDay').value), ntfyUrl: $('#sNtfy').value.trim(), myNtfyUrl: $('#sMyNtfy').value.trim(), base: $('#sBase').value, digestHour: Number($('#sDigestHour').value), digestTz: $('#sDigestTz').value, digestOn: $('#sDigest').checked, ...extra };
   if ($('#sKey').value.trim()) body.anthropicKey = $('#sKey').value.trim();
   const r = await fetch('/api/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
   const j = await r.json();
@@ -661,6 +725,11 @@ $('#testKey').addEventListener('click', async () => {
   $('#keyResult').textContent = j.ok ? '✓ Key works' : '✗ ' + (j.error || 'Key rejected');
 });
 $('#clearKey').addEventListener('click', async () => { if (confirm('Remove the saved Claude API key?')) { await saveSettings({ clearKey: true }); } });
+$('#previewDigest').addEventListener('click', async e => {
+  e.preventDefault();
+  const j = await (await fetch('/api/digest/preview')).json();
+  alert(j.text || 'Nothing worth sending right now — the digest is skipped on quiet days.');
+});
 $('#testAlert').addEventListener('click', async e => {
   e.preventDefault();
   const r = await (await fetch('/api/test-alert', { method: 'POST' })).json();

@@ -15,6 +15,18 @@ export function setMyBid(user, key, value) {
   q.myBid.run(user, key, value, Date.now());
   q.syncStar.run(key);
   for (const k of ['outbid', 'atmax']) q.clearUserAlert.run(user, key, k); // a new bid re-arms the outbid alert
+  return value == null ? [] : q.rivals.all(key, user);
+}
+
+/** Two of you bidding on one lot only pushes the price up: tell the others straight away. */
+export async function warnRivals(user, key, value) {
+  const lot = q.lot.get(key);
+  if (!lot || value == null) return;
+  for (const r of q.rivals.all(key, user)) {
+    await push({ to: r.user, priority: 'high', tags: 'warning', url: lot.url,
+      title: `${user} is bidding on this too (max ${money(value)})`,
+      message: `${lot.title}\nYour max is ${money(r.my_bid)}. Bidding against each other only raises the price - agree who takes it.` });
+  }
 }
 
 /**

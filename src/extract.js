@@ -257,6 +257,10 @@ export function factsFromText(text, now = Date.now()) {
   }
   const loc = /([A-Z][A-Za-z .'-]{2,30}),\s*(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b/.exec(t);
   if (loc) { out.location = `${loc[1].trim()}, ${loc[2]}`; out.state = loc[2]; }
+  // "Buyer's Premium: 16.5% GST Inclusive"
+  const bp = /buyer'?s?\s*premium[^0-9%\n]{0,30}(\d{1,2}(?:\.\d{1,2})?)\s*%/i.exec(t);
+  if (bp && +bp[1] <= 30) out.buyer_premium = +bp[1];
+  if (/(?:\+|plus)\s*GST\b|\bGST\s+(?:applies|applicable|is\s+payable|payable\s+on\s+(?:the\s+)?(?:hammer|purchase))/i.test(t)) out.gst_extra = 1;
   for (const k of Object.keys(out)) if (out[k] == null) delete out[k];
   return out;
 }
