@@ -12,6 +12,22 @@ services:
     shm_size: 256m
     init: true
 
+  # HTTPS on your own domain (free certificate from Let's Encrypt).
+  # Set DOMAIN in .env, point the domain's A record at this server, then:
+  #   docker compose --profile https up -d
+  https:
+    image: caddy:2-alpine
+    profiles: ["https"]
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on: [kamrads]
+
   # Cloudflare Tunnel: HTTPS + login in front of the dashboard, no open ports.
   # Start with: docker compose --profile tunnel up -d
   tunnel:
@@ -21,3 +37,6 @@ services:
     command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
     env_file: .env
     network_mode: host
+
+volumes:
+  caddy_data:

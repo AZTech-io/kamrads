@@ -1,0 +1,5 @@
+# HTTPS for the dashboard. Set DOMAIN in .env (e.g. kamrads.katara.com.au) and point its DNS A record at this server.
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy kamrads:8787
+}
