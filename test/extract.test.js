@@ -138,3 +138,10 @@ test('card titles: skip prices, countdowns and templates; fall back to the URL',
   assert.equal(fromSlug.title, 'Seiko 5 Sports Supercars 2023 Limited Edition Number');
   assert.equal(fromSlug.ext_id, '1678197');
 });
+
+test('no usable card text: title comes from the link', async () => {
+  const { cardToLot } = await import('../src/sites/common.js');
+  const href = 'https://www.allbids.com.au/c/computers-it/processors/intel-xeon-silver-4110-210ghz300ghz-8core-server-cpu-lot-of-four-1678440';
+  const l = cardToLot({ href, heading: '', named: '', text: '' }, { idFromUrl: u => (/-(\d{5,})$/.exec(u) || [])[1] });
+  assert.equal(l.title, 'Intel Xeon Silver 4110 210ghz300ghz 8core Server Cpu Lot Of Four');
+});

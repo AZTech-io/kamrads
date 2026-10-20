@@ -89,3 +89,11 @@ test('watchlist: add by link, re-checked every 60 s however far from close', asy
 });
 const db = () => dbMod.db;
 const dbMod = await import('../src/db.js');
+
+test('a blank title never overwrites or blocks a real one', () => {
+  upsertLot({ site: 'allbids', ext_id: '1678440', title: '', url: 'https://www.allbids.com.au/c/computers-it/processors/intel-xeon-silver-4110-210ghz300ghz-8core-server-cpu-lot-of-four-1678440' });
+  assert.equal(q.lot.get('allbids:1678440').title, null);
+  upsertLot({ site: 'allbids', ext_id: '1678440', title: 'Intel Xeon Silver 4110 Server CPU (Lot of Four)' });
+  upsertLot({ site: 'allbids', ext_id: '1678440', title: '   ' });
+  assert.equal(q.lot.get('allbids:1678440').title, 'Intel Xeon Silver 4110 Server CPU (Lot of Four)');
+});

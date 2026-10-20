@@ -56,7 +56,7 @@ export function cardToLot(card, { idFromUrl, now = Date.now() }) {
   const ext_id = idFromUrl(card.href);
   if (!ext_id) return null;
   const lines = card.text.split('\n').map(s => s.trim()).filter(s => s && !JUNK_LINE.test(s));
-  const title = [card.heading, card.named, ...lines.slice(0, 3)].map(clean).find(goodTitle) || slugTitle(card.href) || '';
+  const title = [card.heading, card.named, ...lines.slice(0, 3)].map(clean).find(goodTitle) || slugTitle(card.href) || null;
   const facts = factsFromText(card.text, now);
   // On listing cards a bare "$2,200" is normally the current bid / price.
   if (facts.bid == null) {

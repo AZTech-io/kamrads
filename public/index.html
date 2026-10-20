@@ -265,7 +265,7 @@ function render() {
     return `<div class="lot ${dealCls} ${l.alerts.length ? 'alerted' : ''}">
       <div class="clock ${cls}">${mode === 'sold' ? `<div class="t">SOLD</div>` : `<div class="t" data-end="${l.endAt ?? ''}">${ms == null ? '—' : left(ms)}</div>`}<div class="d">${l.endAt ? esc(fmtClose(l.endAt)) : esc(l.buyMethod || 'time TBA')}</div></div>
       <div>
-        <a class="title" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title || 'Untitled lot')}</a>
+        <a class="title" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title || slugName(l.url) || 'Untitled lot')}</a>
         <div class="meta">
           <span class="tag site">${esc(l.site)}</span>
           ${l.location || l.state ? `<span>${esc([l.location, l.location?.includes(l.state) ? '' : l.state].filter(Boolean).join(' '))}</span>` : ''}

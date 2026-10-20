@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS alerts (key TEXT NOT NULL, kind TEXT NOT NULL, at INT
 CREATE TABLE IF NOT EXISTS site_status (site TEXT PRIMARY KEY, last_ok INTEGER, last_count INTEGER, last_error TEXT, last_error_at INTEGER, logged_in INTEGER);
 `);
 for (const col of ['final_seen_at INTEGER']) { try { db.exec(`ALTER TABLE lots ADD COLUMN ${col}`); } catch { /* exists */ } }
+db.exec(`UPDATE lots SET title = NULL WHERE title IS NOT NULL AND (trim(title) = '' OR title LIKE '%{{%')`);
 // v1.1 cleanup: drop duplicate Pickles records created from internal ids
 db.exec(`DELETE FROM lots WHERE site = 'pickles' AND url LIKE '%/used/details/items/%'`);
 
@@ -48,7 +49,8 @@ export function upsertLot(lot, { checked = false } = {}) {
   const key = `${lot.site}:${lot.ext_id}`;
   const prev = getBidStmt.get(key);
   const row = { key, site: lot.site, ext_id: String(lot.ext_id), now, checked: checked ? now : null };
-  for (const f of FIELDS) row[f] = lot[f] ?? null;
+  // blank strings count as "don't know", so they never overwrite a real value
+  for (const f of FIELDS) row[f] = typeof lot[f] === 'string' && !lot[f].trim() ? null : lot[f] ?? null;
   upsertStmt.run(row);
   if (lot.bid != null && (!prev || prev.bid !== lot.bid)) addBidStmt.run(key, now, lot.bid);
   return key;
