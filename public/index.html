@@ -186,6 +186,11 @@ dialog.box .end { justify-content: flex-end; margin-top: 18px; }
 dialog.box .inline { display: flex; gap: 8px; align-items: center; margin-top: 12px; color: var(--muted); font-size: 12.5px; flex-wrap: wrap; }
 dialog.box .inline select, dialog.box .inline input[type=number] { background: var(--bg); border: 1px solid var(--rule-2); border-radius: 6px; padding: 4px 8px; }
 dialog.box a { color: var(--info); }
+.bidgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+.bk { background: var(--bg); border: 1px solid var(--rule); border-radius: 8px; padding: 9px 12px; display: flex; flex-direction: column; gap: 2px; }
+.bk span { color: var(--muted); font-size: 12px; } .bk b { font-size: 18px; font-weight: 600; } .bk small { color: var(--muted); font-size: 12px; }
+.bidcalc { margin-top: 6px; color: var(--muted); font-size: 12.5px; min-height: 18px; }
+.bidcalc b { color: var(--ink); }
 .srow { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--rule); }
 .sform { display: grid; grid-template-columns: 1fr 120px 130px auto; gap: 8px; margin: 12px 0 6px; }
 .sform input, .sform select { background: var(--bg); border: 1px solid var(--rule-2); border-radius: 6px; padding: 7px 10px; min-width: 0; }
@@ -322,6 +327,23 @@ dialog.box a { color: var(--info); }
   <div class="row end"><button type="button" class="btn" id="closeAlerts">Close</button></div>
 </dialog>
 
+<dialog id="bidBox" class="box">
+  <form method="dialog" id="bidForm">
+    <h2>I'm bidding on this</h2>
+    <p class="lead" id="bidLot"></p>
+    <div class="bidgrid">
+      <div class="bk"><span>Current price</span><b class="num" id="bidNow">—</b><small id="bidNowAll"></small></div>
+      <div class="bk"><span>Your position</span><b id="bidPos">—</b><small id="bidPosNote"></small></div>
+    </div>
+    <label class="f">My max bid (what I've put in, or my proxy limit) <input id="bidMax" inputmode="numeric" placeholder="$" autocomplete="off"></label>
+    <div class="bidcalc" id="bidCalc"></div>
+    <label class="f">Or work it out: the most I want to pay all-in <input id="bidBudget" inputmode="numeric" placeholder="$ including fees" autocomplete="off"></label>
+    <div class="bidcalc" id="bidBudgetOut"></div>
+    <div class="rival" id="bidRivals"></div>
+    <div class="row end"><button type="button" class="btn" id="bidClear">Stop tracking my bid</button><span style="flex:1"></span><button type="button" class="btn" id="bidCancel">Cancel</button><button class="btn primary" id="bidSave">Save my max bid</button></div>
+  </form>
+</dialog>
+
 <dialog id="settings" class="box">
   <form method="dialog">
     <h2>Settings</h2>
@@ -330,7 +352,8 @@ dialog.box a { color: var(--info); }
       <input id="sKey" type="password" autocomplete="off" placeholder="sk-ant-… (leave blank to keep the saved key)"></label>
     <div class="row"><button type="button" class="btn sm" id="testKey">Test key</button><button type="button" class="btn sm" id="clearKey">Remove key</button><span class="muted" id="keyResult"></span></div>
     <label class="inline"><input id="sResearch" type="checkbox"> Research prices and check listings automatically, up to <input id="sPerDay" type="number" min="0" max="1000" step="10" style="width:80px"> lookups a day (about 5–10c each)</label>
-    <label class="f">My home base (distance and transport costs) <select id="sBase"></select></label>
+    <label class="f">My home base (for distances) <select id="sBase"></select></label>
+    <label class="inline"><input id="sTransport" type="checkbox"> Add an estimated transport cost to the all-in price (off: fees only, you work out transport)</label>
     <div class="inline"><label class="check-inline"><input id="sDigest" type="checkbox"> Morning digest at</label> <select id="sDigestHour"></select>
       <select id="sDigestTz"><option value="Australia/Sydney">Canberra/Sydney time</option><option value="Australia/Perth">Perth time</option><option value="Australia/Brisbane">Brisbane time</option><option value="Australia/Adelaide">Adelaide time</option><option value="Asia/Makassar">Bali time</option></select>
       <a href="#" id="previewDigest">Preview</a></div>
@@ -507,7 +530,7 @@ function rowHtml(l, now) {
       ${mode === 'missed' ? `<span class="tag g">${esc(l.why)}</span>` : ''}${l.alerts?.length ? `<span class="tag r">Alert: ${esc(l.alerts.join(', '))}</span>` : ''}</div></td>
     <td class="c-clock">${clockCell(l, now)}</td>
     <td class="c-bid r"><div class="money num">${money(p)}</div><div class="sub">${sub}</div></td>
-    <td class="col-allin r">${!closedMode() && l.cost ? `<div class="money num">${money(l.cost.total)}</div><div class="sub">${[l.cost.fees ? `+${kmoney(l.cost.fees)} fees` : '', l.cost.transport ? `+${kmoney(l.cost.transport)} freight` : l.cost.transport === 0 ? 'pick up' : ''].filter(Boolean).join(' · ')}</div>` : ''}</td>
+    <td class="col-allin r">${!closedMode() && l.cost ? `<div class="money num">${money(l.cost.total)}</div><div class="sub">${[l.cost.fees ? `+${kmoney(l.cost.fees)} fees` : '', l.cost.transportOn ? (l.cost.transport ? `+${kmoney(l.cost.transport)} freight` : l.cost.transport === 0 ? 'pick up' : '') : ''].filter(Boolean).join(' · ')}</div>` : ''}</td>
     <td class="c-val">${valueCell(l)}</td>
     <td class="c-margin r">${margin != null && margin > 0 ? `<div class="money num gain">+${kmoney(margin)}</div><div class="sub">${closedMode() ? 'under value' : 'est. margin'}</div>` : margin != null ? `<div class="money num loss">${kmoney(margin)}</div><div class="sub">after costs</div>` : ''}</td>
     <td class="c-acts"><div class="acts">
@@ -521,8 +544,9 @@ function detailHtml(l) {
   const costs = c && !closedMode() ? `<div><h4>All-in cost</h4><div class="kv num">
       <span>Bid</span><span>${money(c.price)}</span>
       ${c.premium ? `<span>Buyer's premium ${c.premiumPct}%</span><span>${money(c.premium)}</span>` : ''}${c.fee ? `<span>Buyer's fee</span><span>${money(c.fee)}</span>` : ''}${c.gst ? `<span>GST</span><span>${money(c.gst)}</span>` : ''}
-      <span>Transport${c.km != null ? ` (${c.kmApprox ? '~' : ''}${c.km.toLocaleString('en-AU')} km to ${esc(myBase)})` : ''}</span><span>${c.transport == null ? 'unknown' : c.transport === 0 ? 'pick up' : money(c.transport)}</span>
-      <span><b>Total</b></span><span><b>${money(c.total)}</b></span></div><div class="sub" style="white-space:normal;margin-top:4px">Fees and transport are estimates; the lot's own terms are final.</div></div>` : '';
+      ${c.processing ? `<span>Processing fee</span><span>${money(c.processing)}</span>` : ''}
+      ${c.transportOn ? `<span>Transport${c.km != null ? ` (${c.kmApprox ? '~' : ''}${c.km.toLocaleString('en-AU')} km to ${esc(myBase)})` : ''}</span><span>${c.transport == null ? 'unknown' : c.transport === 0 ? 'pick up' : money(c.transport)}</span>` : c.km != null ? `<span>Distance to ${esc(myBase)}</span><span>${c.kmApprox ? '~' : ''}${c.km.toLocaleString('en-AU')} km (transport not included)</span>` : ''}
+      <span><b>Total</b></span><span><b>${money(c.total)}</b></span></div><div class="sub" style="white-space:normal;margin-top:4px">${c.feeLine ? `Pickles ${esc(c.feeLine)} fee schedule. ` : ''}Fees are estimates from the site's published schedule; the lot's own terms are final.</div></div>` : '';
   const hist = l.history ? `<div data-hist="${esc(l.key)}"><h4>Sold here: ${l.history.n} similar ${esc(l.history.label)}</h4><div class="muted">${money(l.history.low)}–${money(l.history.high).slice(1)}, median ${money(l.history.median)}</div><ul><li class="muted">Loading…</li></ul></div>` : '';
   const research = l.estMethod === 'web' ? `<div><h4>Market research</h4><div class="muted">Market ~${money(l.marketAvg)} · resale ${money(l.estLow)}–${money(l.estHigh).slice(1)}</div><ul>${(l.comps || []).map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.title || x.url)}</a>${x.price ? ` — ${money(x.price)}` : ''}${x.km ? ` · ${Number(x.km).toLocaleString('en-AU')} km` : ''}</li>`).join('')}</ul><div class="sub" style="white-space:normal">${esc(l.estNote || '')}</div></div>`
     : l.estMethod === 'error' ? `<div><h4>Market research</h4><div class="warn">${esc((l.estNote || '').replace(/^error: /, ''))}</div></div>` : '';
@@ -532,6 +556,7 @@ function detailHtml(l) {
     ${l.year ? `<span>Year</span><span>${l.year}</span>` : ''}${l.manualEstimate != null ? `<span>Your estimate</span><span>${money(l.manualEstimate)}</span>` : ''}<span>Last checked</span><span>${l.lastChecked ? new Date(l.lastChecked).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }) : 'not yet'}</span></div></div>`;
   return `<tr class="detail"><td colspan="8"><div class="dgrid">${facts}${costs}${hist}${research}${check}</div>
     <div class="dacts"><a class="btn sm" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">Open on ${esc(SITE_NAMES[l.site] || l.site)}</a>
+      ${closedMode() ? '' : `<button class="btn sm primary" data-mybid="${esc(l.key)}">${l.myBid != null ? 'Change my bid' : "I'm bidding on this"}</button>`}
       <button class="btn sm" data-est="${esc(l.key)}">Set my estimate</button>
       ${closedMode() && l.status !== 'open' ? '' : `<button class="btn sm" data-research="${esc(l.key)}">${l.estMethod === 'web' ? 'Research again' : 'Research market price'}</button><button class="btn sm" data-check="${esc(l.key)}">Check listing</button>`}</div></td></tr>`;
 }
@@ -708,16 +733,7 @@ document.addEventListener('click', async e => {
   const un = t.closest('[data-unwatch]');
   if (un) { if (!confirm('Stop watching this lot?')) return; await post(`/api/lots/${encodeURIComponent(un.dataset.unwatch)}/star`, { starred: false }); load(); return; }
   const mb = t.closest('[data-mybid]');
-  if (mb) {
-    const l = watch.find(x => x.key === mb.dataset.mybid) || lots.find(x => x.key === mb.dataset.mybid) || {};
-    const val = prompt(`The most you've bid on:\n${l.title || 'this lot'}\n\nCurrent price ${money(l.bid ?? l.startPrice)}. If you set a max (proxy) bid, enter that. Leave blank to clear.`, l.myBid ?? '');
-    if (val === null) return;
-    const r = await post(`/api/lots/${encodeURIComponent(mb.dataset.mybid)}/mybid`, { value: val.replace(/[$,\s]/g, '') });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) return alert(j.error || 'Could not save.');
-    if ((j.rivals || []).length) alert(`Heads up: ${j.rivals.map(x => `${x.user} has also bid (max ${money(x.myBid)})`).join(', ')}. Bidding against each other only pushes the price up. They've been told too.`);
-    load(); return;
-  }
+  if (mb) { openBid(mb.dataset.mybid); return; }
   const est = t.closest('[data-est]');
   if (est) {
     const l = lots.find(x => x.key === est.dataset.est) || watch.find(x => x.key === est.dataset.est);
@@ -804,6 +820,59 @@ $('#sList').addEventListener('click', async e => {
   }
 });
 
+// ---------- bid panel ----------
+let bidKey = null, bidTimer = null;
+const costWords = c => !c ? '' : [c.fee ? `${money(c.fee)} buyer's fee` : '', c.premium ? `${money(c.premium)} premium (${c.premiumPct}%)` : '', c.processing ? `${money(c.processing)} processing` : '', c.gst ? `${money(c.gst)} GST` : '', c.transport ? `${money(c.transport)} transport` : ''].filter(Boolean).join(' + ');
+async function bidCost(params) {
+  const r = await fetch(`/api/lots/${encodeURIComponent(bidKey)}/cost?` + new URLSearchParams(params));
+  return r.json();
+}
+async function openBid(key) {
+  bidKey = key;
+  const l = watch.find(x => x.key === key) || lots.find(x => x.key === key) || {};
+  $('#bidLot').textContent = `${l.title || 'This lot'} · ${SITE_NAMES[l.site] || l.site || ''}`;
+  $('#bidMax').value = l.myBid ?? ''; $('#bidBudget').value = ''; $('#bidCalc').textContent = ''; $('#bidBudgetOut').textContent = '';
+  const c = await bidCost({});
+  $('#bidNow').textContent = money(c.current?.price);
+  $('#bidNowAll').textContent = c.current ? `all-in ${money(c.current.total)}${c.current.fees ? ` (${costWords(c.current)})` : ''}` : '';
+  const BS = { winning: "You're winning", atmax: 'At your max', outbid: 'Outbid', nobids: 'No bids yet', won: 'Won', lost: 'Lost' };
+  $('#bidPos').textContent = c.status ? BS[c.status] : 'Not bidding yet';
+  $('#bidPos').className = c.status === 'outbid' || c.status === 'lost' ? 'loss' : c.status ? 'gain' : '';
+  $('#bidPosNote').textContent = c.myBid != null ? `your max ${money(c.myBid)}` : 'enter your max below';
+  $('#bidRivals').textContent = (c.rivals || []).length ? `⚠ ${c.rivals.map(x => `${x.user} has bid too (max ${money(x.myBid)})`).join(', ')}. Bidding against each other only pushes the price up.` : '';
+  $('#bidClear').hidden = c.myBid == null;
+  if (l.myBid != null) calcBid();
+  $('#bidBox').showModal(); $('#bidMax').focus();
+}
+async function calcBid() {
+  const v = n0($('#bidMax').value);
+  if (!v) { $('#bidCalc').textContent = ''; return; }
+  const c = await bidCost({ bid: v });
+  const cur = c.current?.price;
+  const pos = cur == null ? '' : v > cur ? ` · that would have you <b class="gain">winning</b> right now` : v === cur ? ' · equal to the current price: you only win if your bid was first' : ` · <b class="loss">below the current price</b>`;
+  $('#bidCalc').innerHTML = `If you win at ${money(v)}: <b>${money(c.atBid.total)} all-in</b>${c.atBid.fees ? ` (${esc(costWords(c.atBid))})` : ''}${pos}`;
+}
+async function calcBudget() {
+  const v = n0($('#bidBudget').value);
+  if (!v) { $('#bidBudgetOut').textContent = ''; return; }
+  const c = await bidCost({ budget: v });
+  $('#bidBudgetOut').innerHTML = c.maxForBudget > 0 ? `Bid up to <b>${money(c.maxForBudget)}</b> to stay within ${money(v)} all-in. <a href="#" id="useBudget">Use this</a>` : 'That budget doesn\'t cover the fees.';
+}
+$('#bidMax').addEventListener('input', () => { clearTimeout(bidTimer); bidTimer = setTimeout(calcBid, 250); });
+$('#bidBudget').addEventListener('input', () => { clearTimeout(bidTimer); bidTimer = setTimeout(calcBudget, 250); });
+$('#bidBudgetOut').addEventListener('click', async e => { if (e.target.id !== 'useBudget') return; e.preventDefault(); const c = await bidCost({ budget: n0($('#bidBudget').value) }); $('#bidMax').value = c.maxForBudget; calcBid(); });
+$('#bidCancel').addEventListener('click', () => $('#bidBox').close());
+async function saveBid(value) {
+  const r = await post(`/api/lots/${encodeURIComponent(bidKey)}/mybid`, { value });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { alert(j.error || 'Could not save.'); return; }
+  $('#bidBox').close();
+  if ((j.rivals || []).length) alert(`Heads up: ${j.rivals.map(x => `${x.user} has also bid (max ${money(x.myBid)})`).join(', ')}. They've been told too.`);
+  load();
+}
+$('#bidSave').addEventListener('click', e => { e.preventDefault(); const v = n0($('#bidMax').value); if (!v) return alert('Enter your max bid in dollars.'); saveBid(v); });
+$('#bidClear').addEventListener('click', () => saveBid(''));
+
 // settings
 function openSettings() {
   fetch('/api/settings').then(r => r.json()).then(st => {
@@ -813,7 +882,7 @@ function openSettings() {
     $('#sMyNtfy').value = st.myNtfyUrl || ''; $('#meName').textContent = `(${st.user})`;
     $('#sBase').innerHTML = (st.bases || []).map(b => `<option ${b === st.base ? 'selected' : ''}>${esc(b)}</option>`).join('');
     $('#sDigestHour').innerHTML = Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${h === st.digestHour ? 'selected' : ''}>${h === 0 ? '12 am' : h < 12 ? h + ' am' : h === 12 ? '12 pm' : h - 12 + ' pm'}</option>`).join('');
-    $('#sDigestTz').value = st.digestTz; $('#sDigest').checked = st.digestOn;
+    $('#sDigestTz').value = st.digestTz; $('#sDigest').checked = st.digestOn; $('#sTransport').checked = !!st.transport;
     $('#settings').showModal();
   });
 }
@@ -821,7 +890,7 @@ $('#openSettings').addEventListener('click', openSettings);
 $('#closeSettings').addEventListener('click', () => $('#settings').close());
 async function saveSettings(extra = {}) {
   const body = { researchEnabled: $('#sResearch').checked, researchPerDay: Number($('#sPerDay').value), ntfyUrl: $('#sNtfy').value.trim(), myNtfyUrl: $('#sMyNtfy').value.trim(),
-    base: $('#sBase').value, digestHour: Number($('#sDigestHour').value), digestTz: $('#sDigestTz').value, digestOn: $('#sDigest').checked, ...extra };
+    base: $('#sBase').value, digestHour: Number($('#sDigestHour').value), digestTz: $('#sDigestTz').value, digestOn: $('#sDigest').checked, transport: $('#sTransport').checked, ...extra };
   if ($('#sKey').value.trim()) body.anthropicKey = $('#sKey').value.trim();
   const r = await post('/api/settings', body); const j = await r.json();
   if (!r.ok) { alert(j.error || 'Could not save.'); return false; }

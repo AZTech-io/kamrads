@@ -41,7 +41,13 @@ export const config = {
   // Buyer's fees by site. A lot's own "Buyer's Premium x%" (read from its page) wins over these.
   fees: {
     // vehicles: flat fee by price band; general goods: a percentage
-    pickles: { tiers: env.PICKLES_FEES || '1000:110,5000:275,15000:440,*:660', goodsPct: num('PICKLES_GOODS_PREMIUM', 16.5) },
+    // Pickles: one schedule per product line (pickles.com.au/fees). Tiers are "up to $:fee", fee is $ or %.
+    pickles: { lines: {
+      cars: { tiers: env.PICKLES_FEES_CARS || env.PICKLES_FEES || '1000:110,5000:275,15000:440,*:660', processing: num('PICKLES_PROCESSING', 0) },
+      salvage: { tiers: env.PICKLES_FEES_SALVAGE || env.PICKLES_FEES || '1000:110,5000:275,15000:440,*:660', processing: num('PICKLES_PROCESSING', 0) },
+      industrial: { tiers: env.PICKLES_FEES_INDUSTRIAL || '*:10%', processing: num('PICKLES_PROCESSING', 0) },
+      general: { tiers: env.PICKLES_FEES_GENERAL || '*:16.5%', processing: num('PICKLES_PROCESSING', 0) },
+    } },
     manheim: { tiers: env.MANHEIM_FEES || '1000:110,5000:275,15000:440,*:660', goodsPct: num('MANHEIM_GOODS_PREMIUM', 16.5) },
     allbids: { premiumPct: num('ALLBIDS_PREMIUM', 15) },
     lloyds: { premiumPct: num('LLOYDS_PREMIUM', 16.5) },

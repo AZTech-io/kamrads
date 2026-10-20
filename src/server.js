@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
 import { q } from './db.js';
 import { estimateOf, estimateSource } from './alerts.js';
-import { allIn } from './costs.js';
+import { allIn, maxBidFor } from './costs.js';
 import { baseByName, bases } from './geo.js';
 import { soldLike } from './history.js';
 import { checkListing } from './inspect.js';
@@ -45,10 +45,12 @@ const sendCsv = (res, name, rows) => {
 };
 const json = s => { try { return s ? JSON.parse(s) : null; } catch { return null; } };
 const baseOf = user => baseByName(settings.getUser(user, 'base'));
-const shape = (l, alertKinds, base = null) => {
+// The person's view: their home base (distances) and whether transport goes into the all-in cost.
+const viewOf = user => ({ base: baseOf(user), transport: !!settings.getUser(user, 'transport') });
+const shape = (l, alertKinds, view = null) => {
   const est = estimateOf(l);
   const price = l.bid ?? l.start_price;
-  const cost = allIn(l, base, price);
+  const cost = allIn(l, view?.base ?? null, price, { transport: !!view?.transport });
   const hist = soldLike(l);
   return {
     key: l.key, site: l.site, url: l.url, title: l.title, photo: l.image ? `/photo/${encodeURIComponent(l.key)}` : null, category: l.category,
@@ -89,8 +91,8 @@ export function startServer() {
     const alertKinds = new Map();
     for (const a of q.alertKinds.all(now - 7 * 86400000)) alertKinds.set(a.key, [...(alertKinds.get(a.key) || []), a.kind]);
     const mine = new Set(q.myWatchKeys.all(req.user).map(w => w.key));
-    const base = baseOf(req.user);
-    res.json({ now, base: base?.name, lots: rows.map(l => ({ ...shape(l, alertKinds, base), starred: mine.has(l.key) })) });
+    const view = viewOf(req.user);
+    res.json({ now, base: view.base?.name, transport: view.transport, lots: rows.map(l => ({ ...shape(l, alertKinds, view), starred: mine.has(l.key) })) });
   });
   app.get('/api/me', (req, res) => res.json({ user: req.user, users: Object.keys(config.users), sectors: SECTORS }));
   app.get('/photo/:key', async (req, res) => {
@@ -120,7 +122,7 @@ export function startServer() {
       if (!why) continue;
       const myBid = mine.get(l.key);
       if (myBid != null && price <= myBid) continue; // you won it, not missed
-      out.push({ ...shape({ ...l, bid: price }, new Map(), baseOf(req.user)), finalBid: price, closedAt: l.closed_at, seenMinsBeforeClose: seen, why,
+      out.push({ ...shape({ ...l, bid: price }, new Map(), viewOf(req.user)), finalBid: price, closedAt: l.closed_at, seenMinsBeforeClose: seen, why,
         saving: (est || market) ? Math.round((est || market) - price) : null });
     }
     out.sort((a, b) => (b.saving ?? -1) - (a.saving ?? -1) || b.endAt - a.endAt);
@@ -151,13 +153,13 @@ export function startServer() {
   app.get('/api/searches/:id/lots', (req, res) => {
     const s = q.searchesOf.all(req.user).find(x => x.id === Number(req.params.id));
     if (!s) return res.status(404).json({ error: 'not found' });
-    res.json(q.hitsOf.all(s.id).map(l => shape(l, new Map(), baseOf(req.user))));
+    res.json(q.hitsOf.all(s.id).map(l => shape(l, new Map(), viewOf(req.user))));
   });
   app.get('/api/closed', (req, res) => {
     const hours = Math.min(Number(req.query.hours) || 24, 24 * 90);
     const rows = q.recentClosed.all(Date.now() - hours * 3600000);
     res.json({ now: Date.now(), stats: q.closedStats.all(Date.now() - hours * 3600000), lots: rows.map(l => {
-      const out = shape({ ...l, bid: l.final_bid }, new Map(), baseOf(req.user));
+      const out = shape({ ...l, bid: l.final_bid }, new Map(), viewOf(req.user));
       out.finalBid = l.final_bid;
       out.closedAt = l.closed_at;
       // How close to the end our last look was: 0-1 min = the real hammer price, more = it may have gone higher.
@@ -170,7 +172,7 @@ export function startServer() {
     const alertKinds = new Map();
     for (const a of q.alertKinds.all(now - 7 * 86400000)) alertKinds.set(a.key, [...(alertKinds.get(a.key) || []), a.kind]);
     res.json({ now, every: config.watchEverySec, lots: q.userWatchlist.all(req.user, now - 24 * 3600000).map(l => ({
-      ...shape(l.status === 'closed' ? { ...l, bid: l.final_bid ?? l.bid } : l, alertKinds, baseOf(req.user)),
+      ...shape(l.status === 'closed' ? { ...l, bid: l.final_bid ?? l.bid } : l, alertKinds, viewOf(req.user)),
       rivals: q.rivals.all(l.key, req.user).map(r => ({ user: r.user, myBid: r.my_bid })),
       status: l.status, finalBid: l.final_bid, closedAt: l.closed_at,
       seenMinsBeforeClose: l.final_seen_at && l.end_at ? Math.max(0, Math.round((l.end_at - l.final_seen_at) / 60000)) : null,
@@ -182,7 +184,7 @@ export function startServer() {
     try { res.json({ ok: true, key: watchUrl(String(req.body.url || '').trim(), req.user) }); }
     catch (e) { res.status(400).json({ error: e.message }); }
   });
-  const mySettings = user => ({ user, myNtfyUrl: settings.getUser(user, 'ntfyUrl') || '', base: baseOf(user)?.name, bases: bases().map(b => b.name),
+  const mySettings = user => ({ user, transport: !!settings.getUser(user, 'transport'), myNtfyUrl: settings.getUser(user, 'ntfyUrl') || '', base: baseOf(user)?.name, bases: bases().map(b => b.name),
     digestHour: settings.getUser(user, 'digestHour') ?? config.digestHour, digestTz: settings.getUser(user, 'digestTz') || config.digestTz,
     digestOn: !settings.getUser(user, 'digestOff') });
   app.get('/api/settings', (req, res) => res.json({ ...settings.publicView(), ...mySettings(req.user) }));
@@ -208,6 +210,7 @@ export function startServer() {
     if (b.digestHour != null && Number(b.digestHour) >= 0 && Number(b.digestHour) <= 23) settings.setUser(req.user, { digestHour: Number(b.digestHour) });
     if (typeof b.digestTz === 'string' && /^(Australia|Asia|Pacific|Europe|America)\/[A-Za-z_]+$/.test(b.digestTz)) settings.setUser(req.user, { digestTz: b.digestTz });
     if (b.digestOn != null) settings.setUser(req.user, { digestOff: !b.digestOn });
+    if (b.transport != null) settings.setUser(req.user, { transport: !!b.transport });
     settings.set(patch);
     res.json({ ...settings.publicView(), ...mySettings(req.user) });
   });
@@ -226,6 +229,21 @@ export function startServer() {
     const lot = q.lot.get(req.params.key);
     if (!lot) return res.status(404).json({ error: 'Lot not found' });
     try { res.json({ ok: true, result: await checkListing(lot) }); } catch (e) { res.status(400).json({ error: e.message.slice(0, 200) }); }
+  });
+  // Bid panel: what a given bid really costs, and the most you can bid for a budget
+  app.get('/api/lots/:key/cost', (req, res) => {
+    const lot = q.lot.get(req.params.key);
+    if (!lot) return res.status(404).json({ error: 'Lot not found' });
+    const view = viewOf(req.user);
+    const bid = Number(String(req.query.bid ?? '').replace(/[$,\s]/g, ''));
+    const budget = Number(String(req.query.budget ?? '').replace(/[$,\s]/g, ''));
+    const mine = q.myWatchKeys.all(req.user).find(w => w.key === lot.key);
+    res.json({
+      current: allIn(lot, view.base, undefined, view), atBid: bid > 0 ? allIn(lot, view.base, bid, view) : null,
+      maxForBudget: budget > 0 ? maxBidFor(lot, view.base, budget, view) : null,
+      myBid: mine?.my_bid ?? null, status: mine?.my_bid != null ? bidStatus(lot, mine.my_bid) : null,
+      rivals: q.rivals.all(lot.key, req.user).map(r => ({ user: r.user, myBid: r.my_bid })), transport: view.transport,
+    });
   });
   app.get('/api/digest/preview', (req, res) => res.json({ text: buildDigest(req.user) }));
   app.post('/api/lots/:key/research', async (req, res) => {

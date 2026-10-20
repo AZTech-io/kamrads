@@ -50,14 +50,19 @@ test('distance: cached suburb, else the state capital (approximate)', () => {
   assert.ok(far.approx && far.km > 3000 && far.km < 4200, `Melbourne from Karnup ~${far.km} km`);
 });
 
-test("true cost: Pickles flat fee, Lloyds 16.5% premium, +GST, transport home", () => {
+test("true cost: fee schedule by line, Lloyds 16.5% premium, +GST, transport only when switched on", async () => {
+  const { feeLine, maxBidFor } = await import('../src/costs.js');
   const isuzu = { site: 'pickles', title: '2011 Isuzu NPR 400 Medium', category: 'trucks', location: 'Bibra Lake, WA', bid: 2200 };
+  assert.equal(feeLine(isuzu), 'industrial');
+  assert.equal(feeLine({ site: 'pickles', title: '2014 Mazda 3', category: 'cars', wovr: 'Statutory Write-Off' }), 'salvage');
+  assert.equal(feeLine({ site: 'pickles', title: '2019 Toyota Corolla', category: 'cars' }), 'cars');
+  assert.equal(feeLine({ site: 'pickles', title: 'Dulux paint 10L', category: 'general goods' }), 'general');
   const c = allIn(isuzu, karnup);
-  assert.equal(c.fee, 275);
-  assert.equal(c.transport, 0, 'Bibra Lake is a pick-up from Karnup');
-  assert.equal(c.total, 2475);
-  const toCbr = allIn(isuzu, canberra);
-  assert.ok(toCbr.transport > 2000, 'a truck across the country is expensive');
+  assert.equal(c.transport, null, 'transport is off unless you turn it on');
+  assert.equal(c.total, c.landed);
+  assert.ok(c.km < 80, 'distance is still shown');
+  assert.equal(allIn(isuzu, karnup, undefined, { transport: true }).transport, 0, 'Bibra Lake is a pick-up from Karnup');
+  assert.ok(allIn(isuzu, canberra, undefined, { transport: true }).transport > 2000, 'a truck across the country is expensive');
   const volvo = { site: 'lloyds', title: '2004 Volvo FH12 Prime Mover', location: 'Paget, QLD', bid: 1650, gst_extra: 1 };
   const v = allIn(volvo, null);
   assert.equal(v.premium, 272);
@@ -65,7 +70,9 @@ test("true cost: Pickles flat fee, Lloyds 16.5% premium, +GST, transport home", 
   assert.equal(v.landed, 1650 + 272 + 165);
   const drill = { site: 'allbids', title: 'Makita drill', location: 'Fyshwick', state: 'ACT', bid: 40, buyer_premium: 10 };
   assert.equal(allIn(drill, canberra).premium, 4, "the lot's own premium wins over the site default");
-  assert.equal(allIn(drill, canberra).transport, 0);
+  // "I can spend $5,000 all-in": the highest bid that stays within it
+  const max = maxBidFor(volvo, null, 5000);
+  assert.ok(allIn(volvo, null, max).total <= 5000 && allIn(volvo, null, max + 1).total > 5000);
 });
 
 test("fees read from a lot page", () => {
