@@ -1,0 +1,23 @@
+services:
+  kamrads:
+    build: .
+    container_name: kamrads
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "127.0.0.1:8787:8787"   # only reachable on the server itself; the tunnel publishes it
+    mem_limit: 1200m             # if Chromium misbehaves, only this container is killed
+    shm_size: 256m
+    init: true
+
+  # Cloudflare Tunnel: HTTPS + login in front of the dashboard, no open ports.
+  # Start with: docker compose --profile tunnel up -d
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
+    env_file: .env
+    network_mode: host

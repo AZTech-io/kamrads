@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111d2b">
+<title>KAMRADS</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111d2b'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%233ddc97' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%233ddc97'/%3E%3C/svg%3E">
+<style>
+:root {
+  --navy: #111d2b; --navy-2: #182739; --navy-3: #22344a; --line: #2b3f57;
+  --ink: #e8eef5; --muted: #8fa3b8; --green: #3ddc97; --green-dim: rgba(61,220,151,.14);
+  --amber: #f5b642; --red: #ff5d5d; --red-dim: rgba(255,93,93,.14); --blue: #6cb4ff;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #0c1520; color: var(--ink); font: 14px/1.4 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
+a { color: inherit; }
+header { background: var(--navy); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+.bar { max-width: 1240px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.brand b { font-size: 20px; letter-spacing: .5px; }
+.brand small { display: block; color: var(--green); font-weight: 600; font-size: 10.5px; letter-spacing: 1.5px; text-transform: uppercase; margin-top: -2px; }
+.status { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--navy-2); border: 1px solid var(--line); color: var(--muted); font-size: 12px; white-space: nowrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.dot.ok { background: var(--green); } .dot.warn { background: var(--amber); } .dot.bad { background: var(--red); }
+.controls { max-width: 1240px; margin: 0 auto; padding: 10px 16px 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.chip { border: 1px solid var(--line); background: var(--navy-2); color: var(--ink); padding: 6px 12px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 13px; }
+.chip[aria-pressed="true"] { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+input[type=search], select { background: var(--navy-2); border: 1px solid var(--line); color: var(--ink); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; }
+input[type=search] { flex: 1 1 180px; min-width: 140px; }
+main { max-width: 1240px; margin: 0 auto; padding: 12px 16px 60px; }
+.summary { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 14px; }
+.stat { background: var(--navy); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.stat .n { font-size: 22px; font-weight: 700; } .stat .l { color: var(--muted); font-size: 12px; }
+.stat.hot .n { color: var(--green); }
+.lot { display: grid; grid-template-columns: 92px 1fr auto; gap: 14px; align-items: center; background: var(--navy); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
+.lot.deal { border-left-color: var(--green); background: linear-gradient(90deg, rgba(61,220,151,.07), var(--navy) 40%); }
+.lot.alerted { border-left-color: var(--red); }
+.clock { text-align: center; font-variant-numeric: tabular-nums; }
+.clock .t { font-size: 17px; font-weight: 700; }
+.clock .d { color: var(--muted); font-size: 11px; }
+.clock.soon .t { color: var(--amber); } .clock.now .t { color: var(--red); }
+.title { font-weight: 600; font-size: 15px; text-decoration: none; }
+.title:hover { text-decoration: underline; }
+.meta { color: var(--muted); font-size: 12.5px; margin-top: 3px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 600; background: var(--navy-3); color: var(--ink); }
+.tag.stat { background: var(--red-dim); color: var(--red); border: 0; }
+.tag.rep { background: rgba(245,182,66,.14); color: var(--amber); }
+.tag.ok { background: var(--green-dim); color: var(--green); }
+.tag.site { background: transparent; border: 1px solid var(--line); color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-size: 10.5px; }
+.price { text-align: right; min-width: 170px; }
+.price .bid { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.price .sub { color: var(--muted); font-size: 12px; }
+.price .est { font-size: 12.5px; margin-top: 2px; }
+.price .est.good { color: var(--green); font-weight: 600; }
+.acts { display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px; }
+.icon { background: var(--navy-2); border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 3px 8px; cursor: pointer; font: inherit; font-size: 12px; }
+.icon.on { color: var(--amber); border-color: var(--amber); }
+.empty { color: var(--muted); text-align: center; padding: 60px 20px; border: 1px dashed var(--line); border-radius: 12px; }
+.empty b { color: var(--ink); }
+footer { color: var(--muted); font-size: 12px; text-align: center; padding: 20px; }
+@media (max-width: 720px) {
+  .summary { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .lot { grid-template-columns: 64px 1fr; }
+  .price { grid-column: 1 / -1; text-align: left; display: flex; justify-content: space-between; align-items: end; min-width: 0; border-top: 1px solid var(--line); padding-top: 8px; }
+  .acts { margin: 0; }
+  .status { margin-left: 0; width: 100%; }
+  header { position: static; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <a class="brand" href="/">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+        <circle cx="17" cy="17" r="13" fill="none" stroke="#3ddc97" stroke-width="2.6" stroke-dasharray="62 20" transform="rotate(-50 17 17)"/>
+        <circle cx="17" cy="17" r="7.5" fill="none" stroke="#3ddc97" stroke-width="2.6" stroke-dasharray="34 13" transform="rotate(-50 17 17)"/>
+        <circle cx="17" cy="17" r="2.6" fill="#3ddc97"/>
+        <line x1="17" y1="17" x2="27" y2="7" stroke="#3ddc97" stroke-width="2.6" stroke-linecap="round"/>
+      </svg>
+      <span><b>KAMRADS</b><small>Auction Intelligence</small></span>
+    </a>
+    <div class="status" id="status"></div>
+  </div>
+  <div class="controls" id="filters">
+    <button class="chip" data-f="all" aria-pressed="true">All</button>
+    <button class="chip" data-f="deals" aria-pressed="false">Deals</button>
+    <button class="chip" data-f="vehicles" aria-pressed="false">Vehicles</button>
+    <button class="chip" data-f="under500" aria-pressed="false">Under $500</button>
+    <button class="chip" data-f="starred" aria-pressed="false">★ Starred</button>
+    <button class="chip" id="hideStat" aria-pressed="true">Hide statutory</button>
+    <select id="site"><option value="">All sites</option><option value="pickles">Pickles</option><option value="manheim">Manheim</option></select>
+    <select id="hours"><option value="3">Next 3 h</option><option value="24">Next 24 h</option><option value="48" selected>Next 48 h</option><option value="168">Next 7 days</option></select>
+    <input type="search" id="q" placeholder="Search: hilux, tipper, Perth…">
+  </div>
+</header>
+<main>
+  <div class="summary" id="summary"></div>
+  <div id="list"></div>
+</main>
+<footer>Spot it. Track it. Win it. · <a href="#" id="testAlert">Send a test alert</a> · <span id="updated"></span></footer>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = n => n == null ? '—' : '$' + Math.round(n).toLocaleString('en-AU');
+const SLEEPER = 0.25;
+let lots = [], filter = 'all', clockSkew = 0;
+const pref = (k, d) => { try { return JSON.parse(localStorage.getItem('k_' + k)) ?? d; } catch { return d; } };
+const save = (k, v) => { try { localStorage.setItem('k_' + k, JSON.stringify(v)); } catch {} };
+filter = pref('filter', 'all');
+$('#hideStat').setAttribute('aria-pressed', String(pref('hideStat', true)));
+$('#site').value = pref('site', '');
+$('#hours').value = String(pref('hours', 48));
+
+function left(ms) {
+  if (ms <= 0) return 'closing';
+  const s = Math.floor(ms / 1000), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+  if (d) return `${d}d ${h}h`;
+  if (h) return `${h}h ${String(m).padStart(2, '0')}m`;
+  return `${m}:${String(sec).padStart(2, '0')}`;
+}
+const fmtClose = t => new Date(t).toLocaleString('en-AU', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Australia/Perth' }) + ' AWST';
+const isDeal = l => (l.ratio != null && l.ratio <= SLEEPER) || (l.estimate == null && l.vehicle && (l.bid ?? l.startPrice) != null && (l.bid ?? l.startPrice) <= 3000) || l.alerts.length > 0;
+
+function wovrTag(w) {
+  if (!w) return '';
+  const cls = /statutory/i.test(w) ? 'stat' : /inspection/i.test(w) ? 'ok' : /repairable/i.test(w) ? 'rep' : '';
+  const label = /statutory/i.test(w) ? 'Statutory W/O · parts only' : w;
+  return `<span class="tag ${cls}">${esc(label)}</span>`;
+}
+
+function visible() {
+  const q = $('#q').value.trim().toLowerCase();
+  const site = $('#site').value, hideStat = $('#hideStat').getAttribute('aria-pressed') === 'true';
+  return lots.filter(l => {
+    if (site && l.site !== site) return false;
+    if (hideStat && /statutory/i.test(l.wovr || '') && !l.starred) return false;
+    if (q && !`${l.title} ${l.location} ${l.state} ${l.sale} ${l.category}`.toLowerCase().includes(q)) return false;
+    const p = l.bid ?? l.startPrice;
+    if (filter === 'deals') return isDeal(l);
+    if (filter === 'vehicles') return l.vehicle;
+    if (filter === 'under500') return p != null && p <= 500;
+    if (filter === 'starred') return l.starred;
+    return true;
+  });
+}
+
+function render() {
+  const now = Date.now() + clockSkew;
+  const rows = visible();
+  const hour = lots.filter(l => l.endAt && l.endAt - now < 3600000);
+  const deals = lots.filter(isDeal);
+  $('#summary').innerHTML = `
+    <div class="stat hot"><div class="n">${deals.length}</div><div class="l">Deals flagged</div></div>
+    <div class="stat"><div class="n">${hour.length}</div><div class="l">Closing in the next hour</div></div>
+    <div class="stat"><div class="n">${lots.length.toLocaleString('en-AU')}</div><div class="l">Lots tracked</div></div>
+    <div class="stat"><div class="n">${lots.filter(l => l.starred).length}</div><div class="l">Starred</div></div>`;
+  if (!rows.length) {
+    $('#list').innerHTML = `<div class="empty">${lots.length ? 'Nothing matches these filters.' : '<b>Scanning the auction sites…</b><br>The first full pass takes a few minutes. This page refreshes on its own.'}</div>`;
+    return;
+  }
+  $('#list').innerHTML = rows.slice(0, 400).map(l => {
+    const ms = l.endAt ? l.endAt - now : null;
+    const cls = ms == null ? '' : ms < 600000 ? 'now' : ms < 3600000 ? 'soon' : '';
+    const p = l.bid ?? l.startPrice;
+    const pct = l.ratio != null ? Math.round(l.ratio * 100) : null;
+    const est = l.estimate != null
+      ? `<div class="est ${l.ratio != null && l.ratio <= SLEEPER ? 'good' : ''}">est ${money(l.manualEstimate ?? l.estLow)}${l.manualEstimate == null && l.estHigh ? '–' + money(l.estHigh).slice(1) : ''}${pct != null ? ` · ${pct}%` : ''}${l.profit != null && l.profit > 0 ? ` · +${money(l.profit)}` : ''}</div>`
+      : `<div class="est sub">no estimate</div>`;
+    return `<div class="lot ${isDeal(l) ? 'deal' : ''} ${l.alerts.length ? 'alerted' : ''}">
+      <div class="clock ${cls}"><div class="t" data-end="${l.endAt ?? ''}">${ms == null ? '—' : left(ms)}</div><div class="d">${l.endAt ? esc(fmtClose(l.endAt)) : esc(l.buyMethod || 'time TBA')}</div></div>
+      <div>
+        <a class="title" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title || 'Untitled lot')}</a>
+        <div class="meta">
+          <span class="tag site">${esc(l.site)}</span>
+          ${l.location || l.state ? `<span>${esc([l.location, l.location?.includes(l.state) ? '' : l.state].filter(Boolean).join(' '))}</span>` : ''}
+          ${l.odometer ? `<span>${l.odometer.toLocaleString('en-AU')} km</span>` : ''}
+          ${wovrTag(l.wovr)}
+          ${l.sale ? `<span>${esc(l.sale)}</span>` : ''}
+          ${l.alerts.length ? `<span class="tag stat">ALERT · ${esc(l.alerts.join(', '))}</span>` : ''}
+        </div>
+      </div>
+      <div class="price">
+        <div><div class="bid">${money(p)}</div><div class="sub">${l.bid == null && l.startPrice != null ? 'start price' : l.bidCount != null ? l.bidCount + (l.bidCount === 1 ? ' bid' : ' bids') : l.bid == null ? 'bid not visible yet' : 'current bid'}</div>${est}</div>
+        <div class="acts">
+          <button class="icon ${l.starred ? 'on' : ''}" data-star="${esc(l.key)}" title="Star: alert me in the final minutes">★</button>
+          <button class="icon" data-est="${esc(l.key)}" title="Set your own resale estimate">Est</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function tick() {
+  const now = Date.now() + clockSkew;
+  document.querySelectorAll('.clock .t[data-end]').forEach(el => {
+    const end = Number(el.dataset.end); if (!end) return;
+    const ms = end - now;
+    el.textContent = left(ms);
+    el.parentElement.className = 'clock ' + (ms < 600000 ? 'now' : ms < 3600000 ? 'soon' : '');
+  });
+}
+
+async function load() {
+  try {
+    const [r, s] = await Promise.all([fetch('/api/lots?hours=' + $('#hours').value), fetch('/api/status')]);
+    const data = await r.json(), st = await s.json();
+    clockSkew = data.now - Date.now();
+    lots = data.lots;
+    $('#status').innerHTML = ['pickles', 'manheim'].map(site => {
+      const x = st.sites.find(z => z.site === site) || {};
+      const age = x.last_ok ? (Date.now() - x.last_ok) / 60000 : Infinity;
+      const err = x.last_error_at && (!x.last_ok || x.last_error_at > x.last_ok);
+      const cls = err ? 'bad' : age < 30 ? 'ok' : 'warn';
+      const tip = err ? x.last_error : x.last_ok ? `last scan ${Math.round(age)} min ago` : 'waiting for first scan';
+      return `<span class="pill" title="${esc(tip)}"><span class="dot ${cls}"></span>${site[0].toUpperCase() + site.slice(1)}${x.last_count != null ? ' · ' + x.last_count : ''}${x.logged_in ? ' · logged in' : ''}</span>`;
+    }).join('') + `<span class="pill"><span class="dot ${st.push ? 'ok' : 'warn'}"></span>Alerts ${st.push ? 'on' : 'not set up'}</span>`;
+    $('#updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
+    render();
+  } catch (e) { $('#updated').textContent = 'Connection problem — retrying'; }
+}
+
+$('#filters').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.id === 'hideStat') { const v = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', String(v)); save('hideStat', v); return render(); }
+  filter = b.dataset.f; save('filter', filter);
+  document.querySelectorAll('[data-f]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  render();
+});
+document.querySelectorAll('[data-f]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.f === filter)));
+$('#q').addEventListener('input', render);
+$('#site').addEventListener('change', e => { save('site', e.target.value); render(); });
+$('#hours').addEventListener('change', e => { save('hours', Number(e.target.value)); load(); });
+$('#list').addEventListener('click', async e => {
+  const star = e.target.closest('[data-star]'), estB = e.target.closest('[data-est]');
+  if (star) {
+    const l = lots.find(x => x.key === star.dataset.star); l.starred = !l.starred;
+    await fetch(`/api/lots/${encodeURIComponent(l.key)}/star`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ starred: l.starred }) });
+    render();
+  }
+  if (estB) {
+    const l = lots.find(x => x.key === estB.dataset.est);
+    const v = prompt(`Your resale estimate for:\n${l.title}\n\nDollars (leave blank to clear)`, l.manualEstimate ?? '');
+    if (v === null) return;
+    await fetch(`/api/lots/${encodeURIComponent(l.key)}/estimate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ value: v.replace(/[$,\s]/g, '') }) });
+    load();
+  }
+});
+$('#testAlert').addEventListener('click', async e => {
+  e.preventDefault();
+  const r = await (await fetch('/api/test-alert', { method: 'POST' })).json();
+  alert(r.configured ? (r.ok ? 'Test alert sent — check your phone.' : 'Sending failed — check NTFY_URL.') : 'Alerts are not set up yet: add NTFY_URL to the .env file.');
+});
+load();
+setInterval(load, 20000);
+setInterval(tick, 1000);
+</script>
+</body>
+</html>

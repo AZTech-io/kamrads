@@ -1,0 +1,18 @@
+{
+  "name": "auction-monitor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node --no-warnings src/index.js",
+    "probe": "node --no-warnings scripts/probe.js",
+    "login": "node --no-warnings scripts/login.js",
+    "import-cookies": "node --no-warnings scripts/import-cookies.js",
+    "test": "node --no-warnings --test test/*.test.js"
+  },
+  "dependencies": {
+    "express": "5.1.0",
+    "playwright": "1.64.1"
+  }
+}
