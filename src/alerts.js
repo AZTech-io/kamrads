@@ -3,6 +3,7 @@ import { q } from './db.js';
 import { push } from './notify.js';
 import { isVehicle } from './extract.js';
 
+const FRESH_MS = 3 * 60000;
 const money = n => (n == null ? '?' : '$' + Math.round(n).toLocaleString('en-AU'));
 
 /** The estimate the alert rules use: a manual one beats the AI's low figure. */
@@ -14,6 +15,8 @@ export function classify(lot, now = Date.now()) {
   const minsLeft = (lot.end_at - now) / 60000;
   if (minsLeft <= 0 || minsLeft > config.alertMinutes) return null;
   const statutory = lot.wovr === 'Statutory Write-Off';
+  // Only alert on a price we've just read from the lot's own page, never on stale listing data.
+  if (!lot.last_checked || now - lot.last_checked > FRESH_MS) return null;
   if (lot.starred) return { kind: 'watched', why: 'starred lot in its final minutes' };
   if (lot.bid == null && lot.start_price == null) return null;
   const price = lot.bid ?? lot.start_price;

@@ -10,6 +10,7 @@ import * as manheim from './sites/manheim.js';
 export const adapters = { pickles, manheim };
 const enabled = () => Object.values(adapters).filter(a => config.sites[a.site]?.enabled);
 
+const LIVE_FIELDS = ['bid', 'bid_count', 'end_at', 'buy_now', 'start_price', 'buy_method'];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let stopping = false;
 export const stop = () => { stopping = true; };
@@ -59,7 +60,12 @@ async function hotCycle() {
   await Promise.all(due.map(async lot => {
     try {
       const fresh = await adapters[lot.site].refresh(lot);
-      upsertLot({ ...fresh, site: lot.site, ext_id: lot.ext_id }, { checked: true });
+      // Detail pages often carry worse titles ("CP: 01/2014,Hino,...") - only take live fields,
+      // and descriptive ones only where we had nothing.
+      const update = { site: lot.site, ext_id: lot.ext_id };
+      for (const k of LIVE_FIELDS) if (fresh[k] != null) update[k] = fresh[k];
+      for (const [k, v] of Object.entries(fresh)) if (!(k in update) && lot[k] == null && v != null) update[k] = v;
+      upsertLot(update, { checked: true });
       const row = q.lot.get(lot.key);
       const mins = row.end_at ? Math.round((row.end_at - Date.now()) / 60000) : '?';
       log.info('hot', `${lot.key} ${row.title?.slice(0, 40)} · bid ${row.bid ?? '-'} · ${mins} min left`);

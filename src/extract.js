@@ -191,10 +191,10 @@ export function lotFromObject(obj, now = Date.now()) {
     sale_name: (v => (typeof v === 'string' ? v : null))(firstOf(f, SALE_KEYS)),
     category: typeof cat === 'string' ? cat : null,
     lot_no: (v => (v == null || typeof v === 'object' ? null : String(v)))(firstOf(f, LOTNO_KEYS)),
-    bid: parseMoney(bidRaw),
+    bid: (b => (b > 0 ? b : null))(parseMoney(bidRaw)), // 0 means "no bids yet" (or hidden), not a $0 bid
     bid_count: parseInt0(firstWhere(f, isBidCountKey)),
     buy_now: parseMoney(buyNowRaw),
-    start_price: parseMoney(startRaw),
+    start_price: (b => (b > 0 ? b : null))(parseMoney(startRaw)),
     end_at: parseTime(endRaw, now),
   };
 }

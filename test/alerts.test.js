@@ -10,7 +10,7 @@ const { upsertLot, q } = await import('../src/db.js');
 const { dueForRefresh } = await import('../src/scheduler.js');
 
 const NOW = Date.parse('2026-10-20T03:00:00Z');
-const lot = o => ({ status: 'open', starred: 0, wovr: null, bid: null, start_price: null, end_at: NOW + 8 * 60000, url: 'https://www.pickles.com.au/used/details/trucks/x/1', ...o });
+const lot = o => ({ status: 'open', starred: 0, last_checked: NOW - 30000, wovr: null, bid: null, start_price: null, end_at: NOW + 8 * 60000, url: 'https://www.pickles.com.au/used/details/trucks/x/1', ...o });
 
 test("Aaron's Isuzu: $2,200 at T-8 with a $15k estimate is a sleeper", () => {
   const hit = classify(lot({ bid: 2200, manual_estimate: 15000, title: '2011 Isuzu NPR 400' }), NOW);
@@ -25,6 +25,11 @@ test('no estimate: a cheap vehicle still alerts at T-10', () => {
 test('no alert outside the final 10 minutes, or when the price has caught up', () => {
   assert.equal(classify(lot({ bid: 2200, end_at: NOW + 30 * 60000 }), NOW), null);
   assert.equal(classify(lot({ bid: 9000, manual_estimate: 15000 }), NOW), null);
+});
+
+test('never alerts on stale listing data', () => {
+  assert.equal(classify(lot({ bid: 2200, last_checked: NOW - 10 * 60000 }), NOW), null);
+  assert.equal(classify(lot({ bid: 2200, last_checked: null }), NOW), null);
 });
 
 test('statutory write-offs are skipped unless starred', () => {

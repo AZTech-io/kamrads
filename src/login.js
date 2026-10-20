@@ -7,17 +7,15 @@ import { config } from './config.js';
 
 // Only an explicit log-out link proves a session: menus show "My Pickles" etc. to guests too.
 const LOGGED_IN = /\b(log\s?out|sign\s?out)\b/i;
-const GUEST = /^\s*(log\s?in|sign\s?in|sign\s?up|register)\s*$/i;
 
 async function isLoggedIn(page) {
-  return page.evaluate(([inSrc, guestSrc]) => {
+  return page.evaluate(inSrc => {
     const visible = el => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
     const all = [...document.querySelectorAll('a, button')];
     const text = e => (e.innerText || e.textContent || '').trim();
-    if (all.filter(visible).some(e => new RegExp(inSrc, 'i').test(text(e)))) return true;
-    // No visible log-out link: only trust the session if the page offers no log-in link anywhere.
-    return !all.some(e => new RegExp(guestSrc, 'i').test(text(e)));
-  }, [LOGGED_IN.source, GUEST.source]);
+    // Only a visible log-out / sign-out control proves a session.
+    return all.filter(visible).some(e => new RegExp(inSrc, 'i').test(text(e)));
+  }, LOGGED_IN.source);
 }
 const EMAIL_SEL = 'input[type="email"], input[autocomplete="username"], input[name*="email" i], input[id*="email" i], input[name*="user" i], input[id*="user" i]';
 const PASS_SEL = 'input[type="password"]';

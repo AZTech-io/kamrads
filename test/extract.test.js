@@ -112,3 +112,8 @@ test('a lot with a nested record of its own id is one lot, not two', () => {
   assert.equal(lots[0].ext_id, '62430579');
   assert.equal(lots[0].odometer, 288400);
 });
+
+test('a $0 listing bid means no bid yet', () => {
+  const [l] = lotsFromJson({ p: [{ stockNumber: 62423903, title: '2013 Ford Focus', currentBid: 0, startingBid: 0, odometer: 227319 }] });
+  assert.equal(l.bid, null);
+});
