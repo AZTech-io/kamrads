@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { config } from './config.js';
 import { db, q, upsertLot } from './db.js';
 import { log } from './log.js';
@@ -8,8 +10,13 @@ import { hasFeed } from './fast.js';
 import * as pickles from './sites/pickles.js';
 import * as manheim from './sites/manheim.js';
 import * as allbids from './sites/allbids.js';
+import * as lloyds from './sites/lloyds.js';
+import { checkBidders, announceResult } from './users.js';
+import { runSearches, searchFinalAlert } from './searches.js';
 
-export const adapters = { pickles, manheim, allbids };
+export const adapters = { pickles, manheim, allbids, lloyds };
+// Sites where a re-read is cheap (learned JSON feed, or plain-HTML lot pages)
+const quick = site => hasFeed(site) || !!adapters[site]?.cheapRefresh;
 const enabled = () => Object.values(adapters).filter(a => config.sites[a.site]?.enabled);
 
 const FINAL_GRACE_MS = 6 * 60000; // soft-close extensions + one final read before we mark a lot closed
@@ -35,6 +42,7 @@ async function discoverSite(a) {
     q.statusOk.run(a.site, Date.now(), lots.length);
     const withBid = lots.filter(l => l.bid != null).length, withEnd = lots.filter(l => l.end_at).length;
     log.info(a.site, `discovery done: ${lots.length} lots (${withBid} with bid, ${withEnd} with close time) in ${Math.round((Date.now() - t0) / 1000)}s`);
+    await runSearches().catch(e => log.warn('search', e.message));
   } catch (e) {
     q.statusErr.run(a.site, e.message.slice(0, 300), Date.now());
     log.error(a.site, `discovery failed: ${e.message}`);
@@ -66,21 +74,21 @@ export function dueForRefresh(now = Date.now()) {
   const due = rows.filter(l => {
     if (!adapters[l.site] || !config.sites[l.site]?.enabled || !l.url) return false;
     // Expensive lots aren't worth a slow page read; with a fast feed they're cheap, so keep them (final prices).
-    if (!hasFeed(l.site) && !l.starred && l.bid != null && l.bid > config.hotMaxBid) return false;
+    if (!quick(l.site) && !l.starred && l.bid != null && l.bid > config.hotMaxBid) return false;
     const mins = (l.end_at - now) / 60000;
     const since = now - (l.last_checked || 0);
     // Past its close: one last read to capture the final price (sites hide it once sold).
     if (mins <= 0) return (l.last_checked || 0) < l.end_at;
     // Final minutes: as often as the loop runs (every FINAL_EVERY_SEC) so the stored price is as close to the hammer as we can get.
-    if (mins <= config.finalWindowMin && hasFeed(l.site)) return since >= config.finalEverySec * 800;
+    if (mins <= config.finalWindowMin && quick(l.site)) return since >= config.finalEverySec * 800;
     if (mins <= config.hotWindowMin) return since >= config.hotEverySec * 900;
     return since >= config.warmEveryMin * 60000;
   });
   // Final reads first (they can't wait), then whatever closes soonest.
   due.sort((a, b) => ((a.end_at <= now) === (b.end_at <= now) ? a.end_at - b.end_at : a.end_at <= now ? -1 : 1));
   // Sites with a fast price feed can take many reads a cycle; full page reads are limited to HOT_BATCH.
-  const fast = due.filter(l => hasFeed(l.site)).slice(0, config.fastBatch);
-  const paged = due.filter(l => !hasFeed(l.site)).slice(0, config.hotBatch);
+  const fast = due.filter(l => quick(l.site)).slice(0, config.fastBatch);
+  const paged = due.filter(l => !quick(l.site)).slice(0, config.hotBatch);
   // Watchlist always goes first and doesn't count against the limits.
   return [...watched, ...fast, ...paged];
 }
@@ -89,6 +97,7 @@ async function hotCycle() {
   const now = Date.now();
   const closed = q.closeDue.all(now, now - FINAL_GRACE_MS);
   if (closed.length) log.info('hot', `${closed.length} lots closed`);
+  for (const { key } of closed) { const l = q.lot.get(key); if (l?.starred) await announceResult(l).catch(e => log.warn('alert', e.message)); }
   const due = dueForRefresh(now);
   let viaFeed = 0;
   await pool(due, 6, async lot => {
@@ -100,6 +109,7 @@ async function hotCycle() {
       for (const k of LIVE_FIELDS) if (fresh[k] != null) update[k] = fresh[k];
       for (const [k, v] of Object.entries(fresh)) if (!(k in update) && lot[k] == null && v != null) update[k] = v;
       upsertLot(update, { checked: true });
+      if (lot.starred) await checkBidders(q.lot.get(lot.key)).catch(e => log.warn('alert', e.message));
       if (fresh.fast) { viaFeed++; return; } // fast reads are too frequent to log one by one
       const row = q.lot.get(lot.key);
       const mins = row.end_at ? Math.round((row.end_at - Date.now()) / 60000) : '?';
@@ -113,7 +123,10 @@ async function hotCycle() {
   const took = Math.round((Date.now() - now) / 1000);
   if (took > 90) log.warn('hot', `re-check cycle took ${took}s for ${due.length} lots - watchlist may be falling behind`);
   // Alerts run on everything in the alert window, refreshed or not.
-  for (const lot of q.openWindow.all(Date.now(), Date.now() + config.alertMinutes * 60000)) await checkAlerts(lot);
+  for (const lot of q.openWindow.all(Date.now(), Date.now() + config.alertMinutes * 60000)) {
+    await checkAlerts(lot);
+    await searchFinalAlert(lot).catch(e => log.warn('search', e.message));
+  }
 }
 
 async function hotLoop() {
@@ -122,9 +135,28 @@ async function hotLoop() {
     try { await hotCycle(); } catch (e) { log.error('hot', e.stack || e.message); }
     // Speed up while anything we can read cheaply is in its final minutes (or a watched lot is).
     const now = Date.now();
-    const closing = q.openWindow.all(now - 60000, now + config.finalWindowMin * 60000).some(l => l.starred || hasFeed(l.site));
+    const closing = q.openWindow.all(now - 60000, now + config.finalWindowMin * 60000).some(l => l.starred || quick(l.site));
     const every = closing ? config.finalEverySec : config.hotEverySec;
     await sleep(Math.max(every * 1000 - (Date.now() - t0), 3000));
+  }
+}
+
+// Daily copy of the whole database (data/backups, last BACKUP_KEEP days), so years of results are safe.
+async function backupLoop() {
+  const dir = path.join(config.dataDir, 'backups');
+  while (!stopping) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      const day = new Date().toISOString().slice(0, 10);
+      const file = path.join(dir, `auctions-${day}.db`);
+      if (!fs.existsSync(file)) {
+        db.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`);
+        log.info('backup', `saved ${file} (${Math.round(fs.statSync(file).size / 1048576)} MB)`);
+        const old = fs.readdirSync(dir).filter(f => /^auctions-\d{4}-\d{2}-\d{2}\.db$/.test(f)).sort().slice(0, -config.backupKeep);
+        for (const f of old) fs.rmSync(path.join(dir, f));
+      }
+    } catch (e) { log.warn('backup', e.message); }
+    await sleep(3600000);
   }
 }
 
@@ -136,20 +168,23 @@ async function estimateLoop() {
 }
 
 /** Add any lot by its link. Returns the stored key, or throws if the site isn't supported. */
-export function watchUrl(url) {
+export function watchUrl(url, user = config.dashUser) {
   const a = Object.values(adapters).find(x => x.owns(url));
-  if (!a) throw new Error('That link is not a lot page on Pickles, Manheim or ALLBIDS.');
+  if (!a) throw new Error('That link is not a lot page on Pickles, Manheim, ALLBIDS or Lloyds.');
   const id = a.idFromUrl(url);
   if (!id) throw new Error('Could not find the lot number in that link.');
   const now = Date.now();
   const key = `${a.site}:${id}`;
   q.addWatch.run(key, a.site, id, url.split('#')[0], now, now, now);
+  q.watch.run(String(user).toLowerCase(), key, now);
   return key;
 }
 
 export async function startScheduler() {
   for (const a of enabled()) if (a.loginUrl) await ensureLogin(a.site, a.loginUrl).catch(e => log.warn(a.site, e.message));
+  runSearches().catch(e => log.warn('search', e.message));
   discoveryLoop();
   hotLoop();
   estimateLoop();
+  backupLoop();
 }

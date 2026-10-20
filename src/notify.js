@@ -3,9 +3,13 @@ import { log } from './log.js';
 import * as settings from './settings.js';
 
 /** Push to the director's phone via ntfy (free app for iOS/Android). */
-export async function push({ title, message, url, priority = 'high', tags = 'rotating_light' }) {
-  log.info('alert', `${title} — ${message}`);
-  const ntfyUrl = settings.get('ntfyUrl');
+export async function push({ title, message, url, priority = 'high', tags = 'rotating_light', to }) {
+  log.info('alert', `${to ? '@' + to + ' ' : ''}${title} — ${message}`);
+  // Personal alerts (outbid, your saved searches) go to that person's own link if they set one,
+  // otherwise to the shared link with their name on it.
+  const own = to ? settings.getUser(to, 'ntfyUrl') : null;
+  const ntfyUrl = own || settings.get('ntfyUrl');
+  if (to && !own) title = `[${to}] ${title}`;
   if (!ntfyUrl) return false;
   const headers = { Title: encodeHeader(title), Priority: priority, Tags: tags };
   if (url) headers.Click = url;

@@ -10,19 +10,31 @@ import { watchUrl } from './scheduler.js';
 import * as settings from './settings.js';
 import { researchLot, testKey } from './estimate.js';
 import { log } from './log.js';
+import { watch, unwatch, setMyBid, bidStatus } from './users.js';
+import { addSearch } from './searches.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
+// Each person logs in with their own name (DASH_USER/DASH_PASS plus DASH_USERS), which keeps
+// their watchlist, bids and saved searches separate.
 function basicAuth(req, res, next) {
-  if (!config.dashPass) return next();
+  if (!Object.keys(config.users).length) { req.user = (config.dashUser || 'admin').toLowerCase(); return next(); }
   const [type, b64] = (req.headers.authorization || '').split(' ');
   if (type === 'Basic' && b64) {
     const [u, ...p] = Buffer.from(b64, 'base64').toString().split(':');
-    if (u === config.dashUser && p.join(':') === config.dashPass) return next();
+    const name = u.trim().toLowerCase();
+    if (config.users[name] !== undefined && config.users[name] === p.join(':')) { req.user = name; return next(); }
   }
   res.set('WWW-Authenticate', 'Basic realm="KAMRADS"').status(401).send('Login required');
 }
 
+const sendCsv = (res, name, rows) => {
+  const cols = rows.length ? Object.keys(rows[0]) : [];
+  const cell = v => (v == null ? '' : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
+  const iso = (k, v) => (/_at$|^first_seen$/.test(k) && typeof v === 'number' ? new Date(v).toISOString() : v);
+  res.set('content-type', 'text/csv; charset=utf-8').set('content-disposition', `attachment; filename="${name}"`);
+  res.send([cols.join(','), ...rows.map(r => cols.map(c => cell(iso(c, r[c]))).join(','))].join('\n'));
+};
 const shape = (l, alertKinds) => {
   const est = estimateOf(l);
   const price = l.bid ?? l.start_price;
@@ -54,7 +66,62 @@ export function startServer() {
     const rows = q.dashboard.all(now - 60000, now + hours * 3600000, 3000);
     const alertKinds = new Map();
     for (const a of q.alertKinds.all(now - 7 * 86400000)) alertKinds.set(a.key, [...(alertKinds.get(a.key) || []), a.kind]);
-    res.json({ now, lots: rows.map(l => shape(l, alertKinds)) });
+    const mine = new Set(q.myWatchKeys.all(req.user).map(w => w.key));
+    res.json({ now, lots: rows.map(l => ({ ...shape(l, alertKinds), starred: mine.has(l.key) })) });
+  });
+  app.get('/api/me', (req, res) => res.json({ user: req.user, users: Object.keys(config.users) }));
+  // Deals that got away: closed lots whose final price was a bargain.
+  app.get('/api/missed', (req, res) => {
+    const days = Math.min(Number(req.query.days) || 7, 365);
+    const mine = new Map(q.myWatchKeys.all(req.user).map(w => [w.key, w.my_bid]));
+    const out = [];
+    for (const l of q.missed.all(Date.now() - days * 86400000)) {
+      const price = l.final_bid;
+      const seen = l.final_seen_at && l.end_at ? Math.max(0, Math.round((l.end_at - l.final_seen_at) / 60000)) : null;
+      if (seen == null || seen > 15) continue; // too long before the close to know what it really went for
+      const statutory = l.wovr === 'Statutory Write-Off';
+      if (statutory && !config.includeStatutory) continue;
+      const est = estimateOf(l), market = l.est_avg;
+      let why = null;
+      if (est && price <= est * 0.5) why = `${Math.round((price / est) * 100)}% of estimate`;
+      else if (market && price <= market * 0.5) why = `${Math.round((price / market) * 100)}% of market price`;
+      else if (isVehicle(l) && price <= config.cheapVehicleMax) why = `vehicle under $${config.cheapVehicleMax.toLocaleString('en-AU')}`;
+      else if (price <= config.pennyMax) why = 'penny lot';
+      if (!why) continue;
+      const myBid = mine.get(l.key);
+      if (myBid != null && price <= myBid) continue; // you won it, not missed
+      out.push({ ...shape({ ...l, bid: price }, new Map()), finalBid: price, closedAt: l.closed_at, seenMinsBeforeClose: seen, why,
+        saving: (est || market) ? Math.round((est || market) - price) : null });
+    }
+    out.sort((a, b) => (b.saving ?? -1) - (a.saving ?? -1) || b.endAt - a.endAt);
+    res.json({ now: Date.now(), days, lots: out.slice(0, 500) });
+  });
+  // Everything we've collected, for spreadsheets.
+  app.get('/api/export/closed.csv', (req, res) => {
+    const days = Math.min(Number(req.query.days) || 30, 3650);
+    sendCsv(res, `kamrads-results-${new Date().toISOString().slice(0, 10)}.csv`, q.exportClosed.all(Date.now() - days * 86400000));
+  });
+  app.get('/api/export/bids.csv', (req, res) => {
+    const days = Math.min(Number(req.query.days) || 30, 3650);
+    sendCsv(res, 'kamrads-bid-history.csv', q.bidExport.all(Date.now() - days * 86400000));
+  });
+  app.get('/api/history', (_req, res) => res.json({ ...q.dbStats.get(), bids: q.bidRows.get().n }));
+  // Saved searches
+  app.get('/api/searches', (req, res) => {
+    const counts = new Map(q.hitCount.all().map(h => [h.search_id, h.n]));
+    res.json(q.searchesOf.all(req.user).map(s => ({ id: s.id, terms: s.terms, maxPrice: s.max_price, site: s.site, matches: counts.get(s.id) || 0, lastMatchAt: s.last_match_at })));
+  });
+  app.post('/api/searches', (req, res) => {
+    const b = req.body || {};
+    const maxPrice = b.maxPrice === '' || b.maxPrice == null ? null : Number(String(b.maxPrice).replace(/[$,\s]/g, ''));
+    if (maxPrice != null && !(maxPrice >= 0)) return res.status(400).json({ error: 'Max price should be a number.' });
+    try { res.json(addSearch(req.user, { terms: b.terms, maxPrice, site: b.site || null })); } catch (e) { res.status(400).json({ error: e.message }); }
+  });
+  app.delete('/api/searches/:id', (req, res) => { const r = q.delSearch.run(Number(req.params.id), req.user); if (r.changes) q.delSearchHits.run(Number(req.params.id)); res.json({ ok: true }); });
+  app.get('/api/searches/:id/lots', (req, res) => {
+    const s = q.searchesOf.all(req.user).find(x => x.id === Number(req.params.id));
+    if (!s) return res.status(404).json({ error: 'not found' });
+    res.json(q.hitsOf.all(s.id).map(l => shape(l, new Map())));
   });
   app.get('/api/closed', (req, res) => {
     const hours = Math.min(Number(req.query.hours) || 24, 24 * 90);
@@ -68,21 +135,23 @@ export function startServer() {
       return out;
     }) });
   });
-  app.get('/api/watchlist', (_req, res) => {
+  app.get('/api/watchlist', (req, res) => {
     const now = Date.now();
     const alertKinds = new Map();
     for (const a of q.alertKinds.all(now - 7 * 86400000)) alertKinds.set(a.key, [...(alertKinds.get(a.key) || []), a.kind]);
-    res.json({ now, every: config.watchEverySec, lots: q.watchlist.all(now - 24 * 3600000).map(l => ({
+    res.json({ now, every: config.watchEverySec, lots: q.userWatchlist.all(req.user, now - 24 * 3600000).map(l => ({
       ...shape(l.status === 'closed' ? { ...l, bid: l.final_bid ?? l.bid } : l, alertKinds),
       status: l.status, finalBid: l.final_bid, closedAt: l.closed_at,
       seenMinsBeforeClose: l.final_seen_at && l.end_at ? Math.max(0, Math.round((l.end_at - l.final_seen_at) / 60000)) : null,
+      starred: true, myBid: l.my_bid, bidStatus: bidStatus(l, l.my_bid),
+      others: q.watchersOf.all(l.key).filter(w => w.user !== req.user).map(w => w.user),
     })) });
   });
   app.post('/api/watch', (req, res) => {
-    try { res.json({ ok: true, key: watchUrl(String(req.body.url || '').trim()) }); }
+    try { res.json({ ok: true, key: watchUrl(String(req.body.url || '').trim(), req.user) }); }
     catch (e) { res.status(400).json({ error: e.message }); }
   });
-  app.get('/api/settings', (_req, res) => res.json(settings.publicView()));
+  app.get('/api/settings', (req, res) => res.json({ ...settings.publicView(), user: req.user, myNtfyUrl: settings.getUser(req.user, 'ntfyUrl') || '' }));
   app.post('/api/settings', (req, res) => {
     const b = req.body || {};
     const patch = {};
@@ -97,8 +166,12 @@ export function startServer() {
     }
     if (b.researchPerDay != null) patch.researchPerDay = Math.max(0, Math.min(1000, Number(b.researchPerDay) || 0));
     if (b.researchEnabled != null) patch.researchEnabled = !!b.researchEnabled;
+    if (typeof b.myNtfyUrl === 'string') {
+      if (b.myNtfyUrl && !/^https:\/\/\S+$/.test(b.myNtfyUrl.trim())) return res.status(400).json({ error: 'Your alert link should start with https://' });
+      settings.setUser(req.user, { ntfyUrl: b.myNtfyUrl });
+    }
     settings.set(patch);
-    res.json(settings.publicView());
+    res.json({ ...settings.publicView(), user: req.user, myNtfyUrl: settings.getUser(req.user, 'ntfyUrl') || '' });
   });
   app.post('/api/settings/test-key', async (_req, res) => {
     const key = settings.get('anthropicKey');
@@ -112,17 +185,30 @@ export function startServer() {
   });
   app.get('/api/status', (_req, res) => res.json({ sites: q.statusAll.all(), alerts: q.recentAlerts.all(), ai: !!settings.get('anthropicKey'), push: !!settings.get('ntfyUrl') }));
   app.get('/api/lots/:key/bids', (req, res) => res.json(q.bidHistory.all(req.params.key)));
-  app.post('/api/lots/:key/star', (req, res) => { q.star.run(req.body.starred ? 1 : 0, req.params.key); res.json({ ok: true }); });
+  app.post('/api/lots/:key/star', (req, res) => {
+    if (!q.lot.get(req.params.key)) return res.status(404).json({ error: 'Lot not found' });
+    (req.body.starred ? watch : unwatch)(req.user, req.params.key);
+    res.json({ ok: true });
+  });
+  // "I'm bidding: my max is $5,000" (null clears it)
+  app.post('/api/lots/:key/mybid', (req, res) => {
+    const raw = req.body.value;
+    const v = raw === '' || raw == null ? null : Number(String(raw).replace(/[$,\s]/g, ''));
+    if (v != null && !(v > 0)) return res.status(400).json({ error: 'Enter your bid in dollars, e.g. 5000.' });
+    if (!q.lot.get(req.params.key)) return res.status(404).json({ error: 'Lot not found' });
+    setMyBid(req.user, req.params.key, v);
+    res.json({ ok: true });
+  });
   app.post('/api/lots/:key/estimate', (req, res) => {
     const v = req.body.value === '' || req.body.value == null ? null : Number(req.body.value);
     if (v != null && !(v >= 0)) return res.status(400).json({ error: 'bad value' });
     q.manualEstimate.run(v, req.params.key);
     res.json({ ok: true });
   });
-  app.post('/api/test-alert', async (_req, res) => {
-    const ok = await push({ title: 'KAMRADS test alert', message: 'If you can read this on your phone, alerts are working.', url: config.dashboardPublicUrl || undefined, priority: 'default', tags: 'satellite' });
+  app.post('/api/test-alert', async (req, res) => {
+    const ok = await push({ to: req.user, title: 'KAMRADS test alert', message: 'If you can read this on your phone, alerts are working.', url: config.dashboardPublicUrl || undefined, priority: 'default', tags: 'satellite' });
     res.json({ ok, configured: !!settings.get('ntfyUrl') });
   });
 
-  app.listen(config.port, config.host, () => log.info('web', `dashboard on http://${config.host}:${config.port}${config.dashPass ? '' : ' (WARNING: no DASH_PASS set)'}`));
+  app.listen(config.port, config.host, () => log.info('web', `dashboard on http://${config.host}:${config.port} · logins: ${Object.keys(config.users).join(', ') || 'NONE (no DASH_PASS set)'}`));
 }

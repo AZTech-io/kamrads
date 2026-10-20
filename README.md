@@ -1,10 +1,20 @@
 # KAMRADS — Auction Intelligence
 
-Watches Pickles, Manheim and ALLBIDS (incl. CARBIDS), lists every lot by what ends soonest, and pushes an alert to your phone when something is still cheap in its final 10 minutes.
+Watches Pickles, Manheim, ALLBIDS (incl. CARBIDS) and Lloyds Auctions, lists every lot by what ends soonest, and pushes an alert to your phone when something is still cheap in its final 10 minutes.
 
 **Market research:** add your Claude API key under **Settings** (bottom of the dashboard — it's stored on the server only). Claude then searches carsales, Gumtree, Drive, RedBook and others for comparable listings, gives a market average and a realistic resale range for each lot, and flags great prices. Press **Research** on any lot to run it on demand. Automatic lookups have a daily cap (default 60, about 5–10c each).
 
-**My watchlist** sits at the top of the dashboard: star any lot (or paste its link) and its price is re-checked every 60 seconds until it closes.
+**Logins:** everyone gets their own login (`DASH_USER`/`DASH_PASS` plus `DASH_USERS=matthew:password` in `.env`), and with it their own watchlist, bids, alerts and phone link.
+
+**My watchlist** sits at the top of the dashboard: star any lot (or paste its link) and its price is re-checked every 60 seconds until it closes. Press **I'm bidding** / **Bid** and enter the most you've bid. The sites use max (proxy) bidding, so while the price is at or under your max you're **winning**; once it passes your max you're **OUTBID** and your phone gets a push. At the close you get "looks like you won" or "lost".
+
+**My alerts** (🔔): type what you're after, e.g. `renault master, mercedes sprinter, hiace -crash`, with an optional max price. You get a push when a new one is listed, and again in its final 10 minutes if it's still at or under your max.
+
+**More filters:** price range, year, km, type (cars, vans, trucks, bikes, machinery, boats, goods), write-off status, bids, closing day and state.
+
+**Missed deals** tab: bargains that closed without you — under half the estimate or market price, vehicles under $3,000, penny lots. Only lots read within 15 minutes of the close count, so the prices are real.
+
+**History:** everything is kept in `data/auctions.db` on the server (every lot, every price change, every final price), with a daily copy in `data/backups/` (last 14 days). **Download all results (CSV)** at the bottom of the dashboard opens in Excel; bid history is at `/api/export/bids.csv`.
 
 Every lot gets one last read just after it closes, so the **Sold** tab shows what things actually went for — the auction sites hide this once a lot ends.
 
@@ -73,7 +83,9 @@ In the final `ALERT_MINUTES` (10) of an auction:
 - **SLEEPER** — bid at or under 25% of the resale estimate (your own estimate from the "Est" button wins over the AI's).
 - **CHEAP** — no estimate yet, it's a vehicle, and it's still under `CHEAP_VEHICLE_MAX` ($3,000).
 - **PENNY LOT** — anything still at $5 or less.
-- **WATCHED** — anything you starred.
+- **WATCHED** — anything you starred: a personal push to each person watching, saying if they're winning or outbid.
+- **OUTBID** — any time the price passes the max you entered (not just the final minutes).
+- **MATCH** — one of your saved alerts, still at or under its max price.
 
 Statutory write-offs never alert unless starred: they can never be re-registered.
 

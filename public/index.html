@@ -88,8 +88,36 @@ dialog#settings::backdrop { background: rgba(0,0,0,.55); }
 .wrow .wp b { font-size: 18px; }
 .wrow .up { color: var(--red); font-size: 12px; font-weight: 600; }
 .wrow.sold { opacity: .75; }
+.bidst { display: inline-block; margin-top: 3px; padding: 2px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 700; letter-spacing: .3px; }
+.bidst.winning, .bidst.won { background: var(--green-dim); color: var(--green); }
+.bidst.outbid, .bidst.lost { background: var(--red-dim); color: var(--red); }
+.bidst.atmax, .bidst.nobids { background: rgba(245,182,66,.14); color: var(--amber); }
+.wrow.outbid { box-shadow: inset 3px 0 0 var(--red); }
+.wrow.winning { box-shadow: inset 3px 0 0 var(--green); }
+.icon.mybid { color: var(--ink); }
+.chip .n[hidden] { display: none; }
+.chip .n { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--green); color: #06281a; font-size: 11px; font-weight: 700; }
+.more { max-width: 1240px; margin: 0 auto; padding: 0 16px 12px; display: none; }
+.more.open { display: block; }
+.more-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px 14px; background: var(--navy-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.more-grid label { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+.more-grid input, .more-grid select { background: var(--navy); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 6px 8px; font: inherit; font-size: 13px; width: 100%; }
+.more-grid .states { display: flex; flex-wrap: wrap; gap: 4px; }
+.more-grid .states button { padding: 3px 8px; font-size: 12px; }
+.more-grid .wide { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
+dialog.box { background: var(--navy); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; width: min(600px, calc(100vw - 32px)); }
+dialog.box::backdrop { background: rgba(0,0,0,.55); }
+dialog.box h2 { margin: 0 0 4px; font-size: 18px; }
+.srow { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); }
+.srow b { font-size: 14px; }
+.sform { display: grid; grid-template-columns: 1fr 120px 120px auto; gap: 8px; margin: 12px 0 6px; }
+.sform input, .sform select { background: var(--navy-2); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 7px 10px; font: inherit; font-size: 13px; min-width: 0; }
+.sform button, .save2 { background: var(--green); color: #06281a; border: 0; border-radius: 8px; padding: 7px 14px; font: inherit; font-weight: 700; cursor: pointer; }
+@media (max-width: 720px) { .sform { grid-template-columns: 1fr 1fr; } .sform input:first-child { grid-column: 1 / -1; } }
+.searchbar { display: flex; gap: 8px; align-items: center; margin: -4px 0 12px; color: var(--muted); font-size: 13px; }
+.who { color: var(--muted); font-size: 12px; }
 .watch-empty { color: var(--muted); font-size: 13px; padding: 6px 0 2px; }
-@media (max-width: 720px) { .wrow { grid-template-columns: 64px 1fr auto; } .wrow .wx { display: none; } .watch-add { max-width: none; } }
+@media (max-width: 720px) { .wrow { grid-template-columns: 64px 1fr auto; } .wrow .wx { grid-column: 1 / -1; display: flex; gap: 6px; justify-content: flex-end; } .watch-add { max-width: none; } }
 footer { color: var(--muted); font-size: 12px; text-align: center; padding: 20px; }
 @media (max-width: 720px) {
   .summary { grid-template-columns: repeat(2, minmax(0,1fr)); }
@@ -121,25 +149,55 @@ footer { color: var(--muted); font-size: 12px; text-align: center; padding: 20px
     <button class="chip" data-f="vehicles" aria-pressed="false">Vehicles</button>
     <button class="chip" data-f="under500" aria-pressed="false">Under $500</button>
     <button class="chip" data-f="sold" aria-pressed="false">Sold</button>
+    <button class="chip" data-f="missed" aria-pressed="false" title="Bargains that closed without us">Missed deals</button>
     <button class="chip" id="hideStat" aria-pressed="true">Hide statutory</button>
-    <select id="site"><option value="">All sites</option><option value="pickles">Pickles</option><option value="manheim">Manheim</option><option value="allbids">ALLBIDS</option></select>
+    <select id="site"><option value="">All sites</option><option value="pickles">Pickles</option><option value="manheim">Manheim</option><option value="allbids">ALLBIDS</option><option value="lloyds">Lloyds</option></select>
     <select id="sort"><option value="hot">Hottest deals first</option><option value="ending">Ends soonest</option><option value="price">Lowest price</option><option value="profit">Biggest est. profit</option></select>
     <select id="hours"><option value="3">Next 3 h</option><option value="24">Next 24 h</option><option value="48" selected>Next 48 h</option><option value="168">Next 7 days</option></select>
     <input type="search" id="q" placeholder="Search: hilux, tipper, Perth…">
+    <button class="chip" id="moreBtn" aria-pressed="false">More filters<span class="n" id="moreN" hidden></span></button>
+    <button class="chip" id="alertsBtn" aria-pressed="false" title="Saved searches that alert your phone">🔔 My alerts<span class="n" id="alertsN" hidden></span></button>
+  </div>
+  <div class="more" id="more">
+    <div class="more-grid">
+      <label>Min price <input id="fMin" inputmode="numeric" placeholder="$0"></label>
+      <label>Max price <input id="fMax" inputmode="numeric" placeholder="any"></label>
+      <label>Year from <input id="fYear" inputmode="numeric" placeholder="e.g. 2012"></label>
+      <label>Max km <input id="fKm" inputmode="numeric" placeholder="e.g. 150000"></label>
+      <label>Type <select id="fType"><option value="">Anything</option><option value="vehicle">Any vehicle</option><option value="car">Cars &amp; utes</option><option value="van">Vans &amp; buses</option><option value="truck">Trucks &amp; trailers</option><option value="bike">Motorbikes</option><option value="machinery">Machinery &amp; plant</option><option value="boat">Boats &amp; caravans</option><option value="goods">General goods</option></select></label>
+      <label>Write-off status <select id="fWovr"><option value="">Any</option><option value="clean">Clean only (no write-off)</option><option value="repairable">Repairable write-offs</option><option value="statutory">Statutory only (parts)</option></select></label>
+      <label>Bids <select id="fBids"><option value="">Any</option><option value="none">No bids yet</option><option value="some">Has bids</option><option value="hot">5+ bids (popular)</option></select></label>
+      <label>Ends <select id="fEnds"><option value="">Any time</option><option value="60">Within 1 hour</option><option value="today">Today</option><option value="tomorrow">Tomorrow</option></select></label>
+      <label style="grid-column: span 2">State <span class="states" id="fStates"><button class="chip" type="button" data-state="NSW" aria-pressed="false">NSW</button><button class="chip" type="button" data-state="VIC" aria-pressed="false">VIC</button><button class="chip" type="button" data-state="QLD" aria-pressed="false">QLD</button><button class="chip" type="button" data-state="WA" aria-pressed="false">WA</button><button class="chip" type="button" data-state="SA" aria-pressed="false">SA</button><button class="chip" type="button" data-state="TAS" aria-pressed="false">TAS</button><button class="chip" type="button" data-state="ACT" aria-pressed="false">ACT</button><button class="chip" type="button" data-state="NT" aria-pressed="false">NT</button></span></label>
+      <div class="wide"><span id="moreHint">Filters apply to the list below and the Sold / Missed tabs.</span><button class="icon" type="button" id="moreReset">Clear filters</button></div>
+    </div>
   </div>
 </header>
 <main>
   <section class="watch" id="watch">
     <div class="watch-head">
       <h2>★ My watchlist</h2><span class="hint" id="watchHint">re-checked every 60 s</span>
-      <form class="watch-add" id="watchAdd"><input id="watchUrl" type="url" placeholder="Paste a Pickles / ALLBIDS / Manheim lot link to watch it"><button>Watch</button></form>
+      <form class="watch-add" id="watchAdd"><input id="watchUrl" type="url" placeholder="Paste a Pickles / ALLBIDS / Manheim / Lloyds lot link to watch it"><button>Watch</button></form>
     </div>
     <div id="watchList"></div>
   </section>
+  <div class="searchbar" id="searchbar" hidden></div>
   <div class="summary" id="summary"></div>
   <div id="list"></div>
 </main>
-<footer>Spot it. Track it. Win it. · <a href="#" id="openSettings">Settings</a> · <a href="#" id="testAlert">Send a test alert</a> · <span id="updated"></span></footer>
+<footer>Spot it. Track it. Win it. · <span class="who" id="who"></span> · <a href="#" id="openSettings">Settings</a> · <a href="#" id="testAlert">Send a test alert</a> · <a href="/api/export/closed.csv?days=3650" id="csv">Download all results (CSV)</a> · <span id="stored"></span> · <span id="updated"></span></footer>
+<dialog id="alerts" class="box">
+  <h2>🔔 My alerts</h2>
+  <p class="sub">Type what you're after. You get a push when a new one is listed, and again in its final 10 minutes if it's still at or under your max price. Commas mean "or"; put <b>-</b> in front of a word to exclude it.</p>
+  <form class="sform" id="sForm">
+    <input id="sTerms" placeholder="renault master, mercedes sprinter, van -crash" required>
+    <input id="sMax" inputmode="numeric" placeholder="Max price (optional)">
+    <select id="sSite"><option value="">All sites</option><option value="pickles">Pickles</option><option value="manheim">Manheim</option><option value="allbids">ALLBIDS</option><option value="lloyds">Lloyds</option></select>
+    <button>Add alert</button>
+  </form>
+  <div id="sList"></div>
+  <div class="row end" style="display:flex;justify-content:flex-end;margin-top:14px"><button type="button" class="icon" id="closeAlerts">Close</button></div>
+</dialog>
 <dialog id="settings">
   <form method="dialog" id="settingsForm">
     <h2>Settings</h2>
@@ -150,7 +208,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; padding: 20px
     <label><input id="sResearch" type="checkbox"> Research prices automatically (watchlist, vehicles, and lots over $50 closing within 6 h)</label>
     <label>Daily limit on automatic lookups <span class="sub">(each about 5–10c)</span>
       <input id="sPerDay" type="number" min="0" max="1000" step="10"></label>
-    <label>Phone alert link (ntfy) <input id="sNtfy" type="url" placeholder="https://ntfy.sh/kamrads-your-secret-topic"></label>
+    <label>Shared phone alert link (ntfy) — deals for everyone <input id="sNtfy" type="url" placeholder="https://ntfy.sh/kamrads-your-secret-topic"></label>
+    <label>My own alert link <span class="sub" id="meName"></span> — outbid, my watchlist, my searches <input id="sMyNtfy" type="url" placeholder="https://ntfy.sh/kamrads-yourname-secret (blank = use the shared one)"></label>
     <div class="row end"><button type="button" class="icon" id="closeSettings">Cancel</button><button class="save" id="saveSettings">Save</button></div>
   </form>
 </dialog>
@@ -160,6 +219,7 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = n => n == null ? '—' : '$' + Math.round(n).toLocaleString('en-AU');
 const SLEEPER = 0.25;
+let me = '', searches = [], activeSearch = null, more = {};
 let aiOn = false, soldStats = [], watch = [], lastBid = {}, curBid = {}, lots = [], filter = 'all', clockSkew = 0, mode = 'live';
 const pref = (k, d) => { try { return JSON.parse(localStorage.getItem('k_' + k)) ?? d; } catch { return d; } };
 const save = (k, v) => { try { localStorage.setItem('k_' + k, JSON.stringify(v)); } catch {} };
@@ -168,6 +228,60 @@ $('#hideStat').setAttribute('aria-pressed', String(pref('hideStat', true)));
 $('#site').value = pref('site', '');
 $('#sort').value = pref('sort', 'hot');
 $('#hours').value = String(pref('hours', 48));
+more = pref('more', {});
+const closedMode = () => mode === 'sold' || mode === 'missed';
+const SITE_NAMES = { pickles: 'Pickles', manheim: 'Manheim', allbids: 'ALLBIDS', lloyds: 'Lloyds' };
+
+// Same rules as the server's saved searches: commas = or, all words in one part must appear, -word excludes.
+function matcher(terms) {
+  const esc2 = w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const alts = String(terms || '').toLowerCase().split(/\s*(?:,|;|\||\bor\b)\s*/).filter(Boolean).map(alt => {
+    const words = alt.split(/\s+/).filter(Boolean);
+    return { need: words.filter(w => !w.startsWith('-')).map(w => new RegExp(`(^|[^a-z0-9])${esc2(w)}(s|es)?($|[^a-z0-9])`, 'i')),
+      not: words.filter(w => w.startsWith('-') && w.length > 1).map(w => new RegExp(`(^|[^a-z0-9])${esc2(w.slice(1))}`, 'i')) };
+  }).filter(a => a.need.length);
+  return l => { const t = `${l.title || ''} ${l.category || ''}`.replace(/[-_/]/g, ' '); return alts.some(a => a.need.every(r => r.test(t)) && !a.not.some(r => r.test(t))); };
+}
+
+// Rough type from category / link / title, for the Type filter.
+function typeOf(l) {
+  const t = `${l.category || ''} ${l.url || ''} ${l.title || ''} ${l.sale || ''}`.toLowerCase();
+  if (/motor ?(bike|cycle)|motorcycles?|\bbikes?\b|scooter|harley|kawasaki|ducati|\bktm\b|yamaha [a-z]{1,3}\d/.test(t)) return 'bike';
+  if (/\btrucks?\b|trailer|prime mover|tipper|isuzu n[pq]r|hino|fuso|kenworth|scania|\bmack\b|freightliner|tray ?back/.test(t)) return 'truck';
+  if (/\bvans?\b|\bbus(es)?\b|hiace|sprinter|renault master|iloa?d|transit|crafter|trafic|\bvito\b|kombi|coaster|rosa/.test(t)) return 'van';
+  if (/boat|marine|jet ?ski|caravan|camper|motorhome|pop ?top/.test(t)) return 'boat';
+  if (/machinery|plant|excavat|forklift|loader|tractor|bobcat|skid ?steer|dozer|grader|generator|compressor|\bmower|elevated work|scissor lift|telehandler/.test(t)) return 'machinery';
+  if (l.vehicle) return 'car';
+  return 'goods';
+}
+const n0 = v => { const x = Number(String(v ?? '').replace(/[$,\s]/g, '')); return v === '' || v == null || !Number.isFinite(x) ? null : x; };
+function moreActive() {
+  return ['min', 'max', 'year', 'km', 'type', 'wovr', 'bids', 'ends'].filter(k => more[k] != null && more[k] !== '').length + ((more.states || []).length ? 1 : 0);
+}
+function passMore(l, now) {
+  const p = closedMode() ? l.finalBid : l.bid ?? l.startPrice;
+  if (n0(more.min) != null && (p == null || p < n0(more.min))) return false;
+  if (n0(more.max) != null && (p == null || p > n0(more.max))) return false;
+  if (n0(more.year) != null && (!l.year || l.year < n0(more.year))) return false;
+  if (n0(more.km) != null && (l.odometer == null || l.odometer > n0(more.km))) return false;
+  if (more.type) { const t = typeOf(l); if (more.type === 'vehicle' ? !['car', 'van', 'truck', 'bike'].includes(t) && !l.vehicle : t !== more.type) return false; }
+  const w = l.wovr || '';
+  if (more.wovr === 'clean' && /write-?off/i.test(w)) return false;
+  if (more.wovr === 'repairable' && !/repairable/i.test(w)) return false;
+  if (more.wovr === 'statutory' && !/statutory/i.test(w)) return false;
+  if (more.bids === 'none' && !(l.bidCount === 0 || (l.bid == null && l.bidCount == null))) return false;
+  if (more.bids === 'some' && !(l.bidCount > 0 || (l.bid != null && l.bidCount == null))) return false;
+  if (more.bids === 'hot' && !(l.bidCount >= 5)) return false;
+  if ((more.states || []).length && !more.states.includes(l.state || (/\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b/.exec(l.location || '') || [])[1])) return false;
+  if (more.ends && !closedMode()) {
+    if (!l.endAt) return false;
+    const day = t => new Date(t).toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
+    if (more.ends === '60' && l.endAt - now > 3600000) return false;
+    if (more.ends === 'today' && day(l.endAt) !== day(now)) return false;
+    if (more.ends === 'tomorrow' && day(l.endAt) !== day(now + 86400000)) return false;
+  }
+  return true;
+}
 
 function left(ms) {
   if (ms <= 0) return 'closing';
@@ -188,7 +302,7 @@ function strength(l) {
   return null;
 }
 const isDeal = l => { const s = strength(l); return s != null && s <= SLEEPER; };
-const priceOf = l => (mode === 'sold' ? l.finalBid : l.bid ?? l.startPrice);
+const priceOf = l => (closedMode() ? l.finalBid : l.bid ?? l.startPrice);
 const SORTS = {
   ending: (a, b) => (a.endAt ?? Infinity) - (b.endAt ?? Infinity),
   price: (a, b) => (priceOf(a) ?? Infinity) - (priceOf(b) ?? Infinity) || SORTS.ending(a, b),
@@ -211,12 +325,16 @@ function wovrTag(w) {
 function visible() {
   const q = $('#q').value.trim().toLowerCase();
   const site = $('#site').value, hideStat = $('#hideStat').getAttribute('aria-pressed') === 'true';
+  const now = Date.now() + clockSkew;
+  const inSearch = activeSearch ? matcher(activeSearch.terms) : null;
   return lots.filter(l => {
     if (site && l.site !== site) return false;
+    if (!passMore(l, now)) return false;
+    if (inSearch && (!inSearch(l) || (activeSearch.site && l.site !== activeSearch.site))) return false;
     if (hideStat && /statutory/i.test(l.wovr || '') && !l.starred) return false;
     if (q && !`${l.title} ${l.location} ${l.state} ${l.sale} ${l.category}`.toLowerCase().includes(q)) return false;
     const p = l.bid ?? l.startPrice;
-    if (filter === 'sold') return true;
+    if (filter === 'sold' || filter === 'missed') return true;
     if (l.starred) return false; // shown in the watchlist panel instead
     if (filter === 'deals') return isDeal(l);
     if (filter === 'vehicles') return l.vehicle;
@@ -247,32 +365,49 @@ function compsBlock(l) {
 function renderWatch() {
   const now = Date.now() + clockSkew;
   $('#watchList').innerHTML = !watch.length
-    ? '<div class="watch-empty">Nothing yet. Tap ★ on any lot below, or paste a lot link above, and it lives here with its price checked every minute.</div>'
+    ? '<div class="watch-empty">Nothing yet. Tap ★ on any lot below (or <b>Bid</b> if you\'ve put a bid on it), or paste a lot link above. Its price is checked every minute and you\'ll see if you\'re winning.</div>'
     : watch.map(l => {
       const closed = l.status === 'closed';
       const ms = l.endAt ? l.endAt - now : null;
       const cls = closed || ms == null ? '' : ms < 600000 ? 'now' : ms < 3600000 ? 'soon' : '';
       const price = closed ? (l.finalBid ?? l.bid) : (l.bid ?? l.startPrice);
       const moved = !closed && lastBid[l.key] != null && l.bid != null && l.bid > lastBid[l.key];
-      return `<div class="wrow ${closed ? 'sold' : ''}">
+      const BS = { winning: "You're winning", atmax: 'At your max — winning only if you bid first', outbid: 'OUTBID', nobids: 'No bids showing yet', won: 'Looks like you won', lost: 'Lost — went past your max' };
+      const bs = l.bidStatus ? `<div class="bidst ${l.bidStatus}">${BS[l.bidStatus]}${l.myBid != null ? ` · my max ${money(l.myBid)}` : ''}</div>` : '';
+      return `<div class="wrow ${closed ? 'sold' : ''} ${l.bidStatus || ''}">
         <div class="clock ${cls}">${closed ? '<div class="t">SOLD</div>' : `<div class="t" data-end="${l.endAt ?? ''}">${ms == null ? '…' : left(ms)}</div>`}<div class="d">${l.endAt ? esc(fmtClose(l.endAt)) : 'reading lot…'}</div></div>
         <div><a class="wt" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title || slugName(l.url) || 'Loading lot details…')}</a>
-          <div class="wm"><span class="tag site">${esc(l.site)}</span> ${esc([l.location, l.state].filter(Boolean).join(' '))}${l.odometer ? ' · ' + l.odometer.toLocaleString('en-AU') + ' km' : ''}${l.wovr ? ' · ' + esc(l.wovr) : ''} · ${closed ? (l.seenMinsBeforeClose != null && l.seenMinsBeforeClose <= 1 ? 'hammer price' : 'final price seen') : ago(l.lastChecked)}</div>${compsBlock(l)}</div>
-        <div class="wp"><b>${money(price)}</b><div class="sub">${closed ? 'sold' : l.bidCount != null ? l.bidCount + (l.bidCount === 1 ? ' bid' : ' bids') : l.bid == null ? 'no bid seen' : 'current bid'}</div>${moved ? `<div class="up">▲ was ${money(lastBid[l.key])}</div>` : ''}${l.estimate ? `<div class="sub">est ${money(l.estimate)}</div>` : ''}</div>
-        <div class="wx"><button class="icon on" data-unwatch="${esc(l.key)}" title="Stop watching">★</button>${closed ? '' : ` <button class="icon" data-research="${esc(l.key)}" title="Search the market for comparable prices">${l.estMethod === 'web' ? 'Re-check' : 'Research'}</button>`}</div>
+          <div class="wm"><span class="tag site">${esc(l.site)}</span> ${esc([l.location, l.state].filter(Boolean).join(' '))}${l.odometer ? ' · ' + l.odometer.toLocaleString('en-AU') + ' km' : ''}${l.wovr ? ' · ' + esc(l.wovr) : ''}${l.others?.length ? ' · also watched by ' + esc(l.others.join(', ')) : ''} · ${closed ? (l.seenMinsBeforeClose != null && l.seenMinsBeforeClose <= 1 ? 'hammer price' : 'final price seen') : ago(l.lastChecked)}</div>${compsBlock(l)}</div>
+        <div class="wp"><b>${money(price)}</b><div class="sub">${closed ? 'sold' : l.bidCount != null ? l.bidCount + (l.bidCount === 1 ? ' bid' : ' bids') : l.bid == null ? 'no bid seen' : 'current bid'}</div>${moved ? `<div class="up">▲ was ${money(lastBid[l.key])}</div>` : ''}${l.estimate ? `<div class="sub">est ${money(l.estimate)}</div>` : ''}${bs}</div>
+        <div class="wx">${closed ? '' : `<button class="icon mybid" data-mybid="${esc(l.key)}" title="Tell KAMRADS the most you've bid, to see if you're winning">${l.myBid != null ? 'My bid ' + money(l.myBid) : "I'm bidding"}</button> `}<button class="icon on" data-unwatch="${esc(l.key)}" title="Stop watching">★</button>${closed ? '' : ` <button class="icon" data-research="${esc(l.key)}" title="Search the market for comparable prices">${l.estMethod === 'web' ? 'Re-check' : 'Research'}</button>`}</div>
       </div>`;
     }).join('');
-  $('#watchHint').textContent = `${watch.filter(l => l.status === 'open').length} watching · re-checked every ${watchEvery} s`;
+  const out = watch.filter(l => l.bidStatus === 'outbid').length, win = watch.filter(l => l.bidStatus === 'winning' || l.bidStatus === 'atmax').length;
+  $('#watchHint').textContent = `${watch.filter(l => l.status === 'open').length} watching${win ? ` · winning ${win}` : ''}${out ? ` · outbid on ${out}` : ''} · re-checked every ${watchEvery} s`;
 }
-let watchEvery = 60;
+let watchEvery = 60, missedDays = 7;
 
 function render() {
   renderWatch();
   const now = Date.now() + clockSkew;
   const sortBy = $('#sort').value;
-  const rows = visible().sort(mode === 'sold' && (sortBy === 'ending' || sortBy === 'hot') ? (a, b) => (b.endAt ?? 0) - (a.endAt ?? 0) : SORTS[sortBy] || SORTS.hot);
+  const rows = visible().sort(mode === 'missed' && (sortBy === 'hot' || sortBy === 'profit') ? (a, b) => (b.saving ?? -1) - (a.saving ?? -1) || b.endAt - a.endAt
+    : closedMode() && (sortBy === 'ending' || sortBy === 'hot') ? (a, b) => (b.endAt ?? 0) - (a.endAt ?? 0) : SORTS[sortBy] || SORTS.hot);
+  $('#searchbar').hidden = !activeSearch;
+  if (activeSearch) $('#searchbar').innerHTML = `Showing matches for <b>🔔 ${esc(activeSearch.terms)}</b>${activeSearch.maxPrice ? ` (alert under ${money(activeSearch.maxPrice)})` : ''} · ${rows.length} found <button class="icon" id="clearSearch">Show everything</button>`;
+  if (mode === 'missed') {
+    const shown = rows;
+    const total = shown.reduce((a, l) => a + (l.saving > 0 ? l.saving : 0), 0);
+    const veh = shown.filter(l => l.vehicle).length;
+    $('#summary').innerHTML = `
+      <div class="stat hot"><div class="n">${shown.length}</div><div class="l">Bargains that closed (${missedDays} days)</div></div>
+      <div class="stat"><div class="n">${money(total)}</div><div class="l">Total under estimate / market</div></div>
+      <div class="stat"><div class="n">${veh}</div><div class="l">Of them vehicles</div></div>
+      <div class="stat"><div class="n">${shown.filter(l => l.finalBid <= 500).length}</div><div class="l">Went for $500 or less</div></div>
+      <div class="capture"><span>Only lots we read within 15 minutes of closing, so the price is real. Statutory write-offs and lots you won are left out. Set your own <b>Est</b> on lots to make this sharper.</span></div>`;
+  }
   if (mode === 'sold') {
-    const shown = visible();
+    const shown = rows;
     const priced = shown.filter(l => l.finalBid != null);
     const bargains = shown.filter(l => l.ratio != null && l.ratio <= 0.5);
     const under500 = shown.filter(l => l.finalBid != null && l.finalBid <= 500);
@@ -282,32 +417,32 @@ function render() {
       <div class="stat"><div class="n">${under500.length}</div><div class="l">Sold for $500 or less</div></div>
       <div class="stat"><div class="n">${priced.length.toLocaleString('en-AU')} / ${shown.length.toLocaleString('en-AU')}</div><div class="l">Closed lots with a final price${shown.length < lots.length ? ` (${lots.length - shown.length} hidden by filters)` : ''}</div></div>
       <div class="stat"><div class="n">${exact.length}</div><div class="l">Read in the final minute</div></div>
-      <div class="capture">${soldStats.map(x => `<span><b>${({ pickles: 'Pickles', manheim: 'Manheim', allbids: 'ALLBIDS' })[x.site] || x.site}</b> ${x.closed} closed · ${x.priced} priced · ${x.hammer} at the hammer</span>`).join('') || '<span>No lots have closed yet in this period.</span>'}</div>`;
+      <div class="capture">${soldStats.map(x => `<span><b>${SITE_NAMES[x.site] || x.site}</b> ${x.closed} closed · ${x.priced} priced · ${x.hammer} at the hammer</span>`).join('') || '<span>No lots have closed yet in this period.</span>'}</div>`;
   }
   const hour = lots.filter(l => l.endAt && l.endAt - now < 3600000);
   const deals = lots.filter(isDeal);
-  if (mode !== 'sold') $('#summary').innerHTML = `
+  if (!closedMode()) $('#summary').innerHTML = `
     <div class="stat hot"><div class="n">${deals.length}</div><div class="l">Deals flagged</div></div>
     <div class="stat"><div class="n">${hour.length}</div><div class="l">Closing in the next hour</div></div>
     <div class="stat"><div class="n">${lots.length.toLocaleString('en-AU')}</div><div class="l">Lots tracked</div></div>
-    <div class="stat"><div class="n">${lots.filter(l => l.starred).length}</div><div class="l">Starred</div></div>`;
+    <div class="stat"><div class="n">${rows.length.toLocaleString('en-AU')}</div><div class="l">Showing${moreActive() || activeSearch || $('#q').value ? ' (filtered)' : ''}</div></div>`;
   if (!rows.length) {
     const hiddenStat = lots.filter(l => /statutory/i.test(l.wovr || '')).length;
     const hideOn = $('#hideStat').getAttribute('aria-pressed') === 'true';
-    $('#list').innerHTML = `<div class="empty">${lots.length ? (hideOn && hiddenStat ? `${hiddenStat} result${hiddenStat === 1 ? ' is a statutory write-off' : 's are statutory write-offs'}, hidden by <b>Hide statutory</b>. <a href="#" id="showStat">Show them</a>` : 'Nothing matches these filters.') : '<b>Scanning the auction sites…</b><br>The first full pass takes a few minutes. This page refreshes on its own.'}</div>`;
+    $('#list').innerHTML = `<div class="empty">${mode === 'missed' && !lots.length ? '<b>No missed bargains yet.</b><br>As lots close, the ones that went cheap show up here — check back after a day of auctions.' : lots.length ? (hideOn && hiddenStat ? `${hiddenStat} result${hiddenStat === 1 ? ' is a statutory write-off' : 's are statutory write-offs'}, hidden by <b>Hide statutory</b>. <a href="#" id="showStat">Show them</a>` : 'Nothing matches these filters.') : '<b>Scanning the auction sites…</b><br>The first full pass takes a few minutes. This page refreshes on its own.'}</div>`;
     return;
   }
   $('#list').innerHTML = rows.slice(0, 400).map(l => {
     const ms = l.endAt ? l.endAt - now : null;
-    const cls = mode === 'sold' || ms == null ? '' : ms < 600000 ? 'now' : ms < 3600000 ? 'soon' : '';
-    const p = l.bid ?? l.startPrice;
+    const cls = closedMode() || ms == null ? '' : ms < 600000 ? 'now' : ms < 3600000 ? 'soon' : '';
+    const p = closedMode() ? l.finalBid : l.bid ?? l.startPrice;
     const pct = l.ratio != null ? Math.round(l.ratio * 100) : null;
     const est = l.estimate != null
       ? `<div class="est ${l.ratio != null && l.ratio <= SLEEPER ? 'good' : ''}">est ${money(l.manualEstimate ?? l.estLow)}${l.manualEstimate == null && l.estHigh ? '–' + money(l.estHigh).slice(1) : ''}${pct != null ? ` · ${pct}%` : ''}${l.profit != null && l.profit > 0 ? ` · +${money(l.profit)}` : ''}</div>`
       : `<div class="est sub">no estimate</div>`;
-    const dealCls = mode === 'sold' ? (l.ratio != null && l.ratio <= 0.5 ? 'deal' : '') : (isDeal(l) ? 'deal' : '');
+    const dealCls = mode === 'missed' ? 'deal' : mode === 'sold' ? (l.ratio != null && l.ratio <= 0.5 ? 'deal' : '') : (isDeal(l) ? 'deal' : '');
     return `<div class="lot ${dealCls} ${l.alerts.length ? 'alerted' : ''}">
-      <div class="clock ${cls}">${mode === 'sold' ? `<div class="t">SOLD</div>` : `<div class="t" data-end="${l.endAt ?? ''}">${ms == null ? '—' : left(ms)}</div>`}<div class="d">${l.endAt ? esc(fmtClose(l.endAt)) : esc(l.buyMethod || 'time TBA')}</div></div>
+      <div class="clock ${cls}">${closedMode() ? `<div class="t">SOLD</div>` : `<div class="t" data-end="${l.endAt ?? ''}">${ms == null ? '—' : left(ms)}</div>`}<div class="d">${l.endAt ? esc(fmtClose(l.endAt)) : esc(l.buyMethod || 'time TBA')}</div></div>
       <div>
         <a class="title" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title || slugName(l.url) || 'Untitled lot')}</a>
         <div class="meta">
@@ -317,15 +452,17 @@ function render() {
           ${wovrTag(l.wovr)}
           ${l.sale ? `<span>${esc(l.sale)}</span>` : ''}
           ${l.alerts.length ? `<span class="tag stat">ALERT · ${esc(l.alerts.join(', '))}</span>` : ''}
+          ${mode === 'missed' ? `<span class="tag ok">${esc(l.why)}${l.saving > 0 ? ` · ${money(l.saving)} under` : ''}</span>` : ''}
         </div>
         ${compsBlock(l)}
       </div>
       <div class="price">
-        <div><div class="bid">${money(p)}</div><div class="sub">${mode === 'sold' ? (l.finalBid == null ? 'price not captured' : l.seenMinsBeforeClose == null ? 'price from listing' : l.seenMinsBeforeClose <= 1 ? 'hammer price' : `last seen ${l.seenMinsBeforeClose} min before close`) : l.bid == null && l.startPrice != null ? 'start price' : l.bidCount != null ? l.bidCount + (l.bidCount === 1 ? ' bid' : ' bids') : l.bid == null ? 'bid not visible yet' : 'current bid'}</div>${est}</div>
+        <div><div class="bid">${money(p)}</div><div class="sub">${closedMode() ? (l.finalBid == null ? 'price not captured' : l.seenMinsBeforeClose == null ? 'price from listing' : l.seenMinsBeforeClose <= 1 ? 'hammer price' : `last seen ${l.seenMinsBeforeClose} min before close`) : l.bid == null && l.startPrice != null ? 'start price' : l.bidCount != null ? l.bidCount + (l.bidCount === 1 ? ' bid' : ' bids') : l.bid == null ? 'bid not visible yet' : 'current bid'}</div>${est}</div>
         <div class="acts">
           <button class="icon ${l.starred ? 'on' : ''}" data-star="${esc(l.key)}" title="Star: alert me in the final minutes">★</button>
+          ${closedMode() ? '' : `<button class="icon mybid" data-mybid="${esc(l.key)}" title="I've bid on this: track if I'm winning">Bid</button>`}
           <button class="icon" data-est="${esc(l.key)}" title="Set your own resale estimate">Est</button>
-          ${mode === 'sold' ? '' : `<button class="icon" data-research="${esc(l.key)}" title="Search the market for comparable prices">${l.estMethod === 'web' ? 'Re-check' : 'Research'}</button>`}
+          ${closedMode() ? '' : `<button class="icon" data-research="${esc(l.key)}" title="Search the market for comparable prices">${l.estMethod === 'web' ? 'Re-check' : 'Research'}</button>`}
         </div>
       </div>
     </div>`;
@@ -344,7 +481,9 @@ function tick() {
 
 async function load() {
   try {
-    const sold = filter === 'sold';
+    const sold = filter === 'sold', missed = filter === 'missed';
+    missedDays = Number($('#hours').value) >= 168 ? 30 : 7;
+    fetch('/api/searches').then(x => x.json()).then(x => { searches = x; const n = x.length; $('#alertsN').hidden = !n; $('#alertsN').textContent = n; }).catch(() => {});
     const wl = fetch('/api/watchlist').then(x => x.json()).then(w => {
       // remember the previous price so a rise shows as "▲ was $X" until the next change
       for (const l of w.lots) {
@@ -353,21 +492,21 @@ async function load() {
       }
       watch = w.lots; watchEvery = w.every;
     }).catch(() => {});
-    const [r, s] = await Promise.all([fetch(sold ? '/api/closed?hours=' + Math.max(24, Number($('#hours').value)) : '/api/lots?hours=' + $('#hours').value), fetch('/api/status')]);
+    const [r, s] = await Promise.all([fetch(missed ? '/api/missed?days=' + missedDays : sold ? '/api/closed?hours=' + Math.max(24, Number($('#hours').value)) : '/api/lots?hours=' + $('#hours').value), fetch('/api/status')]);
     const data = await r.json(), st = await s.json();
     aiOn = !!st.ai;
     clockSkew = data.now - Date.now();
     lots = data.lots;
     soldStats = data.stats || [];
-    mode = sold ? 'sold' : 'live';
+    mode = missed ? 'missed' : sold ? 'sold' : 'live';
     await wl;
-    $('#status').innerHTML = ['pickles', 'manheim', 'allbids'].map(site => {
+    $('#status').innerHTML = ['pickles', 'manheim', 'allbids', 'lloyds'].map(site => {
       const x = st.sites.find(z => z.site === site) || {};
       const age = x.last_ok ? (Date.now() - x.last_ok) / 60000 : Infinity;
       const err = x.last_error_at && (!x.last_ok || x.last_error_at > x.last_ok);
       const cls = err ? 'bad' : age < 30 ? 'ok' : 'warn';
       const tip = err ? x.last_error : x.last_ok ? `last scan ${Math.round(age)} min ago` : 'waiting for first scan';
-      return `<span class="pill" title="${esc(tip)}"><span class="dot ${cls}"></span>${({ pickles: 'Pickles', manheim: 'Manheim', allbids: 'ALLBIDS' })[site]}${x.last_count != null ? ' · ' + x.last_count : ''}${x.logged_in ? ' · logged in' : ''}</span>`;
+      return `<span class="pill" title="${esc(tip)}"><span class="dot ${cls}"></span>${SITE_NAMES[site]}${x.last_count != null ? ' · ' + x.last_count : ''}${x.logged_in ? ' · logged in' : ''}</span>`;
     }).join('') + `<span class="pill"><span class="dot ${st.push ? 'ok' : 'warn'}"></span>Alerts ${st.push ? 'on' : 'not set up'}</span>`;
     $('#updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
     render();
@@ -379,7 +518,8 @@ $('#filters').addEventListener('click', e => {
   if (b.id === 'hideStat') { const v = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', String(v)); save('hideStat', v); return render(); }
   const was = filter;
   filter = b.dataset.f; save('filter', filter);
-  if ((was === 'sold') !== (filter === 'sold')) { lots = []; load(); }
+  const kind = f => (f === 'sold' || f === 'missed' ? f : 'live');
+  if (kind(was) !== kind(filter)) { lots = []; load(); }
   document.querySelectorAll('[data-f]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
   render();
 });
@@ -422,6 +562,67 @@ document.addEventListener('click', async e => {
   if (!r.ok) alert(j.error || 'Research failed.');
   load();
 });
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-mybid]'); if (!b) return;
+  const l = watch.find(x => x.key === b.dataset.mybid) || lots.find(x => x.key === b.dataset.mybid) || {};
+  const v = prompt(`What's the most you've bid on:\n${l.title || 'this lot'}\n\nCurrent price ${money(l.bid ?? l.startPrice)}. If you set a max (proxy) bid, enter that.\nLeave blank to clear.`, l.myBid ?? '');
+  if (v === null) return;
+  const r = await fetch(`/api/lots/${encodeURIComponent(b.dataset.mybid)}/mybid`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ value: v.replace(/[$,\s]/g, '') }) });
+  if (!r.ok) return alert((await r.json().catch(() => ({}))).error || 'Could not save.');
+  load();
+});
+// ---- More filters ----
+function syncMore() {
+  $('#fMin').value = more.min ?? ''; $('#fMax').value = more.max ?? ''; $('#fYear').value = more.year ?? ''; $('#fKm').value = more.km ?? '';
+  $('#fType').value = more.type || ''; $('#fWovr').value = more.wovr || ''; $('#fBids').value = more.bids || ''; $('#fEnds').value = more.ends || '';
+  document.querySelectorAll('[data-state]').forEach(x => x.setAttribute('aria-pressed', String((more.states || []).includes(x.dataset.state))));
+  const n = moreActive(); $('#moreN').hidden = !n; $('#moreN').textContent = n;
+}
+const readMore = () => {
+  more = { ...more, min: $('#fMin').value.trim(), max: $('#fMax').value.trim(), year: $('#fYear').value.trim(), km: $('#fKm').value.trim(),
+    type: $('#fType').value, wovr: $('#fWovr').value, bids: $('#fBids').value, ends: $('#fEnds').value };
+  save('more', more); syncMore(); render();
+};
+$('#more').addEventListener('input', readMore);
+$('#more').addEventListener('change', readMore);
+$('#fStates').addEventListener('click', e => {
+  const b = e.target.closest('[data-state]'); if (!b) return;
+  const set = new Set(more.states || []); set.has(b.dataset.state) ? set.delete(b.dataset.state) : set.add(b.dataset.state);
+  more.states = [...set]; save('more', more); syncMore(); render();
+});
+$('#moreReset').addEventListener('click', () => { more = {}; save('more', more); syncMore(); render(); });
+$('#moreBtn').addEventListener('click', () => { const open = $('#more').classList.toggle('open'); $('#moreBtn').setAttribute('aria-pressed', String(open || moreActive() > 0)); save('moreOpen', open); });
+if (pref('moreOpen', false)) $('#more').classList.add('open');
+syncMore();
+$('#moreBtn').setAttribute('aria-pressed', String($('#more').classList.contains('open') || moreActive() > 0));
+// ---- My alerts (saved searches) ----
+function renderSearches() {
+  $('#sList').innerHTML = searches.length ? searches.map(x => `<div class="srow"><div><b>${esc(x.terms)}</b>
+      <div class="sub">${x.maxPrice ? `alert in final 10 min if under ${money(x.maxPrice)}` : 'new listings only (add a max price for final-minutes alerts)'}${x.site ? ' · ' + esc(SITE_NAMES[x.site] || x.site) : ''} · ${x.matches} open match${x.matches === 1 ? '' : 'es'}</div></div>
+      <button class="icon" data-show="${x.id}">Show</button><button class="icon" data-del="${x.id}" title="Delete this alert">✕</button></div>`).join('')
+    : '<div class="sub" style="padding:8px 0">No alerts yet — add one above.</div>';
+}
+async function loadSearches() { searches = await (await fetch('/api/searches')).json(); renderSearches(); $('#alertsN').hidden = !searches.length; $('#alertsN').textContent = searches.length; }
+$('#alertsBtn').addEventListener('click', async () => { await loadSearches(); $('#alerts').showModal(); });
+$('#closeAlerts').addEventListener('click', () => $('#alerts').close());
+$('#sForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const r = await fetch('/api/searches', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ terms: $('#sTerms').value, maxPrice: $('#sMax').value, site: $('#sSite').value }) });
+  const j = await r.json();
+  if (!r.ok) return alert(j.error || 'Could not add that alert.');
+  $('#sTerms').value = ''; $('#sMax').value = '';
+  await loadSearches();
+});
+$('#sList').addEventListener('click', async e => {
+  const del = e.target.closest('[data-del]'), show = e.target.closest('[data-show]');
+  if (del && confirm('Delete this alert?')) { await fetch('/api/searches/' + del.dataset.del, { method: 'DELETE' }); if (activeSearch?.id === Number(del.dataset.del)) activeSearch = null; await loadSearches(); render(); }
+  if (show) {
+    activeSearch = searches.find(x => x.id === Number(show.dataset.show)); $('#alerts').close();
+    if (filter !== 'all') { filter = 'all'; save('filter', filter); document.querySelectorAll('[data-f]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.f === 'all'))); lots = []; await load(); }
+    render();
+  }
+});
+document.addEventListener('click', e => { if (e.target.id === 'clearSearch') { activeSearch = null; render(); } });
 $('#watchAdd').addEventListener('submit', async e => {
   e.preventDefault();
   const url = $('#watchUrl').value.trim(); if (!url) return;
@@ -436,13 +637,14 @@ function openSettings() {
     $('#keyState').textContent = st.anthropicKeySet ? `· saved ${st.anthropicKeyMasked}${st.anthropicKeyFrom === '.env' ? ' (from .env)' : ''}` : '· not set';
     $('#sKey').value = ''; $('#keyResult').textContent = '';
     $('#sResearch').checked = st.researchEnabled; $('#sPerDay').value = st.researchPerDay; $('#sNtfy').value = st.ntfyUrl;
+    $('#sMyNtfy').value = st.myNtfyUrl || ''; $('#meName').textContent = `(${st.user})`;
     $('#settings').showModal();
   });
 }
 $('#openSettings').addEventListener('click', e => { e.preventDefault(); openSettings(); });
 $('#closeSettings').addEventListener('click', () => $('#settings').close());
 async function saveSettings(extra = {}) {
-  const body = { researchEnabled: $('#sResearch').checked, researchPerDay: Number($('#sPerDay').value), ntfyUrl: $('#sNtfy').value.trim(), ...extra };
+  const body = { researchEnabled: $('#sResearch').checked, researchPerDay: Number($('#sPerDay').value), ntfyUrl: $('#sNtfy').value.trim(), myNtfyUrl: $('#sMyNtfy').value.trim(), ...extra };
   if ($('#sKey').value.trim()) body.anthropicKey = $('#sKey').value.trim();
   const r = await fetch('/api/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
   const j = await r.json();
@@ -462,8 +664,13 @@ $('#clearKey').addEventListener('click', async () => { if (confirm('Remove the s
 $('#testAlert').addEventListener('click', async e => {
   e.preventDefault();
   const r = await (await fetch('/api/test-alert', { method: 'POST' })).json();
-  alert(r.configured ? (r.ok ? 'Test alert sent — check your phone.' : 'Sending failed — check NTFY_URL.') : 'Alerts are not set up yet: add NTFY_URL to the .env file.');
+  alert(r.configured ? (r.ok ? 'Test alert sent — check your phone.' : 'Sending failed — check the alert link in Settings.') : 'Alerts are not set up yet: add an alert link in Settings.');
 });
+fetch('/api/me').then(r => r.json()).then(x => { me = x.user; $('#who').textContent = 'Logged in as ' + me; }).catch(() => {});
+const loadHistory = () => fetch('/api/history').then(r => r.json()).then(h => {
+  $('#stored').textContent = `Stored: ${Number(h.lots).toLocaleString('en-AU')} lots, ${Number(h.closed || 0).toLocaleString('en-AU')} results, ${Number(h.bids).toLocaleString('en-AU')} price changes${h.since ? ' since ' + new Date(h.since).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : ''}`;
+}).catch(() => {});
+loadHistory(); setInterval(loadHistory, 300000);
 load();
 setInterval(load, 20000);
 setInterval(tick, 1000);

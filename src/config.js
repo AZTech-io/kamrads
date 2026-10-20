@@ -10,6 +10,18 @@ export const config = {
   host: env.HOST || '0.0.0.0',
   dashUser: env.DASH_USER || 'admin',
   dashPass: env.DASH_PASS || '',
+  // Extra logins, each with their own watchlist, bids and alerts: DASH_USERS=matthew:secret,sam:pass2
+  users: (() => {
+    const out = {};
+    if (env.DASH_PASS) out[(env.DASH_USER || 'admin').toLowerCase()] = env.DASH_PASS;
+    for (const pair of (env.DASH_USERS || '').split(',')) {
+      const i = pair.indexOf(':');
+      if (i > 0) out[pair.slice(0, i).trim().toLowerCase()] = pair.slice(i + 1).trim();
+    }
+    return out;
+  })(),
+
+  backupKeep: num('BACKUP_KEEP', 14),          // daily database copies kept in data/backups
 
   // Browser
   proxy: env.PROXY_URL || '',              // e.g. http://user:pass@au.proxy.example:8000 (only if blocked)
@@ -78,6 +90,15 @@ export const config = {
         'https://www.carbids.com.au/c/allbids-car-auctions/motor-vehicles-cars',     // cars (close on weekdays)
         'https://www.allbids.com.au/c/trucks-trailers',
       ]),
+    },
+    lloyds: {
+      enabled: bool('LLOYDS_ENABLED', true),
+      maxAuctions: num('LLOYDS_MAX_AUCTIONS', 20),     // soonest-closing auctions scanned each pass
+      withinHours: num('LLOYDS_WITHIN_HOURS', 72),
+      maxPages: num('LLOYDS_MAX_PAGES', 8),
+      pageSize: num('LLOYDS_PAGE_SIZE', 100),
+      // Auctions whose name matches this are skipped (regex): property tenders etc.
+      skipFilter: env.LLOYDS_SKIP || 'real estate|hectares?|acres?|property|land for sale|house and land|tender',
     },
     manheim: {
       enabled: bool('MANHEIM_ENABLED', true),

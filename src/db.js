@@ -29,6 +29,19 @@ db.exec(`UPDATE lots SET bid_count = NULL WHERE bid_count > 500`); // bad counts
 // v1.1 cleanup: drop duplicate Pickles records created from internal ids
 db.exec(`DELETE FROM lots WHERE site = 'pickles' AND url LIKE '%/used/details/items/%'`);
 
+// Per-user: what each person is watching, and the most they've bid (their max / proxy bid).
+db.exec(`
+CREATE TABLE IF NOT EXISTS watches (user TEXT NOT NULL, key TEXT NOT NULL, my_bid REAL, added_at INTEGER, PRIMARY KEY(user, key));
+CREATE INDEX IF NOT EXISTS watches_key ON watches(key);
+CREATE TABLE IF NOT EXISTS searches (id INTEGER PRIMARY KEY AUTOINCREMENT, user TEXT NOT NULL, terms TEXT NOT NULL,
+  max_price REAL, site TEXT, created_at INTEGER, last_match_at INTEGER);
+CREATE TABLE IF NOT EXISTS search_hits (search_id INTEGER NOT NULL, key TEXT NOT NULL, at INTEGER NOT NULL, notified INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(search_id, key));
+CREATE TABLE IF NOT EXISTS user_alerts (user TEXT NOT NULL, key TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY(user, key, kind));
+CREATE INDEX IF NOT EXISTS lots_closed ON lots(status, closed_at);
+`);
+// v1.2: stars from before logins existed belong to the main login
+db.prepare(`INSERT OR IGNORE INTO watches (user, key, added_at) SELECT ?, key, ? FROM lots WHERE starred = 1`).run((config.dashUser || 'admin').toLowerCase(), Date.now());
+
 const FIELDS = ['url', 'title', 'category', 'year', 'make', 'model', 'odometer', 'wovr', 'location', 'state', 'image',
   'buy_method', 'sale_name', 'lot_no', 'bid', 'bid_count', 'buy_now', 'start_price', 'end_at'];
 
@@ -88,4 +101,38 @@ export const q = {
   statusLogin: db.prepare(`INSERT INTO site_status (site, logged_in) VALUES (?, ?)
     ON CONFLICT(site) DO UPDATE SET logged_in = excluded.logged_in`),
   statusAll: db.prepare('SELECT * FROM site_status'),
+
+  // --- per-user watchlist ---
+  watch: db.prepare(`INSERT INTO watches (user, key, added_at) VALUES (?, ?, ?) ON CONFLICT DO NOTHING`),
+  unwatch: db.prepare('DELETE FROM watches WHERE user = ? AND key = ?'),
+  myBid: db.prepare(`INSERT INTO watches (user, key, my_bid, added_at) VALUES (?, ?, ?, ?)
+    ON CONFLICT(user, key) DO UPDATE SET my_bid = excluded.my_bid`),
+  syncStar: db.prepare(`UPDATE lots SET starred = EXISTS (SELECT 1 FROM watches w WHERE w.key = lots.key) WHERE key = ?`),
+  myWatchKeys: db.prepare('SELECT key, my_bid FROM watches WHERE user = ?'),
+  userWatchlist: db.prepare(`SELECT l.*, w.my_bid FROM watches w JOIN lots l ON l.key = w.key
+    WHERE w.user = ? AND (l.status = 'open' OR l.closed_at > ?) ORDER BY l.status = 'closed', l.end_at IS NULL, l.end_at`),
+  watchersOf: db.prepare('SELECT user, my_bid FROM watches WHERE key = ?'),
+  // --- saved searches ---
+  addSearch: db.prepare('INSERT INTO searches (user, terms, max_price, site, created_at) VALUES (?, ?, ?, ?, ?) RETURNING id'),
+  delSearch: db.prepare('DELETE FROM searches WHERE id = ? AND user = ?'),
+  delSearchHits: db.prepare('DELETE FROM search_hits WHERE search_id = ?'),
+  searchesOf: db.prepare('SELECT * FROM searches WHERE user = ? ORDER BY id'),
+  allSearches: db.prepare('SELECT * FROM searches'),
+  addHit: db.prepare('INSERT OR IGNORE INTO search_hits (search_id, key, at, notified) VALUES (?, ?, ?, ?)'),
+  hitsOf: db.prepare(`SELECT l.* FROM search_hits h JOIN lots l ON l.key = h.key WHERE h.search_id = ? AND l.status = 'open' ORDER BY l.end_at`),
+  hitCount: db.prepare(`SELECT h.search_id, count(*) AS n FROM search_hits h JOIN lots l ON l.key = h.key WHERE l.status = 'open' GROUP BY h.search_id`),
+  searchesForLot: db.prepare('SELECT s.* FROM search_hits h JOIN searches s ON s.id = h.search_id WHERE h.key = ?'),
+  touchSearch: db.prepare('UPDATE searches SET last_match_at = ? WHERE id = ?'),
+  openLots: db.prepare(`SELECT key, site, title, category, sale_name, bid, start_price, end_at, wovr, url, location, state, odometer, first_seen FROM lots WHERE status = 'open' AND (end_at IS NULL OR end_at > ?)`),
+  userAlertSent: db.prepare('SELECT 1 FROM user_alerts WHERE user = ? AND key = ? AND kind = ?'),
+  addUserAlert: db.prepare('INSERT OR IGNORE INTO user_alerts (user, key, kind, at) VALUES (?, ?, ?, ?)'),
+  clearUserAlert: db.prepare('DELETE FROM user_alerts WHERE user = ? AND key = ? AND kind = ?'),
+  // --- history ---
+  missed: db.prepare(`SELECT * FROM lots WHERE status = 'closed' AND closed_at > ? AND final_bid IS NOT NULL ORDER BY end_at DESC LIMIT 5000`),
+  exportClosed: db.prepare(`SELECT site, ext_id, title, category, year, make, model, odometer, wovr, location, state, sale_name, lot_no,
+    final_bid, bid_count, start_price, buy_now, manual_estimate, est_low, est_high, est_avg, end_at, final_seen_at, first_seen, url
+    FROM lots WHERE status = 'closed' AND closed_at > ? ORDER BY end_at`),
+  dbStats: db.prepare(`SELECT count(*) AS lots, sum(status = 'closed') AS closed, sum(final_bid IS NOT NULL) AS priced, min(first_seen) AS since FROM lots`),
+  bidRows: db.prepare('SELECT count(*) AS n FROM bids'),
+  bidExport: db.prepare(`SELECT l.site, l.ext_id, l.title, b.at AS seen_at, b.bid FROM bids b JOIN lots l ON l.key = b.key WHERE b.at > ? ORDER BY b.key, b.at`),
 };

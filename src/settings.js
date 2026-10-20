@@ -29,6 +29,16 @@ export function set(patch) {
   fs.writeFileSync(file, JSON.stringify(saved, null, 1), { mode: 0o600 });
 }
 
+/** Per-login settings (e.g. Matthew's own phone alert link). */
+export function getUser(user, k) { return saved.users?.[user]?.[k] ?? null; }
+export function setUser(user, patch) {
+  saved.users = saved.users || {};
+  const u = saved.users[user] = saved.users[user] || {};
+  for (const [k, v] of Object.entries(patch)) if (v !== undefined) u[k] = typeof v === 'string' ? v.trim() : v;
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(saved, null, 1), { mode: 0o600 });
+}
+
 const mask = s => (s ? `${s.slice(0, 7)}…${s.slice(-4)}` : '');
 
 /** What the dashboard may see: never the full key. */

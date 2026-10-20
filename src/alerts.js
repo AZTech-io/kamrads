@@ -2,6 +2,7 @@ import { config } from './config.js';
 import { q } from './db.js';
 import { push } from './notify.js';
 import { isVehicle } from './extract.js';
+import { finalMinutes } from './users.js';
 
 const FRESH_MS = 3 * 60000;
 const money = n => (n == null ? '?' : '$' + Math.round(n).toLocaleString('en-AU'));
@@ -33,7 +34,14 @@ export function classify(lot, now = Date.now()) {
 }
 
 export async function checkAlerts(lot, now = Date.now()) {
-  const hit = classify(lot, now);
+  let hit = classify(lot, now);
+  // Watched lots: a personal final-minutes push to each person watching (with their winning/outbid
+  // status), then still judged as a deal for everyone else.
+  if (hit?.kind === 'watched') {
+    if (!q.alertSent.get(lot.key, 'watched')) q.addAlert.run(lot.key, 'watched', now, `WATCHED — ${lot.title}`);
+    await finalMinutes(lot, now);
+    hit = classify({ ...lot, starred: 0 }, now);
+  }
   if (!hit || q.alertSent.get(lot.key, hit.kind)) return null;
   const mins = Math.max(1, Math.round((lot.end_at - now) / 60000));
   const where = [lot.location, lot.state].filter(Boolean).join(' ');

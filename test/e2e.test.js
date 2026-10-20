@@ -16,7 +16,10 @@ process.env.ALLBIDS_SCROLLS = '3';
 process.env.PAGE_TIMEOUT_MS = '15000';
 if (!process.env.CHROME_PATH && fs.existsSync('/opt/google/chrome/chrome')) process.env.CHROME_PATH = '/opt/google/chrome/chrome';
 
+process.env.LLOYDS_MAX_PAGES = '2';
+process.env.LLOYDS_PAGE_SIZE = '3';
 const { getContext, closeBrowser } = await import('../src/browser.js');
+const lloyds = await import('../src/sites/lloyds.js');
 const pickles = await import('../src/sites/pickles.js');
 const manheim = await import('../src/sites/manheim.js');
 const allbids = await import('../src/sites/allbids.js');
@@ -68,11 +71,31 @@ const ALLBIDS = {
   ] }),
 };
 
+const lloydsDay = new Date(Date.now() + 3600000).toLocaleString('en-GB', { timeZone: 'Australia/Brisbane', day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-');
+const lotRow = (lid, no, title, bid, left) => `<tr><td>${no}</td><td><a href="LotDetails.aspx?smode=0&aid=74526&lid=${lid}"><img alt="${title}"></a></td>`
+  + `<td><a href="LotDetails.aspx?smode=0&aid=74526&lid=${lid}">${title}</a></td><td><img title="Queensland"></td><td>$${bid}</td><td>${left}</td></tr>`;
+const LLOYDS = {
+  '/AuctionList.aspx': html(`<table>
+    <tr><td>Wed ${lloydsDay} 10:00</td><td><a href="AuctionDetails.aspx?aid=74526">Machinery, Plant &amp; Equipment</a></td></tr>
+    <tr><td>Wed ${lloydsDay} 12:00</td><td><a href="AuctionDetails.aspx?aid=63775">BUY NOW - 40 HECTARES - WARIALDA NSW</a></td></tr></table>`),
+  '/AuctionLots.aspx': u => html('<table>' + (u.searchParams.get('pgn') === '1'
+    ? lotRow(6098907, '1', 'HOW DOES THE AUCTION PROCESS WORK? PRACTICE...', '1', '1d 5h 05m')
+      + lotRow(6098920, '1200', '2004 Volvo FH12 500 6x4 Prime Mover...', '1,350', '0d 0h 09m')
+      + lotRow(6109475, '3000', 'Enforcer M16 10m Electric Counterbalanced...', '2,220', '1d 5h 07m')
+    : lotRow(6109476, '3001', 'Pallet of Makita tools', '5', '2h 10m')) + '</table>'),
+  '/LotDetails.aspx': html(`<title>Machinery, Plant &amp; Equipment - Lot 1200</title><table>
+    <tr><td>Current Bid:</td><td>$1,650</td></tr><tr><td>Auction Date:</td><td>${lloydsDay} 10:00</td></tr>
+    <tr><td>Estimated time until auction:</td><td>00:08:30</td></tr>
+    <tr><td>Location of item:</td><td>Yard 3/263 Connors Road, Paget, QLD, Australia</td></tr>
+    <tr><td>Bidder(s)</td><td>There are no bids on this lot.</td></tr></table><ul><li>Manufacture Year: 2004</li><li>Kms: 889724</li></ul>`),
+};
+
 async function fakeSite(site, origin, pages) {
   const ctx = await getContext(site);
   await ctx.route(origin + '/**', route => {
     const u = new URL(route.request().url());
-    const body = pages[u.pathname];
+    let body = pages[u.pathname];
+    if (typeof body === 'function') body = body(u);
     if (body == null) return route.fulfill({ status: 404, body: 'nope' });
     route.fulfill({ status: 200, contentType: body.startsWith('{') ? 'application/json' : 'text/html', body });
   });
@@ -146,6 +169,31 @@ test('ALLBIDS: lots, UTC close times and ids lined up with the page', { skip: !c
   assert.ok(corolla, 'JSON lot with a different internal id matched to its card by title');
   assert.equal(corolla.bid, 1250);
   assert.match(corolla.url, /2012-toyota-corolla-1100999$/);
+});
+
+test('Lloyds: auctions -> lots with their own countdowns; lot page read by a quick fetch', { skip: !chromeOk }, async () => {
+  await fakeSite('lloyds', 'https://www.lloydsonline.com.au', { ...LLOYDS, '/robots.txt': 'User-agent: *' });
+  const lots = await lloyds.discover();
+  assert.deepEqual(lots.map(l => l.ext_id).sort(), ['6098920', '6109475', '6109476'], 'practice lot and property tender skipped; page 2 read');
+  const volvo = lots.find(l => l.ext_id === '6098920');
+  assert.equal(volvo.title, '2004 Volvo FH12 500 6x4 Prime Mover');
+  assert.equal(volvo.bid, 1350);
+  assert.equal(volvo.lot_no, '1200');
+  assert.equal(volvo.sale_name, 'Machinery, Plant & Equipment');
+  assert.ok(Math.abs(volvo.end_at - (Date.now() + 9 * 60000)) < 20000, 'own countdown');
+  assert.equal(volvo.url, 'https://www.lloydsonline.com.au/LotDetails.aspx?smode=0&aid=74526&lid=6098920');
+  const forklift = lots.find(l => l.ext_id === '6109475');
+  assert.ok(Math.abs(forklift.end_at - (Date.now() + (29 * 60 + 7) * 60000)) < 20000, '"10m" in the title is not the countdown');
+  const { isVehicle } = await import('../src/extract.js');
+  assert.ok(isVehicle(volvo) && !isVehicle(forklift));
+  const fresh = await lloyds.refresh(volvo);
+  assert.equal(fresh.bid, 1650);
+  assert.equal(fresh.odometer, 889724);
+  assert.equal(fresh.year, 2004);
+  assert.equal(fresh.state, 'QLD');
+  assert.ok(fresh.fast);
+  assert.ok(Math.abs(fresh.end_at - (Date.now() + 510000)) < 15000);
+  assert.ok(lloyds.owns(volvo.url) && lloyds.idFromUrl(volvo.url) === '6098920');
 });
 
 test('login check: a "My Pickles" menu link alone is not a logged-in session', { skip: !chromeOk }, async () => {

@@ -278,7 +278,7 @@ export function parseAuDate(s) {
   let m = /(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})\s*(am|pm)?)?/.exec(str);
   if (m) { d = +m[1]; mo = +m[2]; y = +m[3]; h = +(m[4] || 0); mi = +(m[5] || 0); if (m[6] === 'pm' && h < 12) h += 12; if (m[6] === 'am' && h === 12) h = 0; }
   else {
-    m = /(\d{1,2})\s+([a-z]{3})[a-z]*\s+(\d{4})(?:[^\d]+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?)?/.exec(str);
+    m = /(\d{1,2})[\s-]+([a-z]{3})[a-z]*[\s-]+(\d{4})(?:[^\d]+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?)?/.exec(str);
     if (!m || MONTHS.indexOf(m[2]) < 0) return null;
     d = +m[1]; mo = MONTHS.indexOf(m[2]) + 1; y = +m[3]; h = +(m[4] || 0); mi = +(m[5] || 0);
     if (m[6] === 'pm' && h < 12) h += 12; if (m[6] === 'am' && h === 12) h = 0;
@@ -315,5 +315,7 @@ export function jsonBlobsFromHtml(html) {
 export function isVehicle(lot) {
   const s = `${lot.category || ''} ${lot.url || ''}`.toLowerCase();
   if (/\/(cars|trucks|motorcycles|vans|utes)\//.test(s) || /\b(cars?|trucks?|vehicles?|motorcycles?|utes?|vans?)\b/.test(s)) return true;
-  return !!(lot.odometer || (lot.year && lot.make));
+  if (lot.odometer || (lot.year && lot.make)) return true;
+  // "2004 Volvo FH12 Prime Mover" - a year then a vehicle make (Lloyds and others don't give a category)
+  return /^\s*(?:19[5-9]\d|20[0-3]\d)\s+(?:toyota|ford|holden|nissan|mazda|mitsubishi|hyundai|kia|isuzu|hino|volvo|scania|kenworth|mack|iveco|fuso|ud|mercedes|benz|renault|volkswagen|vw|subaru|suzuki|honda|bmw|audi|jeep|land\s*rover|range\s*rover|ldv|great\s*wall|gwm|haval|mg|peugeot|citroen|skoda|tesla|chrysler|dodge|ram|chevrolet|lexus|porsche|jaguar|volvo|yamaha|kawasaki|harley|ducati|ktm|triumph|daihatsu|proton|ssangyong|foton|jac|dennis|freightliner|western\s*star|international|daf|man)\b/i.test(lot.title || '');
 }
