@@ -10,7 +10,7 @@ export async function push({ title, message, url, priority = 'high', tags = 'rot
   if (config.dashboardPublicUrl) headers.Actions = `view, Dashboard, ${config.dashboardPublicUrl}`;
   if (config.ntfyToken) headers.Authorization = `Bearer ${config.ntfyToken}`;
   try {
-    const res = await fetch(config.ntfyUrl, { method: 'POST', headers, body: message });
+    const res = await fetch(config.ntfyUrl, { method: 'POST', headers, body: message, signal: AbortSignal.timeout(10000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return true;
   } catch (e) {

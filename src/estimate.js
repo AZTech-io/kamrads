@@ -48,6 +48,7 @@ async function ask(lot) {
     }],
   };
   const res = await fetch('https://api.anthropic.com/v1/messages', {
+    signal: AbortSignal.timeout(30000),
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': config.anthropicKey, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify(body),

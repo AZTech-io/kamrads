@@ -120,7 +120,8 @@ export async function withPage(site, url, fn = null, { scrolls = 0, waitMs = 250
     });
     const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: config.pageTimeoutMs });
     const status = resp?.status() ?? 0;
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+    // Re-checks only need the data, not a quiet network (some sites poll forever).
+    await page.waitForLoadState('networkidle', { timeout: high ? 4000 : 15000 }).catch(() => {});
     for (let i = 0; i < scrolls; i++) {
       await page.mouse.wheel(0, 2500);
       await page.waitForTimeout(900);

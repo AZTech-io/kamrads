@@ -233,8 +233,12 @@ export function factsFromText(text, now = Date.now()) {
     ?? money(/(?<!(?:starting|start|opening|minimum|min|next|reserve)\s*)\bbid\s*:?\s*(?:AU)?\$\s?([\d,]+(?:\.\d+)?)/i);
   out.start_price = money(/(?:starting|start|opening|minimum)\s*(?:bid|price)\s*:?\s*(?:AU)?\$\s?([\d,]+)/i);
   out.buy_now = money(/buy\s*now\s*(?:price)?\s*:?\s*(?:AU)?\$\s?([\d,]+)/i);
-  const bc = /(\d+)\s+bids?\b/i.exec(t);
-  out.bid_count = bc ? +bc[1] : (/\bno\s+bids\b/i.test(t) ? 0 : null);
+  // Bid count: explicit labels first ("Total Bids Recorded: 10"), then "12 bids" - but never site-wide
+  // counters ("929,512 bids placed this week") and never implausibly large numbers.
+  const bc = /total\s+bids?\s*(?:recorded|placed)?\s*:?\s*(\d{1,4})\b/i.exec(t)
+    || /\b(?:bids?|bid\s*count)\s*:\s*(\d{1,4})\b/i.exec(t)
+    || /(?<![\d,])(\d{1,3})\s+bids?\b(?!\s*(?:placed|this|today|so\s+far\s+this))/i.exec(t);
+  out.bid_count = bc && +bc[1] <= 500 ? +bc[1] : (/\bno\s+bids\b/i.test(t) ? 0 : null);
   const odo = /([\d,]{1,9})\s*(?:km|kms|kilometres)\b/i.exec(t);
   out.odometer = odo ? parseInt0(odo[1]) : null;
   const w = /(statutory\s*write-?\s*off|inspection\s*passed\s*repairable\s*write-?\s*off|repairable\s*write-?\s*off|wovr\s*n\/a)/i.exec(t);

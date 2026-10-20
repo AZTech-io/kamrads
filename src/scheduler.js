@@ -14,6 +14,9 @@ const enabled = () => Object.values(adapters).filter(a => config.sites[a.site]?.
 
 const FINAL_GRACE_MS = 6 * 60000; // soft-close extensions + one final read before we mark a lot closed
 const LIVE_FIELDS = ['bid', 'bid_count', 'end_at', 'buy_now', 'start_price', 'buy_method'];
+const REFRESH_TIMEOUT_MS = 75000;
+const withTimeout = (p, ms, msg) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(msg)), ms))]);
+
 /** Run fn over items with at most n at a time (page reads still queue for their browser tab). */
 async function pool(items, n, fn) {
   let i = 0;
@@ -90,7 +93,7 @@ async function hotCycle() {
   let viaFeed = 0;
   await pool(due, 6, async lot => {
     try {
-      const fresh = await adapters[lot.site].refresh(lot);
+      const fresh = await withTimeout(adapters[lot.site].refresh(lot), REFRESH_TIMEOUT_MS, 're-check took too long');
       // Detail pages often carry worse titles ("CP: 01/2014,Hino,...") - only take live fields,
       // and descriptive ones only where we had nothing.
       const update = { site: lot.site, ext_id: lot.ext_id };
@@ -107,6 +110,8 @@ async function hotCycle() {
     }
   });
   if (viaFeed) log.info('hot', `${viaFeed} lots re-read via fast price feed`);
+  const took = Math.round((Date.now() - now) / 1000);
+  if (took > 90) log.warn('hot', `re-check cycle took ${took}s for ${due.length} lots - watchlist may be falling behind`);
   // Alerts run on everything in the alert window, refreshed or not.
   for (const lot of q.openWindow.all(Date.now(), Date.now() + config.alertMinutes * 60000)) await checkAlerts(lot);
 }

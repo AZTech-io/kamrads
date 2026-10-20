@@ -145,3 +145,10 @@ test('no usable card text: title comes from the link', async () => {
   const l = cardToLot({ href, heading: '', named: '', text: '' }, { idFromUrl: u => (/-(\d{5,})$/.exec(u) || [])[1] });
   assert.equal(l.title, 'Intel Xeon Silver 4110 210ghz300ghz 8core Server Cpu Lot Of Four');
 });
+
+test('bid count: the lot\'s own count, not site-wide counters', () => {
+  const page = `Bids Placed\n929 bids placed this week\n07/2010 Hyundai Iload\nCurrent bid $2,400\nNate123 $2,400\nTotal Bids Recorded: 10`;
+  assert.equal(factsFromText(page, NOW).bid_count, 10);
+  assert.equal(factsFromText('12 bids · ends 3:50 pm', NOW).bid_count, 12);
+  assert.equal(factsFromText('929,512 bids placed this week', NOW).bid_count, undefined);
+});

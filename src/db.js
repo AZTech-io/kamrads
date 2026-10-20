@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS site_status (site TEXT PRIMARY KEY, last_ok INTEGER, 
 `);
 for (const col of ['final_seen_at INTEGER']) { try { db.exec(`ALTER TABLE lots ADD COLUMN ${col}`); } catch { /* exists */ } }
 db.exec(`UPDATE lots SET title = NULL WHERE title IS NOT NULL AND (trim(title) = '' OR title LIKE '%{{%')`);
+db.exec(`UPDATE lots SET bid_count = NULL WHERE bid_count > 500`); // bad counts read from site-wide text
 // v1.1 cleanup: drop duplicate Pickles records created from internal ids
 db.exec(`DELETE FROM lots WHERE site = 'pickles' AND url LIKE '%/used/details/items/%'`);
 
