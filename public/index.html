@@ -3,301 +3,361 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#111d2b">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0d1824">
 <title>KAMRADS</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111d2b'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%233ddc97' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%233ddc97'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230d1824'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%232fcb8c' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%232fcb8c'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --navy: #111d2b; --navy-2: #182739; --navy-3: #22344a; --line: #2b3f57;
-  --ink: #e8eef5; --muted: #8fa3b8; --green: #3ddc97; --green-dim: rgba(61,220,151,.14);
-  --amber: #f5b642; --red: #ff5d5d; --red-dim: rgba(255,93,93,.14); --blue: #6cb4ff;
+  --bg: #0b1520; --panel: #101d2b; --raised: #162637; --hover: #1b2e42; --rule: #20334a; --rule-2: #2a4058;
+  --ink: #e4ecf4; --muted: #8496ab; --dim: #5d7086;
+  --gain: #2fcb8c; --gain-bg: rgba(47,203,140,.12); --loss: #ef5b67; --loss-bg: rgba(239,91,103,.12);
+  --warn: #e5a93f; --warn-bg: rgba(229,169,63,.13); --info: #5fa4ee;
+  --side: 236px;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; background: #0c1520; color: var(--ink); font: 14px/1.4 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 13.5px/1.45 "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; font-feature-settings: "tnum" 1; }
 a { color: inherit; }
-header { background: var(--navy); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
-.bar { max-width: 1240px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-.brand b { font-size: 20px; letter-spacing: .5px; }
-.brand small { display: block; color: var(--green); font-weight: 600; font-size: 10.5px; letter-spacing: 1.5px; text-transform: uppercase; margin-top: -2px; }
-.status { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
-.pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--navy-2); border: 1px solid var(--line); color: var(--muted); font-size: 12px; white-space: nowrap; }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-.dot.ok { background: var(--green); } .dot.warn { background: var(--amber); } .dot.bad { background: var(--red); }
-.controls { max-width: 1240px; margin: 0 auto; padding: 10px 16px 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.chip { border: 1px solid var(--line); background: var(--navy-2); color: var(--ink); padding: 6px 12px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 13px; }
-.chip[aria-pressed="true"] { background: var(--green-dim); border-color: var(--green); color: var(--green); }
-input[type=search], select { background: var(--navy-2); border: 1px solid var(--line); color: var(--ink); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; }
-input[type=search] { flex: 1 1 180px; min-width: 140px; }
-main { max-width: 1240px; margin: 0 auto; padding: 12px 16px 60px; }
-dialog#settings { background: var(--navy); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; width: min(520px, calc(100vw - 32px)); }
-dialog#settings::backdrop { background: rgba(0,0,0,.55); }
-#settings h2 { margin: 0 0 4px; font-size: 18px; }
-#settings label { display: block; margin: 14px 0 0; font-size: 13.5px; }
-#settings input[type=password], #settings input[type=url], #settings input[type=number] { display: block; width: 100%; margin-top: 6px; background: var(--navy-2); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 8px 10px; font: inherit; }
-#settings .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
-#settings .row.end { justify-content: flex-end; margin-top: 18px; }
-#settings .save { background: var(--green); color: #06281a; border: 0; border-radius: 8px; padding: 7px 16px; font: inherit; font-weight: 700; cursor: pointer; }
-.research { margin-top: 6px; font-size: 12.5px; color: var(--muted); }
-.research summary { cursor: pointer; color: var(--ink); }
-.research ul { margin: 6px 0 4px; padding-left: 18px; }
-.research a { color: var(--blue); }
-.research.err { color: var(--amber); }
-.capture { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 12.5px; }
-.capture b { color: var(--ink); }
-.summary { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 14px; }
-.stat { background: var(--navy); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
-.stat .n { font-size: 22px; font-weight: 700; } .stat .l { color: var(--muted); font-size: 12px; }
-.stat.hot .n { color: var(--green); }
-.lot { display: grid; grid-template-columns: 92px 1fr auto; gap: 14px; align-items: center; background: var(--navy); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
-.lot.deal { border-left-color: var(--green); background: linear-gradient(90deg, rgba(61,220,151,.07), var(--navy) 40%); }
-.lot.alerted { border-left-color: var(--red); }
-.clock { text-align: center; font-variant-numeric: tabular-nums; }
-.clock .t { font-size: 17px; font-weight: 700; }
-.clock .d { color: var(--muted); font-size: 11px; }
-.clock.soon .t { color: var(--amber); } .clock.now .t { color: var(--red); }
-.title { font-weight: 600; font-size: 15px; text-decoration: none; }
-.title:hover { text-decoration: underline; }
-.meta { color: var(--muted); font-size: 12.5px; margin-top: 3px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
-.tag { display: inline-block; padding: 1px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 600; background: var(--navy-3); color: var(--ink); }
-.tag.stat { background: var(--red-dim); color: var(--red); border: 0; }
-.tag.rep { background: rgba(245,182,66,.14); color: var(--amber); }
-.tag.ok { background: var(--green-dim); color: var(--green); }
-.tag.site { background: transparent; border: 1px solid var(--line); color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-size: 10.5px; }
-.price { text-align: right; min-width: 170px; }
-.price .bid { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.price .sub { color: var(--muted); font-size: 12px; }
-.price .est { font-size: 12.5px; margin-top: 2px; }
-.price .est.good { color: var(--green); font-weight: 600; }
-.acts { display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px; }
-.icon { background: var(--navy-2); border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 3px 8px; cursor: pointer; font: inherit; font-size: 12px; }
-.icon.on { color: var(--amber); border-color: var(--amber); }
-.empty { color: var(--muted); text-align: center; padding: 60px 20px; border: 1px dashed var(--line); border-radius: 12px; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); } .dim { color: var(--dim); }
+.gain { color: var(--gain); } .loss { color: var(--loss); } .warn { color: var(--warn); }
+
+/* ---------- top bar ---------- */
+.top { position: sticky; top: 0; z-index: 20; background: var(--panel); border-bottom: 1px solid var(--rule); }
+.topbar { display: grid; grid-template-columns: var(--side) 1fr auto; align-items: center; height: 54px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 18px; text-decoration: none; height: 100%; border-right: 1px solid var(--rule); }
+.brand b { font-size: 17px; font-weight: 700; letter-spacing: .6px; }
+.brand span { display: block; color: var(--dim); font-size: 11px; margin-top: -3px; }
+.search { padding: 0 18px; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.search input { width: 100%; max-width: 560px; background: var(--bg); border: 1px solid var(--rule-2); border-radius: 6px; padding: 7px 12px 7px 32px; color: var(--ink);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238496ab' stroke-width='2.4'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 10px center; }
+.top-actions { display: flex; align-items: center; gap: 4px; padding: 0 14px; }
+.tbtn { background: none; border: 1px solid transparent; border-radius: 6px; padding: 6px 10px; cursor: pointer; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.tbtn:hover { background: var(--raised); color: var(--ink); }
+.tbtn .badge { background: var(--gain); color: #06261a; border-radius: 9px; padding: 0 6px; font-size: 11px; font-weight: 700; }
+.tbtn .badge[hidden] { display: none; }
+.who { color: var(--dim); font-size: 12.5px; padding-left: 10px; border-left: 1px solid var(--rule); margin-left: 4px; }
+.menu-btn { display: none; }
+
+/* desk strip: the numbers that matter */
+.desk { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid var(--rule); }
+.kpi { padding: 9px 18px 10px; border-right: 1px solid var(--rule); min-width: 0; }
+.kpi:last-child { border-right: 0; }
+.kpi .v { font-size: 19px; font-weight: 600; letter-spacing: -.2px; white-space: nowrap; }
+.kpi .l { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- frame ---------- */
+.frame { display: grid; grid-template-columns: var(--side) minmax(0, 1fr); min-height: calc(100vh - 110px); }
+aside { border-right: 1px solid var(--rule); background: var(--panel); padding: 8px 0 30px; position: sticky; top: 110px; align-self: start; max-height: calc(100vh - 110px); overflow-y: auto; }
+.side-h { color: var(--dim); font-size: 12px; font-weight: 600; padding: 14px 18px 6px; }
+.nav { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; background: none; border: 0; border-left: 3px solid transparent; padding: 6px 15px; text-align: left; cursor: pointer; color: var(--muted); }
+.nav:hover { background: var(--raised); color: var(--ink); }
+.nav[aria-pressed="true"] { border-left-color: var(--gain); background: var(--raised); color: var(--ink); font-weight: 600; }
+.nav .c { color: var(--dim); font-size: 12px; font-weight: 400; }
+.nav.group { color: var(--ink); font-weight: 500; }
+.nav.sub { padding-left: 30px; font-size: 13px; }
+.nav.off { opacity: .65; }
+.site-row { display: flex; align-items: center; gap: 9px; padding: 5px 18px; cursor: pointer; color: var(--muted); }
+.site-row:hover { color: var(--ink); }
+.site-row input { accent-color: var(--gain); margin: 0; }
+.site-row .c { margin-left: auto; color: var(--dim); font-size: 12px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); flex: none; }
+.dot.ok { background: var(--gain); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--loss); }
+.side-foot { padding: 16px 18px 0; color: var(--dim); font-size: 12px; line-height: 1.7; }
+.side-foot a { color: var(--muted); }
+
+main { padding: 16px 20px 60px; min-width: 0; }
+
+/* ---------- panels & tables ---------- */
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+.panel-h { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
+.panel-h h2 { margin: 0; font-size: 14.5px; font-weight: 600; }
+.panel-h .meta { color: var(--muted); font-size: 12.5px; }
+.panel-h .grow { flex: 1; }
+.watch-add { display: flex; gap: 6px; flex: 0 1 420px; }
+.watch-add input { flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--rule-2); border-radius: 6px; padding: 6px 10px; }
+.btn { background: var(--raised); border: 1px solid var(--rule-2); border-radius: 6px; padding: 6px 12px; cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-block; }
+.btn:hover { background: var(--hover); }
+.btn.primary { background: var(--gain); border-color: var(--gain); color: #06261a; font-weight: 600; }
+.btn.sm { padding: 3px 9px; font-size: 12.5px; }
+
+.toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.toolbar h1 { margin: 0 6px 0 0; font-size: 18px; font-weight: 600; }
+.seg { display: inline-flex; border: 1px solid var(--rule-2); border-radius: 6px; overflow: hidden; }
+.seg button { background: none; border: 0; border-right: 1px solid var(--rule-2); padding: 5px 11px; cursor: pointer; color: var(--muted); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--raised); color: var(--ink); font-weight: 600; }
+select.sel { background: var(--panel); border: 1px solid var(--rule-2); border-radius: 6px; padding: 5px 8px; }
+.check-inline { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); cursor: pointer; }
+.check-inline input { accent-color: var(--gain); }
+.count { margin-left: auto; color: var(--muted); font-size: 12.5px; }
+
+.filters { display: none; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 14px; background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+.filters.open { display: grid; }
+.filters label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; }
+.filters input, .filters select { background: var(--bg); border: 1px solid var(--rule-2); border-radius: 6px; padding: 6px 8px; width: 100%; }
+.filters .states { display: flex; flex-wrap: wrap; gap: 4px; }
+.filters .states button { background: var(--bg); border: 1px solid var(--rule-2); border-radius: 5px; padding: 3px 8px; cursor: pointer; color: var(--muted); font-size: 12px; }
+.filters .states button[aria-pressed="true"] { border-color: var(--gain); color: var(--gain); }
+.filters .wide { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; color: var(--dim); font-size: 12px; }
+
+.searchbar { display: flex; gap: 10px; align-items: center; background: var(--raised); border: 1px solid var(--rule-2); border-radius: 6px; padding: 7px 12px; margin-bottom: 10px; color: var(--muted); }
+.searchbar[hidden] { display: none; }
+
+table.grid { width: 100%; border-collapse: collapse; }
+.grid th { text-align: left; font-weight: 500; color: var(--dim); font-size: 12px; padding: 8px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; background: var(--panel); }
+.grid th.r, .grid td.r { text-align: right; }
+.grid th[data-sort] { cursor: pointer; }
+.grid th[data-sort]:hover { color: var(--ink); }
+.grid th.sorted { color: var(--ink); }
+.grid th.sorted::after { content: " ▾"; color: var(--gain); }
+.grid td { padding: 9px 10px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+.grid tbody tr:last-child td { border-bottom: 0; }
+.grid tr.row { cursor: pointer; }
+.grid tr.row:hover td { background: var(--hover); }
+.grid tr.row.open td { background: var(--raised); border-bottom-color: transparent; }
+.grid tr.deal td:first-child, .grid tr.winning td:first-child { box-shadow: inset 3px 0 0 var(--gain); }
+.grid tr.alerted td:first-child, .grid tr.outbid td:first-child { box-shadow: inset 3px 0 0 var(--loss); }
+.grid tr.sold td { opacity: .7; }
+
+.ph { width: 56px; height: 42px; border-radius: 4px; background: var(--raised); display: block; overflow: hidden; }
+.ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lot-t { font-weight: 600; text-decoration: none; display: block; max-width: 520px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lot-t:hover { text-decoration: underline; }
+.lot-m { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 3px 10px; margin-top: 2px; align-items: center; }
+.site { font-size: 11px; font-weight: 600; color: var(--muted); border: 1px solid var(--rule-2); border-radius: 4px; padding: 0 5px; }
+.tag { font-size: 11.5px; font-weight: 600; border-radius: 4px; padding: 0 6px; background: var(--raised); color: var(--muted); white-space: nowrap; }
+.tag.g { background: var(--gain-bg); color: var(--gain); } .tag.r { background: var(--loss-bg); color: var(--loss); } .tag.a { background: var(--warn-bg); color: var(--warn); }
+.clock .t { font-weight: 600; white-space: nowrap; }
+.clock .d { color: var(--dim); font-size: 11.5px; white-space: nowrap; }
+.clock.soon .t { color: var(--warn); } .clock.now .t { color: var(--loss); }
+.money { font-weight: 600; white-space: nowrap; }
+.sub { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+
+/* the value bar: where the all-in cost sits against what the lot is worth */
+.vbar { width: 136px; }
+.vbar .track { position: relative; height: 6px; border-radius: 3px; background: var(--rule-2); margin: 3px 0 4px; }
+.vbar .band { position: absolute; top: -2px; bottom: -2px; border-radius: 2px; background: rgba(95,164,238,.28); }
+.vbar .fill { position: absolute; top: 0; bottom: 0; background: var(--gain); opacity: .9; }
+.vbar .mark { position: absolute; top: -4px; width: 2px; height: 14px; background: var(--ink); border-radius: 1px; }
+.vbar.over .fill { display: none; } .vbar.over .mark { background: var(--loss); }
+.vbar .cap { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); white-space: nowrap; gap: 6px; }
+
+.acts { display: flex; gap: 4px; justify-content: flex-end; }
+.ibtn { background: none; border: 1px solid var(--rule-2); border-radius: 5px; padding: 3px 8px; cursor: pointer; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.ibtn:hover { color: var(--ink); background: var(--raised); }
+.ibtn.on { color: var(--warn); border-color: var(--warn); }
+
+tr.detail td { background: var(--raised); padding: 4px 14px 14px 76px; }
+.dgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 24px; }
+.dgrid h4 { margin: 8px 0 4px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.dgrid ul { margin: 4px 0 0; padding-left: 16px; }
+.dgrid li { margin: 2px 0; }
+.dgrid a { color: var(--info); }
+.kv { display: grid; grid-template-columns: auto auto; gap: 2px 14px; justify-content: start; }
+.kv span:nth-child(odd) { color: var(--muted); }
+.dacts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+
+.status { font-size: 11.5px; font-weight: 700; border-radius: 4px; padding: 1px 7px; white-space: nowrap; }
+.status.winning, .status.won { background: var(--gain-bg); color: var(--gain); }
+.status.outbid, .status.lost { background: var(--loss-bg); color: var(--loss); }
+.status.atmax, .status.nobids { background: var(--warn-bg); color: var(--warn); }
+.rival { color: var(--warn); font-size: 12px; margin-top: 2px; }
+.pos-max { display: none; }
+
+.empty { color: var(--muted); text-align: center; padding: 46px 20px; }
 .empty b { color: var(--ink); }
-.watch { background: var(--navy); border: 1px solid var(--line); border-top: 3px solid var(--amber); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; }
-.watch-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
-.watch-head h2 { margin: 0; font-size: 16px; }
-.watch-head .hint { color: var(--muted); font-size: 12px; }
-.watch-add { margin-left: auto; display: flex; gap: 6px; flex: 1 1 320px; max-width: 520px; }
-.watch-add input { flex: 1; background: var(--navy-2); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; min-width: 0; }
-.watch-add button { background: var(--amber); color: #1a1300; border: 0; border-radius: 8px; padding: 6px 12px; font: inherit; font-weight: 600; cursor: pointer; }
-.wrow { display: grid; grid-template-columns: 86px 1fr auto auto; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); }
-.wrow .wt { font-weight: 600; text-decoration: none; }
-.wrow .wm { color: var(--muted); font-size: 12px; margin-top: 2px; }
-.wrow .wp { text-align: right; font-variant-numeric: tabular-nums; }
-.wrow .wp b { font-size: 18px; }
-.wrow .up { color: var(--red); font-size: 12px; font-weight: 600; }
-.wrow.sold { opacity: .75; }
-.bidst { display: inline-block; margin-top: 3px; padding: 2px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 700; letter-spacing: .3px; }
-.bidst.winning, .bidst.won { background: var(--green-dim); color: var(--green); }
-.bidst.outbid, .bidst.lost { background: var(--red-dim); color: var(--red); }
-.bidst.atmax, .bidst.nobids { background: rgba(245,182,66,.14); color: var(--amber); }
-.wrow.outbid { box-shadow: inset 3px 0 0 var(--red); }
-.wrow.winning { box-shadow: inset 3px 0 0 var(--green); }
-.icon.mybid { color: var(--ink); }
-.chip .n[hidden] { display: none; }
-.chip .n { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--green); color: #06281a; font-size: 11px; font-weight: 700; }
-.more { max-width: 1240px; margin: 0 auto; padding: 0 16px 12px; display: none; }
-.more.open { display: block; }
-.more-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px 14px; background: var(--navy-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
-.more-grid label { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
-.more-grid input, .more-grid select { background: var(--navy); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 6px 8px; font: inherit; font-size: 13px; width: 100%; }
-.more-grid .states { display: flex; flex-wrap: wrap; gap: 4px; }
-.more-grid .states button { padding: 3px 8px; font-size: 12px; }
-.more-grid .wide { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
-dialog.box { background: var(--navy); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; width: min(600px, calc(100vw - 32px)); }
-dialog.box::backdrop { background: rgba(0,0,0,.55); }
-dialog.box h2 { margin: 0 0 4px; font-size: 18px; }
-.srow { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); }
-.srow b { font-size: 14px; }
-.sform { display: grid; grid-template-columns: 1fr 120px 120px auto; gap: 8px; margin: 12px 0 6px; }
-.sform input, .sform select { background: var(--navy-2); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 7px 10px; font: inherit; font-size: 13px; min-width: 0; }
-.sform button, .save2 { background: var(--green); color: #06281a; border: 0; border-radius: 8px; padding: 7px 14px; font: inherit; font-weight: 700; cursor: pointer; }
-@media (max-width: 720px) { .sform { grid-template-columns: 1fr 1fr; } .sform input:first-child { grid-column: 1 / -1; } }
-.searchbar { display: flex; gap: 8px; align-items: center; margin: -4px 0 12px; color: var(--muted); font-size: 13px; }
-.who { color: var(--muted); font-size: 12px; }
-.price .cost { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
-.price .cost b { color: var(--ink); font-weight: 600; }
-.tag.good { background: var(--green-dim); color: var(--green); }
-.tag.caution { background: rgba(245,182,66,.14); color: var(--amber); }
-.tag.avoid { background: var(--red-dim); color: var(--red); }
-.rival { color: var(--amber); font-size: 12px; font-weight: 600; margin-top: 3px; }
-.hist { margin-top: 6px; font-size: 12.5px; color: var(--muted); }
-.hist summary { cursor: pointer; color: var(--ink); }
-.hist ul { margin: 6px 0 4px; padding-left: 18px; }
-.hist a { color: var(--blue); }
-.check { margin-top: 5px; font-size: 12.5px; color: var(--muted); }
-#settings select { display: block; margin-top: 6px; background: var(--navy-2); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 8px 10px; font: inherit; }
-.watch-empty { color: var(--muted); font-size: 13px; padding: 6px 0 2px; }
-@media (max-width: 720px) { .wrow { grid-template-columns: 64px 1fr auto; } .wrow .wx { grid-column: 1 / -1; display: flex; gap: 6px; justify-content: flex-end; } .watch-add { max-width: none; } }
-footer { color: var(--muted); font-size: 12px; text-align: center; padding: 20px; }
-@media (max-width: 720px) {
-  .summary { grid-template-columns: repeat(2, minmax(0,1fr)); }
-  .lot { grid-template-columns: 64px 1fr; }
-  .price { grid-column: 1 / -1; text-align: left; display: flex; justify-content: space-between; align-items: end; min-width: 0; border-top: 1px solid var(--line); padding-top: 8px; }
-  .acts { margin: 0; }
-  .status { margin-left: 0; width: 100%; }
-  header { position: static; }
+.empty a { color: var(--info); }
+
+dialog.box { background: var(--panel); color: var(--ink); border: 1px solid var(--rule-2); border-radius: 10px; padding: 18px 20px; width: min(600px, calc(100vw - 24px)); max-height: calc(100vh - 40px); }
+dialog.box::backdrop { background: rgba(3,8,14,.6); }
+dialog.box h2 { margin: 0 0 4px; font-size: 17px; font-weight: 600; }
+dialog.box p.lead { color: var(--muted); margin: 0 0 10px; }
+dialog.box label.f { display: block; margin: 12px 0 0; color: var(--muted); font-size: 12.5px; }
+dialog.box label.f input, dialog.box label.f select { display: block; width: 100%; margin-top: 5px; background: var(--bg); border: 1px solid var(--rule-2); border-radius: 6px; padding: 7px 10px; color: var(--ink); }
+dialog.box .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+dialog.box .end { justify-content: flex-end; margin-top: 18px; }
+dialog.box .inline { display: flex; gap: 8px; align-items: center; margin-top: 12px; color: var(--muted); font-size: 12.5px; flex-wrap: wrap; }
+dialog.box .inline select, dialog.box .inline input[type=number] { background: var(--bg); border: 1px solid var(--rule-2); border-radius: 6px; padding: 4px 8px; }
+dialog.box a { color: var(--info); }
+.srow { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--rule); }
+.sform { display: grid; grid-template-columns: 1fr 120px 130px auto; gap: 8px; margin: 12px 0 6px; }
+.sform input, .sform select { background: var(--bg); border: 1px solid var(--rule-2); border-radius: 6px; padding: 7px 10px; min-width: 0; }
+
+/* ---------- smaller screens ---------- */
+@media (max-width: 1180px) { .col-allin, .col-photo { display: none; } }
+@media (max-width: 900px) {
+  :root { --side: 0px; }
+  .topbar { grid-template-columns: auto 1fr auto; }
+  .brand { border-right: 0; padding-right: 4px; }
+  .brand > div { display: none; }
+  .menu-btn { display: inline-flex; }
+  .who, .tbtn .lbl { display: none; }
+  .search { padding: 0 6px; }
+  .desk { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .kpi:nth-child(n+4) { display: none; }
+  .kpi { padding: 7px 12px; } .kpi .v { font-size: 16px; }
+  .frame { grid-template-columns: 1fr; }
+  aside { position: fixed; top: 0; left: 0; bottom: 0; width: 272px; max-height: none; z-index: 40; transform: translateX(-100%); transition: transform .18s ease; }
+  aside.open { transform: none; box-shadow: 0 0 0 100vmax rgba(3,8,14,.55); }
+  main { padding: 12px 10px 60px; }
+  .grid thead { display: none; }
+  .grid, .grid tbody { display: block; }
+  .grid tr.row { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; grid-template-areas: "ph lot lot" "ph bid clock" "val val acts"; gap: 6px 10px; padding: 10px 10px; border-bottom: 1px solid var(--rule); }
+  .grid tr.row td { padding: 0; border: 0; background: none !important; box-shadow: none !important; }
+  .grid tr.deal, .grid tr.winning { box-shadow: inset 3px 0 0 var(--gain); }
+  .grid tr.alerted, .grid tr.outbid { box-shadow: inset 3px 0 0 var(--loss); }
+  .grid td.col-photo { display: block; grid-area: ph; } .grid td.c-lot { grid-area: lot; min-width: 0; }
+  .grid td.c-clock { grid-area: clock; text-align: right; } .grid td.c-bid { grid-area: bid; text-align: left; }
+  .grid td.c-val { grid-area: val; } .grid td.c-margin, .grid td.c-mymax { display: none; } .grid td.col-allin { display: none; }
+  .grid td.c-pos { grid-area: val; } .grid td.c-acts { grid-area: acts; align-self: end; }
+  .ph { width: 64px; height: 50px; }
+  .lot-t { white-space: normal; }
+  tr.detail { display: block; } tr.detail td { display: block; padding: 6px 12px 14px; }
+  .sform { grid-template-columns: 1fr 1fr; } .sform input:first-child { grid-column: 1 / -1; }
+  .count { margin-left: 0; width: 100%; }
+  .watch-add { flex-basis: 100%; }
+  .pos-max { display: inline; }
 }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
-<header>
-  <div class="bar">
+<div class="top">
+  <div class="topbar">
     <a class="brand" href="/">
-      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
-        <circle cx="17" cy="17" r="13" fill="none" stroke="#3ddc97" stroke-width="2.6" stroke-dasharray="62 20" transform="rotate(-50 17 17)"/>
-        <circle cx="17" cy="17" r="7.5" fill="none" stroke="#3ddc97" stroke-width="2.6" stroke-dasharray="34 13" transform="rotate(-50 17 17)"/>
-        <circle cx="17" cy="17" r="2.6" fill="#3ddc97"/>
-        <line x1="17" y1="17" x2="27" y2="7" stroke="#3ddc97" stroke-width="2.6" stroke-linecap="round"/>
+      <svg width="30" height="30" viewBox="0 0 34 34" aria-hidden="true">
+        <circle cx="17" cy="17" r="13" fill="none" stroke="#2fcb8c" stroke-width="2.6" stroke-dasharray="62 20" transform="rotate(-50 17 17)"/>
+        <circle cx="17" cy="17" r="7.5" fill="none" stroke="#2fcb8c" stroke-width="2.6" stroke-dasharray="34 13" transform="rotate(-50 17 17)"/>
+        <circle cx="17" cy="17" r="2.6" fill="#2fcb8c"/><line x1="17" y1="17" x2="27" y2="7" stroke="#2fcb8c" stroke-width="2.6" stroke-linecap="round"/>
       </svg>
-      <span><b>KAMRADS</b><small>Auction Intelligence</small></span>
+      <div><b>KAMRADS</b><span>Auction intelligence</span></div>
     </a>
-    <div class="status" id="status"></div>
+    <div class="search">
+      <button class="tbtn menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+      <input type="search" id="q" placeholder="Search lots: hilux, forklift, Perth…" autocomplete="off">
+    </div>
+    <div class="top-actions">
+      <button class="tbtn" id="alertsBtn" title="Saved searches that alert your phone">🔔<span class="lbl"> Alerts</span> <span class="badge" id="alertsN" hidden></span></button>
+      <button class="tbtn" id="openSettings" title="Settings">⚙<span class="lbl"> Settings</span></button>
+      <span class="who" id="who"></span>
+    </div>
   </div>
-  <div class="controls" id="filters">
-    <button class="chip" data-f="all" aria-pressed="true">All</button>
-    <button class="chip" data-f="deals" aria-pressed="false">Deals</button>
-    <button class="chip" data-f="vehicles" aria-pressed="false">Vehicles</button>
-    <button class="chip" data-f="under500" aria-pressed="false">Under $500</button>
-    <button class="chip" data-f="sold" aria-pressed="false">Sold</button>
-    <button class="chip" data-f="missed" aria-pressed="false" title="Bargains that closed without us">Missed deals</button>
-    <button class="chip" id="hideStat" aria-pressed="true">Hide statutory</button>
-    <select id="site"><option value="">All sites</option><option value="pickles">Pickles</option><option value="manheim">Manheim</option><option value="allbids">ALLBIDS</option><option value="lloyds">Lloyds</option><option value="grays">Grays</option><option value="slattery">Slattery</option><option value="auctionbarn">Auction Barn</option></select>
-    <select id="sort"><option value="hot">Hottest deals first</option><option value="ending">Ends soonest</option><option value="price">Lowest price</option><option value="profit">Biggest est. profit</option><option value="near">Nearest first</option></select>
-    <select id="hours"><option value="3">Next 3 h</option><option value="24">Next 24 h</option><option value="48" selected>Next 48 h</option><option value="168">Next 7 days</option></select>
-    <input type="search" id="q" placeholder="Search: hilux, tipper, Perth…">
-    <button class="chip" id="moreBtn" aria-pressed="false">More filters<span class="n" id="moreN" hidden></span></button>
-    <button class="chip" id="alertsBtn" aria-pressed="false" title="Saved searches that alert your phone">🔔 My alerts<span class="n" id="alertsN" hidden></span></button>
-  </div>
-  <div class="more" id="more">
-    <div class="more-grid">
+  <div class="desk" id="desk"></div>
+</div>
+
+<div class="frame">
+  <aside id="side">
+    <div class="side-h">Board</div>
+    <div id="views"></div>
+    <div class="side-h">Sectors</div>
+    <div id="sectors"></div>
+    <div class="side-h">Sites</div>
+    <div id="sites"></div>
+    <div class="side-foot">
+      <div id="stored"></div>
+      <a href="/api/export/closed.csv?days=3650">Download all results (CSV)</a><br>
+      <a href="#" id="testAlert">Send a test alert</a><br>
+      <span id="updated"></span>
+    </div>
+  </aside>
+
+  <main>
+    <section class="panel" id="watch">
+      <div class="panel-h">
+        <h2>My watchlist</h2><span class="meta" id="watchHint"></span><span class="grow"></span>
+        <form class="watch-add" id="watchAdd"><input id="watchUrl" type="url" placeholder="Paste any lot link to watch it"><button class="btn">Watch</button></form>
+      </div>
+      <div id="watchList"></div>
+    </section>
+
+    <div class="toolbar">
+      <h1 id="title">Live board</h1>
+      <div class="seg" id="horizon">
+        <button data-h="3">3 h</button><button data-h="24">24 h</button><button data-h="48">48 h</button><button data-h="168">7 days</button>
+      </div>
+      <select class="sel" id="sort" aria-label="Sort">
+        <option value="hot">Best value first</option><option value="ending">Ends soonest</option><option value="price">Lowest price</option>
+        <option value="profit">Biggest margin</option><option value="near">Nearest first</option>
+      </select>
+      <button class="btn" id="moreBtn">Filters <span id="moreN" class="gain"></span></button>
+      <label class="check-inline"><input type="checkbox" id="hideStat"> Hide statutory write-offs</label>
+      <span class="count" id="count"></span>
+    </div>
+    <div class="filters" id="more">
       <label>Min price <input id="fMin" inputmode="numeric" placeholder="$0"></label>
       <label>Max price <input id="fMax" inputmode="numeric" placeholder="any"></label>
       <label>Year from <input id="fYear" inputmode="numeric" placeholder="e.g. 2012"></label>
       <label>Max km <input id="fKm" inputmode="numeric" placeholder="e.g. 150000"></label>
-      <label>Type <select id="fType"><option value="">Anything</option><option value="vehicle">Any vehicle</option><option value="car">Cars &amp; utes</option><option value="van">Vans &amp; buses</option><option value="truck">Trucks &amp; trailers</option><option value="bike">Motorbikes</option><option value="machinery">Machinery &amp; plant</option><option value="boat">Boats &amp; caravans</option><option value="goods">General goods</option></select></label>
-      <label>Write-off status <select id="fWovr"><option value="">Any</option><option value="clean">Clean only (no write-off)</option><option value="repairable">Repairable write-offs</option><option value="statutory">Statutory only (parts)</option></select></label>
-      <label>Bids <select id="fBids"><option value="">Any</option><option value="none">No bids yet</option><option value="some">Has bids</option><option value="hot">5+ bids (popular)</option></select></label>
-      <label>Max distance <span class="sub" id="baseName"></span><input id="fDist" inputmode="numeric" placeholder="km, e.g. 150"></label>
+      <label>Max distance <input id="fDist" inputmode="numeric" placeholder="km from base"></label>
+      <label>Write-off status <select id="fWovr"><option value="">Any</option><option value="clean">Clean only</option><option value="repairable">Repairable</option><option value="statutory">Statutory (parts)</option></select></label>
+      <label>Reserve <select id="fRes"><option value="">Any</option><option value="none">No reserve</option><option value="met">Reserve met</option><option value="not met">Reserve not met</option></select></label>
+      <label>Bids <select id="fBids"><option value="">Any</option><option value="none">No bids yet</option><option value="some">Has bids</option><option value="hot">5+ bids</option></select></label>
       <label>Ends <select id="fEnds"><option value="">Any time</option><option value="60">Within 1 hour</option><option value="today">Today</option><option value="tomorrow">Tomorrow</option></select></label>
-      <label style="grid-column: span 2">State <span class="states" id="fStates"><button class="chip" type="button" data-state="NSW" aria-pressed="false">NSW</button><button class="chip" type="button" data-state="VIC" aria-pressed="false">VIC</button><button class="chip" type="button" data-state="QLD" aria-pressed="false">QLD</button><button class="chip" type="button" data-state="WA" aria-pressed="false">WA</button><button class="chip" type="button" data-state="SA" aria-pressed="false">SA</button><button class="chip" type="button" data-state="TAS" aria-pressed="false">TAS</button><button class="chip" type="button" data-state="ACT" aria-pressed="false">ACT</button><button class="chip" type="button" data-state="NT" aria-pressed="false">NT</button></span></label>
-      <div class="wide"><span id="moreHint">Filters apply to the list below and the Sold / Missed tabs.</span><button class="icon" type="button" id="moreReset">Clear filters</button></div>
+      <label style="grid-column: span 2">State <span class="states" id="fStates"><button type="button" data-state="NSW" aria-pressed="false">NSW</button><button type="button" data-state="VIC" aria-pressed="false">VIC</button><button type="button" data-state="QLD" aria-pressed="false">QLD</button><button type="button" data-state="WA" aria-pressed="false">WA</button><button type="button" data-state="SA" aria-pressed="false">SA</button><button type="button" data-state="TAS" aria-pressed="false">TAS</button><button type="button" data-state="ACT" aria-pressed="false">ACT</button><button type="button" data-state="NT" aria-pressed="false">NT</button></span></label>
+      <div class="wide"><span>Applies to the live board, Sold results and Missed deals.</span><button class="btn sm" type="button" id="moreReset">Clear filters</button></div>
     </div>
-  </div>
-</header>
-<main>
-  <section class="watch" id="watch">
-    <div class="watch-head">
-      <h2>★ My watchlist</h2><span class="hint" id="watchHint">re-checked every 60 s</span>
-      <form class="watch-add" id="watchAdd"><input id="watchUrl" type="url" placeholder="Paste any lot link (Pickles, ALLBIDS, Manheim, Lloyds, Grays, Slattery, Auction Barn)"><button>Watch</button></form>
-    </div>
-    <div id="watchList"></div>
-  </section>
-  <div class="searchbar" id="searchbar" hidden></div>
-  <div class="summary" id="summary"></div>
-  <div id="list"></div>
-</main>
-<footer>Spot it. Track it. Win it. · <span class="who" id="who"></span> · <a href="#" id="openSettings">Settings</a> · <a href="#" id="testAlert">Send a test alert</a> · <a href="/api/export/closed.csv?days=3650" id="csv">Download all results (CSV)</a> · <span id="stored"></span> · <span id="updated"></span></footer>
+    <div class="searchbar" id="searchbar" hidden></div>
+    <div class="panel"><div id="list"></div></div>
+  </main>
+</div>
+
 <dialog id="alerts" class="box">
-  <h2>🔔 My alerts</h2>
-  <p class="sub">Type what you're after. You get a push when a new one is listed, and again in its final 10 minutes if it's still at or under your max price. Commas mean "or"; put <b>-</b> in front of a word to exclude it.</p>
+  <h2>My alerts</h2>
+  <p class="lead">Type what you're after. You get a push when a new one is listed, and again in its final 10 minutes if it's still at or under your max price. Commas mean "or"; put a minus in front of a word to exclude it.</p>
   <form class="sform" id="sForm">
-    <input id="sTerms" placeholder="renault master, mercedes sprinter, van -crash" required>
-    <input id="sMax" inputmode="numeric" placeholder="Max price (optional)">
-    <select id="sSite"><option value="">All sites</option><option value="pickles">Pickles</option><option value="manheim">Manheim</option><option value="allbids">ALLBIDS</option><option value="lloyds">Lloyds</option><option value="grays">Grays</option><option value="slattery">Slattery</option><option value="auctionbarn">Auction Barn</option></select>
-    <button>Add alert</button>
+    <input id="sTerms" placeholder="renault master, sprinter, forklift -parts" required>
+    <input id="sMax" inputmode="numeric" placeholder="Max price">
+    <select id="sSite"><option value="">All sites</option></select>
+    <button class="btn primary">Add alert</button>
   </form>
   <div id="sList"></div>
-  <div class="row end" style="display:flex;justify-content:flex-end;margin-top:14px"><button type="button" class="icon" id="closeAlerts">Close</button></div>
+  <div class="row end"><button type="button" class="btn" id="closeAlerts">Close</button></div>
 </dialog>
-<dialog id="settings">
-  <form method="dialog" id="settingsForm">
+
+<dialog id="settings" class="box">
+  <form method="dialog">
     <h2>Settings</h2>
-    <p class="sub">Saved on this KAMRADS server only — never in GitHub. The key is never shown in full again.</p>
-    <label>Claude API key <span class="sub" id="keyState"></span>
+    <p class="lead">Saved on the KAMRADS server only. The Claude key is never shown in full again.</p>
+    <label class="f">Claude API key <span id="keyState"></span>
       <input id="sKey" type="password" autocomplete="off" placeholder="sk-ant-… (leave blank to keep the saved key)"></label>
-    <div class="row"><button type="button" class="icon" id="testKey">Test key</button><button type="button" class="icon" id="clearKey">Remove key</button><span class="sub" id="keyResult"></span></div>
-    <label><input id="sResearch" type="checkbox"> Research prices automatically (watchlist, vehicles, and lots over $50 closing within 6 h)</label>
-    <label>Daily limit on automatic lookups <span class="sub">(each about 5–10c)</span>
-      <input id="sPerDay" type="number" min="0" max="1000" step="10"></label>
-    <label>Shared phone alert link (ntfy) — deals for everyone <input id="sNtfy" type="url" placeholder="https://ntfy.sh/kamrads-your-secret-topic"></label>
-    <label>My home base <span class="sub">(distances and transport costs)</span><select id="sBase"></select></label>
-    <label><input id="sDigest" type="checkbox"> Morning digest push at <select id="sDigestHour" style="display:inline-block;width:auto"></select> <select id="sDigestTz" style="display:inline-block;width:auto"><option value="Australia/Sydney">Canberra/Sydney time</option><option value="Australia/Perth">Perth time</option><option value="Australia/Brisbane">Brisbane time</option><option value="Australia/Adelaide">Adelaide time</option><option value="Asia/Makassar">Bali time</option></select> <a href="#" id="previewDigest">preview</a></label>
-    <label>My own alert link <span class="sub" id="meName"></span> — outbid, my watchlist, my searches <input id="sMyNtfy" type="url" placeholder="https://ntfy.sh/kamrads-yourname-secret (blank = use the shared one)"></label>
-    <div class="row end"><button type="button" class="icon" id="closeSettings">Cancel</button><button class="save" id="saveSettings">Save</button></div>
+    <div class="row"><button type="button" class="btn sm" id="testKey">Test key</button><button type="button" class="btn sm" id="clearKey">Remove key</button><span class="muted" id="keyResult"></span></div>
+    <label class="inline"><input id="sResearch" type="checkbox"> Research prices and check listings automatically, up to <input id="sPerDay" type="number" min="0" max="1000" step="10" style="width:80px"> lookups a day (about 5–10c each)</label>
+    <label class="f">My home base (distance and transport costs) <select id="sBase"></select></label>
+    <div class="inline"><label class="check-inline"><input id="sDigest" type="checkbox"> Morning digest at</label> <select id="sDigestHour"></select>
+      <select id="sDigestTz"><option value="Australia/Sydney">Canberra/Sydney time</option><option value="Australia/Perth">Perth time</option><option value="Australia/Brisbane">Brisbane time</option><option value="Australia/Adelaide">Adelaide time</option><option value="Asia/Makassar">Bali time</option></select>
+      <a href="#" id="previewDigest">Preview</a></div>
+    <label class="f">Shared phone alert link (ntfy): deals for everyone <input id="sNtfy" type="url" placeholder="https://ntfy.sh/kamrads-your-secret-topic"></label>
+    <label class="f">My own alert link <span id="meName"></span>: outbid, my watchlist, my searches <input id="sMyNtfy" type="url" placeholder="blank = use the shared link"></label>
+    <div class="row end"><button type="button" class="btn" id="closeSettings">Cancel</button><button class="btn primary" id="saveSettings">Save</button></div>
   </form>
 </dialog>
 
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const money = n => n == null ? '—' : '$' + Math.round(n).toLocaleString('en-AU');
-const SLEEPER = 0.25;
-let me = '', searches = [], activeSearch = null, more = {};
-let aiOn = false, soldStats = [], watch = [], lastBid = {}, curBid = {}, lots = [], filter = 'all', clockSkew = 0, mode = 'live';
-const pref = (k, d) => { try { return JSON.parse(localStorage.getItem('k_' + k)) ?? d; } catch { return d; } };
-const save = (k, v) => { try { localStorage.setItem('k_' + k, JSON.stringify(v)); } catch {} };
-filter = pref('filter', 'all'); if (filter === 'starred') filter = 'all';
-$('#hideStat').setAttribute('aria-pressed', String(pref('hideStat', true)));
-$('#site').value = pref('site', '');
-$('#sort').value = pref('sort', 'hot');
-$('#hours').value = String(pref('hours', 48));
-more = pref('more', {});
-const closedMode = () => mode === 'sold' || mode === 'missed';
+const money = n => n == null ? '—' : (n < 0 ? '-$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-AU');
+const kmoney = n => n == null ? '—' : Math.abs(n) >= 100000 ? (n < 0 ? '-$' : '$') + Math.round(Math.abs(n) / 1000).toLocaleString('en-AU') + 'k' : money(n);
+const SLEEPER = 0.25, CHEAP_VEHICLE = 3000;
 const SITE_NAMES = { pickles: 'Pickles', manheim: 'Manheim', allbids: 'ALLBIDS', lloyds: 'Lloyds', grays: 'Grays', slattery: 'Slattery', auctionbarn: 'Auction Barn' };
+const VIEWS = [['live', 'Live board'], ['deals', 'Deals only'], ['sold', 'Sold results'], ['missed', 'Missed deals']];
+let SECTORS = [];
+const pref = (k, d) => { try { return JSON.parse(localStorage.getItem('k2_' + k)) ?? d; } catch { return d; } };
+const save = (k, v) => { try { localStorage.setItem('k2_' + k, JSON.stringify(v)); } catch {} };
 
-// Same rules as the server's saved searches: commas = or, all words in one part must appear, -word excludes.
-function matcher(terms) {
-  const esc2 = w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const alts = String(terms || '').toLowerCase().split(/\s*(?:,|;|\||\bor\b)\s*/).filter(Boolean).map(alt => {
-    const words = alt.split(/\s+/).filter(Boolean);
-    return { need: words.filter(w => !w.startsWith('-')).map(w => new RegExp(`(^|[^a-z0-9])${esc2(w)}(s|es)?($|[^a-z0-9])`, 'i')),
-      not: words.filter(w => w.startsWith('-') && w.length > 1).map(w => new RegExp(`(^|[^a-z0-9])${esc2(w.slice(1))}`, 'i')) };
-  }).filter(a => a.need.length);
-  return l => { const t = `${l.title || ''} ${l.category || ''}`.replace(/[-_/]/g, ' '); return alts.some(a => a.need.every(r => r.test(t)) && !a.not.some(r => r.test(t))); };
-}
-
-// Rough type from category / link / title, for the Type filter.
-function typeOf(l) {
-  const t = `${l.category || ''} ${l.url || ''} ${l.title || ''} ${l.sale || ''}`.toLowerCase();
-  if (/motor ?(bike|cycle)|motorcycles?|\bbikes?\b|scooter|harley|kawasaki|ducati|\bktm\b|yamaha [a-z]{1,3}\d/.test(t)) return 'bike';
-  if (/\btrucks?\b|trailer|prime mover|tipper|isuzu n[pq]r|hino|fuso|kenworth|scania|\bmack\b|freightliner|tray ?back/.test(t)) return 'truck';
-  if (/\bvans?\b|\bbus(es)?\b|hiace|sprinter|renault master|iloa?d|transit|crafter|trafic|\bvito\b|kombi|coaster|rosa/.test(t)) return 'van';
-  if (/boat|marine|jet ?ski|caravan|camper|motorhome|pop ?top/.test(t)) return 'boat';
-  if (/machinery|plant|excavat|forklift|loader|tractor|bobcat|skid ?steer|dozer|grader|generator|compressor|\bmower|elevated work|scissor lift|telehandler/.test(t)) return 'machinery';
-  if (l.vehicle) return 'car';
-  return 'goods';
-}
-const n0 = v => { const x = Number(String(v ?? '').replace(/[$,\s]/g, '')); return v === '' || v == null || !Number.isFinite(x) ? null : x; };
-function moreActive() {
-  return ['min', 'max', 'year', 'km', 'type', 'wovr', 'bids', 'ends', 'dist'].filter(k => more[k] != null && more[k] !== '').length + ((more.states || []).length ? 1 : 0);
-}
-function passMore(l, now) {
-  const p = closedMode() ? l.finalBid : l.bid ?? l.startPrice;
-  if (n0(more.min) != null && (p == null || p < n0(more.min))) return false;
-  if (n0(more.max) != null && (p == null || p > n0(more.max))) return false;
-  if (n0(more.year) != null && (!l.year || l.year < n0(more.year))) return false;
-  if (n0(more.km) != null && (l.odometer == null || l.odometer > n0(more.km))) return false;
-  if (more.type) { const t = typeOf(l); if (more.type === 'vehicle' ? !['car', 'van', 'truck', 'bike'].includes(t) && !l.vehicle : t !== more.type) return false; }
-  const w = l.wovr || '';
-  if (more.wovr === 'clean' && /write-?off/i.test(w)) return false;
-  if (more.wovr === 'repairable' && !/repairable/i.test(w)) return false;
-  if (more.wovr === 'statutory' && !/statutory/i.test(w)) return false;
-  if (more.bids === 'none' && !(l.bidCount === 0 || (l.bid == null && l.bidCount == null))) return false;
-  if (more.bids === 'some' && !(l.bidCount > 0 || (l.bid != null && l.bidCount == null))) return false;
-  if (more.bids === 'hot' && !(l.bidCount >= 5)) return false;
-  if ((more.states || []).length && !more.states.includes(l.state || (/\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b/.exec(l.location || '') || [])[1])) return false;
-  if (n0(more.dist) != null && (l.distanceKm == null || l.distanceKm > n0(more.dist))) return false;
-  if (more.ends && !closedMode()) {
-    if (!l.endAt) return false;
-    const day = t => new Date(t).toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
-    if (more.ends === '60' && l.endAt - now > 3600000) return false;
-    if (more.ends === 'today' && day(l.endAt) !== day(now)) return false;
-    if (more.ends === 'tomorrow' && day(l.endAt) !== day(now + 86400000)) return false;
-  }
-  return true;
-}
+let view = pref('view', 'live'), sector = pref('sector', 'core'), siteOff = new Set(pref('siteOff', [])), more = pref('more', {});
+let hours = pref('hours', 48), sortBy = pref('sort', 'hot');
+let lots = [], watch = [], searches = [], status = { sites: [] }, aiOn = false, clockSkew = 0, mode = 'live', myBase = '', missedDays = 7;
+let lastBid = {}, curBid = {}, activeSearch = null, openKey = null, watchEvery = 60, missedTotal = null;
+$('#hideStat').checked = pref('hideStat', true);
+$('#sort').value = sortBy;
+const closedMode = () => mode === 'sold' || mode === 'missed';
 
 function left(ms) {
   if (ms <= 0) return 'closing';
@@ -307,14 +367,15 @@ function left(ms) {
   return `${m}:${String(sec).padStart(2, '0')}`;
 }
 const fmtClose = t => new Date(t).toLocaleString('en-AU', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Australia/Perth' }) + ' AWST';
-const CHEAP_VEHICLE = 3000;
-// Deal strength from the CURRENT price: lower = better. As bidding climbs the number rises and the lot sinks.
+const fmtDay = t => new Date(t).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Australia/Perth' });
+
+// Deal strength from what you'd pay: lower = better. As bidding climbs the lot sinks.
 function strength(l) {
   const p = l.bid ?? l.startPrice;
   if (p == null) return null;
-  if (l.estimate) return l.ratio ?? p / l.estimate;   // ratio = (bid + fees) / estimate, from the server
-  if (l.vehicle) return (p / CHEAP_VEHICLE) * SLEEPER;   // no estimate: a $3,000 vehicle scores the same as 25% of value
-  if (p <= 5) return 0;                                   // penny lot
+  if (l.estimate) return l.ratio ?? p / l.estimate;
+  if (l.vehicle) return (p / CHEAP_VEHICLE) * SLEEPER;
+  if (p <= 5 && l.sector !== 'general') return 0;
   return null;
 }
 const isDeal = l => { const s = strength(l); return s != null && s <= SLEEPER; };
@@ -332,33 +393,171 @@ const SORTS = {
   },
 };
 
-function wovrTag(w) {
-  if (!w) return '';
-  const cls = /statutory/i.test(w) ? 'stat' : /inspection/i.test(w) ? 'ok' : /repairable/i.test(w) ? 'rep' : '';
-  const label = /statutory/i.test(w) ? 'Statutory W/O · parts only' : w;
-  return `<span class="tag ${cls}">${esc(label)}</span>`;
+// Same rules as the server's saved searches.
+function matcher(terms) {
+  const e = w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const alts = String(terms || '').toLowerCase().split(/\s*(?:,|;|\||\bor\b)\s*/).filter(Boolean).map(alt => {
+    const words = alt.split(/\s+/).filter(Boolean);
+    return { need: words.filter(w => !w.startsWith('-')).map(w => new RegExp(`(^|[^a-z0-9])${e(w)}(s|es)?($|[^a-z0-9])`, 'i')),
+      not: words.filter(w => w.startsWith('-') && w.length > 1).map(w => new RegExp(`(^|[^a-z0-9])${e(w.slice(1))}`, 'i')) };
+  }).filter(a => a.need.length);
+  return l => { const t = `${l.title || ''} ${l.category || ''}`.replace(/[-_/]/g, ' '); return alts.some(a => a.need.every(r => r.test(t)) && !a.not.some(r => r.test(t))); };
 }
 
-function visible() {
-  const q = $('#q').value.trim().toLowerCase();
-  const site = $('#site').value, hideStat = $('#hideStat').getAttribute('aria-pressed') === 'true';
+const n0 = v => { const x = Number(String(v ?? '').replace(/[$,\s]/g, '')); return v === '' || v == null || !Number.isFinite(x) ? null : x; };
+const moreActive = () => ['min', 'max', 'year', 'km', 'dist', 'wovr', 'res', 'bids', 'ends'].filter(k => more[k] != null && more[k] !== '').length + ((more.states || []).length ? 1 : 0);
+function passMore(l, now) {
+  const p = closedMode() ? l.finalBid : l.bid ?? l.startPrice;
+  if (n0(more.min) != null && (p == null || p < n0(more.min))) return false;
+  if (n0(more.max) != null && (p == null || p > n0(more.max))) return false;
+  if (n0(more.year) != null && (!l.year || l.year < n0(more.year))) return false;
+  if (n0(more.km) != null && (l.odometer == null || l.odometer > n0(more.km))) return false;
+  if (n0(more.dist) != null && (l.distanceKm == null || l.distanceKm > n0(more.dist))) return false;
+  const w = l.wovr || '';
+  if (more.wovr === 'clean' && /write-?off/i.test(w)) return false;
+  if (more.wovr === 'repairable' && !/repairable/i.test(w)) return false;
+  if (more.wovr === 'statutory' && !/statutory/i.test(w)) return false;
+  if (more.res && l.reserve !== more.res) return false;
+  if (more.bids === 'none' && !(l.bidCount === 0 || (l.bid == null && l.bidCount == null))) return false;
+  if (more.bids === 'some' && !(l.bidCount > 0 || (l.bid != null && l.bidCount == null))) return false;
+  if (more.bids === 'hot' && !(l.bidCount >= 5)) return false;
+  if ((more.states || []).length && !more.states.includes(l.state || (/\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b/.exec(l.location || '') || [])[1])) return false;
+  if (more.ends && !closedMode()) {
+    if (!l.endAt) return false;
+    const day = t => new Date(t).toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
+    if (more.ends === '60' && l.endAt - now > 3600000) return false;
+    if (more.ends === 'today' && day(l.endAt) !== day(now)) return false;
+    if (more.ends === 'tomorrow' && day(l.endAt) !== day(now + 86400000)) return false;
+  }
+  return true;
+}
+const inSector = (l, s = sector) => s === 'all' ? true : s === 'core' ? l.sector !== 'general'
+  : s.startsWith('group:') ? SECTORS.some(x => x.group === s.slice(6) && x.key === l.sector) : l.sector === s;
+
+// Everything except the sector choice (so the sidebar can count per sector).
+function base(list) {
   const now = Date.now() + clockSkew;
+  const q = $('#q').value.trim().toLowerCase();
+  const hideStat = $('#hideStat').checked;
   const inSearch = activeSearch ? matcher(activeSearch.terms) : null;
-  return lots.filter(l => {
-    if (site && l.site !== site) return false;
-    if (!passMore(l, now)) return false;
-    if (inSearch && (!inSearch(l) || (activeSearch.site && l.site !== activeSearch.site))) return false;
+  return list.filter(l => {
+    if (siteOff.has(l.site)) return false;
     if (hideStat && /statutory/i.test(l.wovr || '') && !l.starred) return false;
     if (q && !`${l.title} ${l.location} ${l.state} ${l.sale} ${l.category}`.toLowerCase().includes(q)) return false;
-    const p = l.bid ?? l.startPrice;
-    if (filter === 'sold' || filter === 'missed') return true;
-    if (l.starred) return false; // shown in the watchlist panel instead
-    if (filter === 'deals') return isDeal(l);
-    if (filter === 'vehicles') return l.vehicle;
-    if (filter === 'under500') return p != null && p <= 500;
-    if (filter === 'starred') return l.starred;
+    if (inSearch && (!inSearch(l) || (activeSearch.site && l.site !== activeSearch.site))) return false;
+    if (!passMore(l, now)) return false;
+    if (mode === 'live' && l.starred) return false; // shown in the watchlist
+    if (view === 'deals' && !isDeal(l)) return false;
     return true;
   });
+}
+
+const distTxt = l => l.distanceKm == null ? '' : `${l.distanceApprox ? '~' : ''}${Number(l.distanceKm).toLocaleString('en-AU')} km`;
+function wovrTag(w) {
+  if (!w || /n\/a/i.test(w)) return '';
+  if (/statutory/i.test(w)) return '<span class="tag r">Statutory W/O</span>';
+  if (/inspection/i.test(w)) return '<span class="tag g">Inspected repairable</span>';
+  if (/repairable/i.test(w)) return '<span class="tag a">Repairable W/O</span>';
+  return `<span class="tag">${esc(w)}</span>`;
+}
+const reserveTag = r => r === 'none' ? '<span class="tag g">No reserve</span>' : r === 'not met' ? '<span class="tag a">Reserve not met</span>' : r === 'met' ? '<span class="tag g">Reserve met</span>' : '';
+const checkTag = c => !c || c.verdict === 'error' ? '' : `<span class="tag ${c.verdict === 'good' ? 'g' : c.verdict === 'avoid' ? 'r' : 'a'}" title="${esc(c.summary || '')}">${{ good: 'Listing OK', caution: 'Check listing', avoid: 'Red flags' }[c.verdict] || ''}</span>`;
+const slugName = u => { const w = String(u || '').split(/[?#]/)[0].replace(/\/$/, '').split('/').pop().replace(/-?\d{5,}$/, '').split('-').filter(Boolean); return w.length > 1 ? w.map(x => x[0].toUpperCase() + x.slice(1)).join(' ') : ''; };
+const photo = l => `<span class="ph">${l.photo ? `<img src="${esc(l.photo)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}</span>`;
+const lotLink = l => `<a class="lot-t" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc(l.title || '')}">${esc(l.title || slugName(l.url) || 'Untitled lot')}</a>`;
+
+function clockCell(l, now) {
+  if (closedMode() || l.status === 'closed') return `<div class="clock"><div class="t">Sold</div><div class="d">${l.endAt ? esc(fmtDay(l.endAt)) : ''}</div></div>`;
+  if (l.opensAt && l.opensAt > now) return `<div class="clock"><div class="t warn">Not open yet</div><div class="d">opens ${esc(fmtDay(l.opensAt))}</div></div>`;
+  const ms = l.endAt ? l.endAt - now : null;
+  const cls = ms == null ? '' : ms < 600000 ? 'now' : ms < 3600000 ? 'soon' : '';
+  return `<div class="clock ${cls}"><div class="t num" data-end="${l.endAt ?? ''}">${ms == null ? '—' : left(ms)}</div><div class="d">${l.endAt ? esc(fmtClose(l.endAt)) : 'close time not known yet'}</div></div>`;
+}
+
+// Value bar: track = 0 .. top of the value range; blue band = value range; marker = all-in cost; green = margin.
+function valueCell(l) {
+  const est = l.estimate;
+  const cost = closedMode() ? l.finalBid : (l.cost?.landed ?? l.bid ?? l.startPrice);
+  if (!est || cost == null) return `<span class="sub">${l.vehicle && !closedMode() ? 'no value yet' : ''}</span>`;
+  const lo = l.estSource === 'history' && l.history ? l.history.low : l.estSource === 'research' ? l.estLow : est;
+  const hi = l.estSource === 'history' && l.history ? l.history.high : l.estSource === 'research' ? (l.estHigh || est) : est;
+  const top = Math.max(hi, cost, est) * 1.05;
+  const pct = v => Math.max(0, Math.min(100, (v / top) * 100));
+  const ratio = cost / est;
+  const label = ratio <= 1 ? `${Math.round((1 - ratio) * 100)}% under` : `${Math.round((ratio - 1) * 100)}% over`;
+  const src = { yours: 'your est', research: 'market', history: 'sold here' }[l.estSource] || 'est';
+  return `<div class="vbar ${ratio > 1 ? 'over' : ''}" title="All-in ${money(cost)} vs ${src} ${money(est)}">
+    <div class="track"><div class="band" style="left:${pct(lo)}%;width:${Math.max(1, pct(hi) - pct(lo))}%"></div>
+      <div class="fill" style="left:${pct(cost)}%;width:${Math.max(0, pct(est) - pct(cost))}%"></div><div class="mark" style="left:calc(${pct(cost)}% - 1px)"></div></div>
+    <div class="cap"><span class="${ratio <= 0.5 ? 'gain' : ratio > 1 ? 'loss' : ''}">${label}</span><span>${src} ${kmoney(est)}</span></div></div>`;
+}
+
+function rowHtml(l, now) {
+  const p = closedMode() ? l.finalBid : l.bid ?? l.startPrice;
+  const sub = closedMode() ? (l.finalBid == null ? 'not captured' : l.seenMinsBeforeClose == null ? 'from listing' : l.seenMinsBeforeClose <= 1 ? 'hammer' : `seen ${l.seenMinsBeforeClose} min before`)
+    : l.bid == null && l.startPrice != null ? 'start price' : l.bidCount != null ? `${l.bidCount} bid${l.bidCount === 1 ? '' : 's'}` : l.bid == null ? 'no bid seen' : 'current';
+  const deal = mode === 'missed' || (closedMode() ? l.ratio != null && l.ratio <= 0.5 : isDeal(l));
+  const margin = closedMode() ? (l.saving ?? null) : l.profit;
+  return `<tr class="row ${deal ? 'deal' : ''} ${l.alerts?.length ? 'alerted' : ''} ${openKey === l.key ? 'open' : ''}" data-key="${esc(l.key)}">
+    <td class="col-photo">${photo(l)}</td>
+    <td class="c-lot">${lotLink(l)}<div class="lot-m"><span class="site">${esc(SITE_NAMES[l.site] || l.site)}</span>
+      ${l.location || l.state ? `<span>${esc([l.location, l.location?.includes(l.state) ? '' : l.state].filter(Boolean).join(' '))}${l.distanceKm != null ? ` · ${distTxt(l)}` : ''}</span>` : ''}
+      ${l.odometer ? `<span class="num">${l.odometer.toLocaleString('en-AU')} km</span>` : ''}${wovrTag(l.wovr)}${reserveTag(l.reserve)}${checkTag(l.check)}
+      ${mode === 'missed' ? `<span class="tag g">${esc(l.why)}</span>` : ''}${l.alerts?.length ? `<span class="tag r">Alert: ${esc(l.alerts.join(', '))}</span>` : ''}</div></td>
+    <td class="c-clock">${clockCell(l, now)}</td>
+    <td class="c-bid r"><div class="money num">${money(p)}</div><div class="sub">${sub}</div></td>
+    <td class="col-allin r">${!closedMode() && l.cost ? `<div class="money num">${money(l.cost.total)}</div><div class="sub">${[l.cost.fees ? `+${kmoney(l.cost.fees)} fees` : '', l.cost.transport ? `+${kmoney(l.cost.transport)} freight` : l.cost.transport === 0 ? 'pick up' : ''].filter(Boolean).join(' · ')}</div>` : ''}</td>
+    <td class="c-val">${valueCell(l)}</td>
+    <td class="c-margin r">${margin != null && margin > 0 ? `<div class="money num gain">+${kmoney(margin)}</div><div class="sub">${closedMode() ? 'under value' : 'est. margin'}</div>` : margin != null ? `<div class="money num loss">${kmoney(margin)}</div><div class="sub">after costs</div>` : ''}</td>
+    <td class="c-acts"><div class="acts">
+      <button class="ibtn ${l.starred ? 'on' : ''}" data-star="${esc(l.key)}" title="Watch this lot">★</button>
+      ${closedMode() ? '' : `<button class="ibtn" data-mybid="${esc(l.key)}" title="I've bid on this: track if I'm winning">Bid</button>`}</div></td>
+  </tr>${openKey === l.key ? detailHtml(l) : ''}`;
+}
+
+function detailHtml(l) {
+  const c = l.cost;
+  const costs = c && !closedMode() ? `<div><h4>All-in cost</h4><div class="kv num">
+      <span>Bid</span><span>${money(c.price)}</span>
+      ${c.premium ? `<span>Buyer's premium ${c.premiumPct}%</span><span>${money(c.premium)}</span>` : ''}${c.fee ? `<span>Buyer's fee</span><span>${money(c.fee)}</span>` : ''}${c.gst ? `<span>GST</span><span>${money(c.gst)}</span>` : ''}
+      <span>Transport${c.km != null ? ` (${c.kmApprox ? '~' : ''}${c.km.toLocaleString('en-AU')} km to ${esc(myBase)})` : ''}</span><span>${c.transport == null ? 'unknown' : c.transport === 0 ? 'pick up' : money(c.transport)}</span>
+      <span><b>Total</b></span><span><b>${money(c.total)}</b></span></div><div class="sub" style="white-space:normal;margin-top:4px">Fees and transport are estimates; the lot's own terms are final.</div></div>` : '';
+  const hist = l.history ? `<div data-hist="${esc(l.key)}"><h4>Sold here: ${l.history.n} similar ${esc(l.history.label)}</h4><div class="muted">${money(l.history.low)}–${money(l.history.high).slice(1)}, median ${money(l.history.median)}</div><ul><li class="muted">Loading…</li></ul></div>` : '';
+  const research = l.estMethod === 'web' ? `<div><h4>Market research</h4><div class="muted">Market ~${money(l.marketAvg)} · resale ${money(l.estLow)}–${money(l.estHigh).slice(1)}</div><ul>${(l.comps || []).map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.title || x.url)}</a>${x.price ? ` — ${money(x.price)}` : ''}${x.km ? ` · ${Number(x.km).toLocaleString('en-AU')} km` : ''}</li>`).join('')}</ul><div class="sub" style="white-space:normal">${esc(l.estNote || '')}</div></div>`
+    : l.estMethod === 'error' ? `<div><h4>Market research</h4><div class="warn">${esc((l.estNote || '').replace(/^error: /, ''))}</div></div>` : '';
+  const check = l.check && l.check.verdict !== 'error' ? `<div><h4>Listing check</h4>${checkTag(l.check)} ${esc(l.check.summary || '')}${(l.check.flags || []).length ? `<ul>${l.check.flags.map(f => `<li>${esc(f)}</li>`).join('')}</ul>` : ''}<div class="sub">starts: ${esc(l.check.starts || '?')} · keys: ${esc(l.check.keys || '?')}</div></div>` : '';
+  const facts = `<div><h4>Lot</h4><div class="kv"><span>Site</span><span>${esc(SITE_NAMES[l.site] || l.site)}${l.lotNo ? ' · lot ' + esc(l.lotNo) : ''}</span>${l.sale ? `<span>Sale</span><span>${esc(l.sale)}</span>` : ''}
+    ${l.endAt ? `<span>Closes</span><span>${esc(fmtDay(l.endAt))} AWST</span>` : ''}${l.opensAt ? `<span>Opens</span><span>${esc(fmtDay(l.opensAt))} AWST</span>` : ''}
+    ${l.year ? `<span>Year</span><span>${l.year}</span>` : ''}${l.manualEstimate != null ? `<span>Your estimate</span><span>${money(l.manualEstimate)}</span>` : ''}<span>Last checked</span><span>${l.lastChecked ? new Date(l.lastChecked).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }) : 'not yet'}</span></div></div>`;
+  return `<tr class="detail"><td colspan="8"><div class="dgrid">${facts}${costs}${hist}${research}${check}</div>
+    <div class="dacts"><a class="btn sm" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">Open on ${esc(SITE_NAMES[l.site] || l.site)}</a>
+      <button class="btn sm" data-est="${esc(l.key)}">Set my estimate</button>
+      ${closedMode() && l.status !== 'open' ? '' : `<button class="btn sm" data-research="${esc(l.key)}">${l.estMethod === 'web' ? 'Research again' : 'Research market price'}</button><button class="btn sm" data-check="${esc(l.key)}">Check listing</button>`}</div></td></tr>`;
+}
+
+function renderWatch() {
+  const now = Date.now() + clockSkew;
+  const BS = { winning: 'Winning', atmax: 'At your max', outbid: 'Outbid', nobids: 'No bids yet', won: 'Won', lost: 'Lost' };
+  $('#watchList').innerHTML = !watch.length
+    ? '<div class="empty" style="padding:18px">Star ★ a lot, or press <b>Bid</b> on one you\'ve bid on. It shows here, re-checked every minute, with whether you\'re winning.</div>'
+    : `<table class="grid"><thead><tr><th class="col-photo"></th><th>Lot</th><th>Closes</th><th class="r">Price</th><th class="r">My max</th><th>Position</th><th class="r col-allin">All-in</th><th></th></tr></thead><tbody>${watch.map(l => {
+      const closed = l.status === 'closed';
+      const price = closed ? (l.finalBid ?? l.bid) : (l.bid ?? l.startPrice);
+      const moved = !closed && lastBid[l.key] != null && l.bid != null && l.bid > lastBid[l.key];
+      return `<tr class="row ${closed ? 'sold' : ''} ${l.bidStatus || ''}" data-key="${esc(l.key)}">
+        <td class="col-photo">${photo(l)}</td>
+        <td class="c-lot">${lotLink(l)}<div class="lot-m"><span class="site">${esc(SITE_NAMES[l.site] || l.site)}</span><span>${esc([l.location, l.state].filter(Boolean).join(' '))}${l.distanceKm != null ? ' · ' + distTxt(l) : ''}</span>${wovrTag(l.wovr)}${reserveTag(l.reserve)}${checkTag(l.check)}<span>${closed ? '' : ago(l.lastChecked)}</span></div>
+          ${(l.rivals || []).length ? `<div class="rival">⚠ ${esc(l.rivals.map(r => `${r.user} has bid too (max ${money(r.myBid)})`).join(', '))}: you're bidding against each other</div>` : (l.others || []).length ? `<div class="sub">also watched by ${esc(l.others.join(', '))}</div>` : ''}</td>
+        <td class="c-clock">${clockCell(l, now)}</td>
+        <td class="c-bid r"><div class="money num">${money(price)}</div><div class="sub">${moved ? `<span class="loss">▲ from ${money(lastBid[l.key])}</span>` : closed ? 'final' : l.bidCount != null ? `${l.bidCount} bids` : ''}</div></td>
+        <td class="c-mymax r num">${l.myBid != null ? money(l.myBid) : '<span class="dim">—</span>'}</td>
+        <td class="c-pos">${l.bidStatus ? `<span class="status ${l.bidStatus}">${BS[l.bidStatus]}</span>${l.myBid != null ? `<span class="sub pos-max"> max ${money(l.myBid)}</span>` : ''}` : '<span class="dim">watching</span>'}</td>
+        <td class="col-allin r">${!closed && l.cost ? `<span class="money num">${money(l.cost.total)}</span>` : ''}</td>
+        <td class="c-acts"><div class="acts">${closed ? '' : `<button class="ibtn" data-mybid="${esc(l.key)}">${l.myBid != null ? 'Change bid' : "I'm bidding"}</button>`}<button class="ibtn on" data-unwatch="${esc(l.key)}" title="Stop watching">★</button></div></td>
+      </tr>${openKey === l.key ? detailHtml(l) : ''}`;
+    }).join('')}</tbody></table>`;
+  const win = watch.filter(l => l.bidStatus === 'winning' || l.bidStatus === 'atmax').length, out = watch.filter(l => l.bidStatus === 'outbid').length;
+  $('#watchHint').textContent = `${watch.filter(l => l.status === 'open').length} open${win ? ` · winning ${win}` : ''}${out ? ` · outbid on ${out}` : ''} · checked every ${watchEvery} s`;
 }
 
 function ago(t) {
@@ -367,150 +566,89 @@ function ago(t) {
   return s < 90 ? `checked ${s}s ago` : `checked ${Math.round(s / 60)} min ago`;
 }
 
-const slugName = u => { const w = String(u || '').split(/[?#]/)[0].replace(/\/$/, '').split('/').pop().replace(/-?\d{5,}$/, '').split('-').filter(Boolean); return w.length > 1 ? w.map(x => x[0].toUpperCase() + x.slice(1)).join(' ') : ''; };
-
-function costLine(l) {
-  const c = l.cost; if (!c || closedMode()) return '';
-  const bits = [];
-  if (c.fees) bits.push(`+${money(c.fees)} ${c.premiumPct ? c.premiumPct + '% premium' : 'fees'}${c.gst ? ' & GST' : ''}`);
-  if (c.transport) bits.push(`+${money(c.transport)} ${c.how || 'transport'}`);
-  else if (c.transport === 0) bits.push('pick up');
-  if (!bits.length) return '';
-  return `<div class="cost" title="Estimated: buyer's fees from each site's usual terms, transport from distance. Check the lot's own terms.">all-in <b>~${money(c.total)}</b> · ${bits.join(' · ')}</div>`;
-}
-const distTag = l => l.distanceKm == null ? '' : `<span title="${l.distanceApprox ? 'Approximate (state capital) until the suburb is looked up' : 'Rough road distance'} from ${esc(myBase)}">📍 ${l.distanceApprox ? '~' : ''}${Number(l.distanceKm).toLocaleString('en-AU')} km</span>`;
-function histBlock(l) {
-  const h = l.history; if (!h) return '';
-  const p = l.bid ?? l.startPrice;
-  const pct = p != null && h.median ? Math.round((p / h.median) * 100) : null;
-  return `<details class="hist" data-hist="${esc(l.key)}"><summary>Sold here: ${h.n} similar ${esc(h.label)} went for ${money(h.low)}–${money(h.high).slice(1)}, median ${money(h.median)}${pct != null && !closedMode() ? ` · now ${pct}% of that` : ''}</summary><ul><li class="sub">Loading…</li></ul></details>`;
-}
-function checkBlock(l) {
-  const c = l.check; if (!c) return '';
-  if (c.verdict === 'error') return `<div class="check">Listing check failed: ${esc(c.summary || '')}</div>`;
-  const label = { good: '✓ Listing looks OK', caution: '⚠ Check before bidding', avoid: '✗ Red flags' }[c.verdict] || c.verdict;
-  const facts = [c.starts && c.starts !== 'unknown' ? `starts: ${c.starts}` : '', c.keys && c.keys !== 'unknown' ? `keys: ${c.keys}` : ''].filter(Boolean).join(' · ');
-  return `<div class="check"><span class="tag ${esc(c.verdict)}">${label}</span> ${esc(c.summary || '')}${(c.flags || []).length ? ` — <i>${esc(c.flags.join(', '))}</i>` : ''}${facts ? ` (${esc(facts)})` : ''}</div>`;
-}
-let myBase = '';
-
-function compsBlock(l) {
-  if (l.estMethod === 'error') return `<div class="research err">Research failed: ${esc((l.estNote || '').replace(/^error: /, ''))}</div>`;
-  if (l.estMethod !== 'web') return '';
-  const pct = l.marketAvg && (l.bid ?? l.startPrice) != null ? Math.round(((l.bid ?? l.startPrice) / l.marketAvg) * 100) : null;
-  const flag = pct != null && pct <= 50 ? `<span class="tag ok">${pct}% of market — great price</span>` : pct != null && pct <= 75 ? `<span class="tag rep">${pct}% of market</span>` : '';
-  return `<details class="research"><summary>Market ${l.marketAvg ? '~' + money(l.marketAvg) : 'n/a'} · resale ${money(l.estLow)}–${money(l.estHigh).slice(1)} · ${l.comps.length} comparable${l.comps.length === 1 ? '' : 's'} ${flag}</summary>
-    <ul>${l.comps.map(c => `<li><a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.title || c.url)}</a>${c.price ? ` — ${money(c.price)}` : ''}${c.km ? ` · ${Number(c.km).toLocaleString('en-AU')} km` : ''}</li>`).join('')}</ul>
-    <div class="sub">${esc(l.estNote || '')}</div></details>`;
-}
-
-function renderWatch() {
-  const now = Date.now() + clockSkew;
-  $('#watchList').innerHTML = !watch.length
-    ? '<div class="watch-empty">Nothing yet. Tap ★ on any lot below (or <b>Bid</b> if you\'ve put a bid on it), or paste a lot link above. Its price is checked every minute and you\'ll see if you\'re winning.</div>'
-    : watch.map(l => {
-      const closed = l.status === 'closed';
-      const ms = l.endAt ? l.endAt - now : null;
-      const cls = closed || ms == null ? '' : ms < 600000 ? 'now' : ms < 3600000 ? 'soon' : '';
-      const price = closed ? (l.finalBid ?? l.bid) : (l.bid ?? l.startPrice);
-      const moved = !closed && lastBid[l.key] != null && l.bid != null && l.bid > lastBid[l.key];
-      const BS = { winning: "You're winning", atmax: 'At your max — winning only if you bid first', outbid: 'OUTBID', nobids: 'No bids showing yet', won: 'Looks like you won', lost: 'Lost — went past your max' };
-      const bs = l.bidStatus ? `<div class="bidst ${l.bidStatus}">${BS[l.bidStatus]}${l.myBid != null ? ` · my max ${money(l.myBid)}` : ''}</div>` : '';
-      return `<div class="wrow ${closed ? 'sold' : ''} ${l.bidStatus || ''}">
-        <div class="clock ${cls}">${closed ? '<div class="t">SOLD</div>' : `<div class="t" data-end="${l.endAt ?? ''}">${ms == null ? '…' : left(ms)}</div>`}<div class="d">${l.endAt ? esc(fmtClose(l.endAt)) : 'reading lot…'}</div></div>
-        <div><a class="wt" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title || slugName(l.url) || 'Loading lot details…')}</a>
-          <div class="wm"><span class="tag site">${esc(l.site)}</span> ${esc([l.location, l.state].filter(Boolean).join(' '))}${l.odometer ? ' · ' + l.odometer.toLocaleString('en-AU') + ' km' : ''}${l.wovr ? ' · ' + esc(l.wovr) : ''}${l.others?.length ? ' · also watched by ' + esc(l.others.join(', ')) : ''} · ${closed ? (l.seenMinsBeforeClose != null && l.seenMinsBeforeClose <= 1 ? 'hammer price' : 'final price seen') : ago(l.lastChecked)}${l.distanceKm != null ? ' · ' + distTag(l) : ''}</div>${checkBlock(l)}${compsBlock(l)}${histBlock(l)}</div>
-        <div class="wp"><b>${money(price)}</b><div class="sub">${closed ? 'sold' : l.bidCount != null ? l.bidCount + (l.bidCount === 1 ? ' bid' : ' bids') : l.bid == null ? 'no bid seen' : 'current bid'}</div>${moved ? `<div class="up">▲ was ${money(lastBid[l.key])}</div>` : ''}${l.estimate ? `<div class="sub">est ${money(l.estimate)}</div>` : ''}${bs}${(l.rivals || []).length ? `<div class="rival">⚠ ${esc(l.rivals.map(r => `${r.user} has bid (max ${money(r.myBid)})`).join(', '))} — you're bidding against each other</div>` : ''}</div>
-        <div class="wx">${closed ? '' : `<button class="icon mybid" data-mybid="${esc(l.key)}" title="Tell KAMRADS the most you've bid, to see if you're winning">${l.myBid != null ? 'My bid ' + money(l.myBid) : "I'm bidding"}</button> `}<button class="icon on" data-unwatch="${esc(l.key)}" title="Stop watching">★</button>${closed ? '' : ` <button class="icon" data-research="${esc(l.key)}" title="Search the market for comparable prices">${l.estMethod === 'web' ? 'Re-check' : 'Research'}</button> <button class="icon" data-check="${esc(l.key)}" title="Claude reads the description and photos for deal-breakers">Check listing</button>`}</div>
-      </div>`;
+function renderSide() {
+  const pool = base(lots);
+  const counts = {}; for (const l of pool) counts[l.sector] = (counts[l.sector] || 0) + 1;
+  const total = k => k === 'core' ? pool.filter(l => l.sector !== 'general').length : k.startsWith('group:') ? SECTORS.filter(s => s.group === k.slice(6)).reduce((a, s) => a + (counts[s.key] || 0), 0) : counts[k] || 0;
+  $('#views').innerHTML = VIEWS.map(([k, label]) => `<button class="nav" data-view="${k}" aria-pressed="${view === k}">${label}</button>`).join('');
+  const groups = [...new Set(SECTORS.map(s => s.group))];
+  $('#sectors').innerHTML = `<button class="nav group" data-sector="core" aria-pressed="${sector === 'core' || sector === 'all'}">All main sectors <span class="c num">${total('core').toLocaleString('en-AU')}</span></button>`
+    + groups.map(g => {
+      const list = SECTORS.filter(s => s.group === g);
+      if (g === 'Other') return list.map(s => `<button class="nav ${sector === s.key ? '' : 'off'}" data-sector="${s.key}" aria-pressed="${sector === s.key}" title="Paint, household, clothing and the like. Kept off the main board.">${esc(s.label)} <span class="c num">${total(s.key) || ''}</span></button>`).join('');
+      return `<button class="nav group" data-sector="group:${esc(g)}" aria-pressed="${sector === 'group:' + g}">${esc(g)} <span class="c num">${total('group:' + g) || ''}</span></button>`
+        + list.map(s => `<button class="nav sub" data-sector="${s.key}" aria-pressed="${sector === s.key}">${esc(s.label)} <span class="c num">${total(s.key) || ''}</span></button>`).join('');
     }).join('');
-  const out = watch.filter(l => l.bidStatus === 'outbid').length, win = watch.filter(l => l.bidStatus === 'winning' || l.bidStatus === 'atmax').length;
-  $('#watchHint').textContent = `${watch.filter(l => l.status === 'open').length} watching${win ? ` · winning ${win}` : ''}${out ? ` · outbid on ${out}` : ''} · re-checked every ${watchEvery} s`;
+  const siteCounts = {}; for (const l of lots) siteCounts[l.site] = (siteCounts[l.site] || 0) + 1;
+  $('#sites').innerHTML = Object.keys(SITE_NAMES).map(site => {
+    const x = status.sites.find(z => z.site === site) || {};
+    const age = x.last_ok ? (Date.now() - x.last_ok) / 60000 : Infinity;
+    const err = x.last_error_at && (!x.last_ok || x.last_error_at > x.last_ok);
+    const cls = err ? 'bad' : age < 30 ? 'ok' : 'warn';
+    const tip = err ? x.last_error : x.last_ok ? `Last scan ${Math.round(age)} min ago, ${x.last_count} lots` : 'Waiting for its first scan';
+    return `<label class="site-row" title="${esc(tip)}"><input type="checkbox" data-site="${site}" ${siteOff.has(site) ? '' : 'checked'}><span class="dot ${cls}"></span>${SITE_NAMES[site]}<span class="c num">${siteCounts[site] || ''}</span></label>`;
+  }).join('');
 }
-let watchEvery = 60, missedDays = 7;
 
-function render() {
-  renderWatch();
+function renderDesk(rows) {
   const now = Date.now() + clockSkew;
-  const sortBy = $('#sort').value;
-  const rows = visible().sort(mode === 'missed' && (sortBy === 'hot' || sortBy === 'profit') ? (a, b) => (b.saving ?? -1) - (a.saving ?? -1) || b.endAt - a.endAt
-    : closedMode() && (sortBy === 'ending' || sortBy === 'hot') ? (a, b) => (b.endAt ?? 0) - (a.endAt ?? 0) : SORTS[sortBy] || SORTS.hot);
-  $('#searchbar').hidden = !activeSearch;
-  if (activeSearch) $('#searchbar').innerHTML = `Showing matches for <b>🔔 ${esc(activeSearch.terms)}</b>${activeSearch.maxPrice ? ` (alert under ${money(activeSearch.maxPrice)})` : ''} · ${rows.length} found <button class="icon" id="clearSearch">Show everything</button>`;
-  if (mode === 'missed') {
-    const shown = rows;
-    const total = shown.reduce((a, l) => a + (l.saving > 0 ? l.saving : 0), 0);
-    const veh = shown.filter(l => l.vehicle).length;
-    $('#summary').innerHTML = `
-      <div class="stat hot"><div class="n">${shown.length}</div><div class="l">Bargains that closed (${missedDays} days)</div></div>
-      <div class="stat"><div class="n">${money(total)}</div><div class="l">Total under estimate / market</div></div>
-      <div class="stat"><div class="n">${veh}</div><div class="l">Of them vehicles</div></div>
-      <div class="stat"><div class="n">${shown.filter(l => l.finalBid <= 500).length}</div><div class="l">Went for $500 or less</div></div>
-      <div class="capture"><span>Only lots we read within 15 minutes of closing, so the price is real. Statutory write-offs and lots you won are left out. Set your own <b>Est</b> on lots to make this sharper.</span></div>`;
-  }
+  const live = base(lots).filter(l => inSector(l));
+  const win = watch.filter(l => l.bidStatus === 'winning' || l.bidStatus === 'atmax').length, out = watch.filter(l => l.bidStatus === 'outbid').length;
+  const k = (v, l, cls = '') => `<div class="kpi"><div class="v num ${cls}">${v}</div><div class="l">${l}</div></div>`;
   if (mode === 'sold') {
-    const shown = rows;
-    const priced = shown.filter(l => l.finalBid != null);
-    const bargains = shown.filter(l => l.ratio != null && l.ratio <= 0.5);
-    const under500 = shown.filter(l => l.finalBid != null && l.finalBid <= 500);
-    const exact = shown.filter(l => l.seenMinsBeforeClose != null && l.seenMinsBeforeClose <= 1);
-    $('#summary').innerHTML = `
-      <div class="stat hot"><div class="n">${bargains.length}</div><div class="l">Sold under half the estimate</div></div>
-      <div class="stat"><div class="n">${under500.length}</div><div class="l">Sold for $500 or less</div></div>
-      <div class="stat"><div class="n">${priced.length.toLocaleString('en-AU')} / ${shown.length.toLocaleString('en-AU')}</div><div class="l">Closed lots with a final price${shown.length < lots.length ? ` (${lots.length - shown.length} hidden by filters)` : ''}</div></div>
-      <div class="stat"><div class="n">${exact.length}</div><div class="l">Read in the final minute</div></div>
-      <div class="capture">${soldStats.map(x => `<span><b>${SITE_NAMES[x.site] || x.site}</b> ${x.closed} closed · ${x.priced} priced · ${x.hammer} at the hammer</span>`).join('') || '<span>No lots have closed yet in this period.</span>'}</div>`;
-  }
-  const hour = lots.filter(l => l.endAt && l.endAt - now < 3600000);
-  const deals = lots.filter(isDeal);
-  if (!closedMode()) $('#summary').innerHTML = `
-    <div class="stat hot"><div class="n">${deals.length}</div><div class="l">Deals flagged</div></div>
-    <div class="stat"><div class="n">${hour.length}</div><div class="l">Closing in the next hour</div></div>
-    <div class="stat"><div class="n">${lots.length.toLocaleString('en-AU')}</div><div class="l">Lots tracked</div></div>
-    <div class="stat"><div class="n">${rows.length.toLocaleString('en-AU')}</div><div class="l">Showing${moreActive() || activeSearch || $('#q').value ? ' (filtered)' : ''}</div></div>`;
-  if (!rows.length) {
-    const hiddenStat = lots.filter(l => /statutory/i.test(l.wovr || '')).length;
-    const hideOn = $('#hideStat').getAttribute('aria-pressed') === 'true';
-    $('#list').innerHTML = `<div class="empty">${mode === 'missed' && !lots.length ? '<b>No missed bargains yet.</b><br>As lots close, the ones that went cheap show up here — check back after a day of auctions.' : lots.length ? (hideOn && hiddenStat ? `${hiddenStat} result${hiddenStat === 1 ? ' is a statutory write-off' : 's are statutory write-offs'}, hidden by <b>Hide statutory</b>. <a href="#" id="showStat">Show them</a>` : 'Nothing matches these filters.') : '<b>Scanning the auction sites…</b><br>The first full pass takes a few minutes. This page refreshes on its own.'}</div>`;
+    $('#desk').innerHTML = k(rows.length.toLocaleString('en-AU'), 'Results shown') + k(rows.filter(l => l.finalBid != null).length.toLocaleString('en-AU'), 'With a final price')
+      + k(rows.filter(l => l.seenMinsBeforeClose != null && l.seenMinsBeforeClose <= 1).length, 'Read at the hammer') + k(rows.filter(l => l.ratio != null && l.ratio <= 0.5).length, 'Went under half value', 'gain') + k(`${win} / ${out}`, 'Watchlist winning / outbid', out ? 'loss' : '');
     return;
   }
-  $('#list').innerHTML = rows.slice(0, 400).map(l => {
-    const ms = l.endAt ? l.endAt - now : null;
-    const cls = closedMode() || ms == null ? '' : ms < 600000 ? 'now' : ms < 3600000 ? 'soon' : '';
-    const p = closedMode() ? l.finalBid : l.bid ?? l.startPrice;
-    const pct = l.ratio != null ? Math.round(l.ratio * 100) : null;
-    const est = l.estimate != null
-      ? `<div class="est ${l.ratio != null && l.ratio <= SLEEPER ? 'good' : ''}" title="${l.estSource === 'history' ? 'Median of similar lots sold here' : l.estSource === 'yours' ? 'Your estimate' : 'Market research'}">${l.estSource === 'history' ? 'sold here ~' : 'est '}${money(l.estSource === 'history' ? l.estimate : l.manualEstimate ?? l.estLow)}${l.estSource === 'research' && l.estHigh ? '–' + money(l.estHigh).slice(1) : ''}${pct != null ? ` · ${pct}%` : ''}${l.profit != null && l.profit > 0 && !closedMode() ? ` · +${money(l.profit)}` : ''}</div>`
-      : `<div class="est sub">no estimate</div>`;
-    const dealCls = mode === 'missed' ? 'deal' : mode === 'sold' ? (l.ratio != null && l.ratio <= 0.5 ? 'deal' : '') : (isDeal(l) ? 'deal' : '');
-    return `<div class="lot ${dealCls} ${l.alerts.length ? 'alerted' : ''}">
-      <div class="clock ${cls}">${closedMode() ? `<div class="t">SOLD</div>` : `<div class="t" data-end="${l.endAt ?? ''}">${ms == null ? '—' : left(ms)}</div>`}<div class="d">${l.endAt ? esc(fmtClose(l.endAt)) : esc(l.buyMethod || 'time TBA')}</div></div>
-      <div>
-        <a class="title" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title || slugName(l.url) || 'Untitled lot')}</a>
-        <div class="meta">
-          <span class="tag site">${esc(l.site)}</span>
-          ${l.location || l.state ? `<span>${esc([l.location, l.location?.includes(l.state) ? '' : l.state].filter(Boolean).join(' '))}</span>` : ''}
-          ${l.odometer ? `<span>${l.odometer.toLocaleString('en-AU')} km</span>` : ''}
-          ${distTag(l)}
-          ${wovrTag(l.wovr)}
-          ${l.sale ? `<span>${esc(l.sale)}</span>` : ''}
-          ${l.alerts.length ? `<span class="tag stat">ALERT · ${esc(l.alerts.join(', '))}</span>` : ''}
-          ${mode === 'missed' ? `<span class="tag ok">${esc(l.why)}${l.saving > 0 ? ` · ${money(l.saving)} under` : ''}</span>` : ''}
-        </div>
-        ${checkBlock(l)}${compsBlock(l)}${histBlock(l)}
-      </div>
-      <div class="price">
-        <div><div class="bid">${money(p)}</div><div class="sub">${closedMode() ? (l.finalBid == null ? 'price not captured' : l.seenMinsBeforeClose == null ? 'price from listing' : l.seenMinsBeforeClose <= 1 ? 'hammer price' : `last seen ${l.seenMinsBeforeClose} min before close`) : l.bid == null && l.startPrice != null ? 'start price' : l.bidCount != null ? l.bidCount + (l.bidCount === 1 ? ' bid' : ' bids') : l.bid == null ? 'bid not visible yet' : 'current bid'}</div>${est}${costLine(l)}</div>
-        <div class="acts">
-          <button class="icon ${l.starred ? 'on' : ''}" data-star="${esc(l.key)}" title="Star: alert me in the final minutes">★</button>
-          ${closedMode() ? '' : `<button class="icon mybid" data-mybid="${esc(l.key)}" title="I've bid on this: track if I'm winning">Bid</button>`}
-          <button class="icon" data-est="${esc(l.key)}" title="Set your own resale estimate">Est</button>
-          ${closedMode() ? '' : `<button class="icon" data-check="${esc(l.key)}" title="Claude reads the description and photos for deal-breakers">Check</button>`}
-          ${closedMode() ? '' : `<button class="icon" data-research="${esc(l.key)}" title="Search the market for comparable prices">${l.estMethod === 'web' ? 'Re-check' : 'Research'}</button>`}
-        </div>
-      </div>
-    </div>`;
-  }).join('');
+  if (mode === 'missed') {
+    $('#desk').innerHTML = k(rows.length, `Bargains missed, ${missedDays} days`, 'gain') + k(kmoney(rows.reduce((a, l) => a + (l.saving > 0 ? l.saving : 0), 0)), 'Total under value', 'gain')
+      + k(rows.filter(l => l.vehicle).length, 'Of them vehicles') + k(rows.filter(l => l.finalBid <= 500).length, 'Went for $500 or less') + k(`${win} / ${out}`, 'Watchlist winning / outbid', out ? 'loss' : '');
+    return;
+  }
+  const deals = live.filter(isDeal);
+  const margin = deals.reduce((a, l) => a + (l.profit > 0 ? l.profit : 0), 0);
+  const hour = live.filter(l => l.endAt && l.endAt > now && l.endAt - now < 3600000).length;
+  $('#desk').innerHTML = k(deals.length, 'Deals on the board', 'gain') + k(kmoney(margin), 'Est. margin across deals', 'gain') + k(hour, 'Closing in the next hour')
+    + k(`${win} / ${out}`, 'Watchlist winning / outbid', out ? 'loss' : '') + k(missedTotal == null ? '—' : kmoney(missedTotal), 'Missed under value, last 7 days');
+}
+
+function render() {
+  const now = Date.now() + clockSkew;
+  renderSide();
+  renderWatch();
+  const pool = base(lots);
+  const rows = pool.filter(l => inSector(l));
+  const sorter = mode === 'missed' && (sortBy === 'hot' || sortBy === 'profit') ? (a, b) => (b.saving ?? -1) - (a.saving ?? -1) || b.endAt - a.endAt
+    : closedMode() && (sortBy === 'ending' || sortBy === 'hot') ? (a, b) => (b.endAt ?? 0) - (a.endAt ?? 0) : SORTS[sortBy] || SORTS.hot;
+  rows.sort(sorter);
+  renderDesk(rows);
+  const secLabel = sector === 'core' || sector === 'all' ? '' : sector.startsWith('group:') ? sector.slice(6) : (SECTORS.find(s => s.key === sector)?.label || '');
+  $('#title').textContent = (VIEWS.find(v => v[0] === view)?.[1] || 'Live board') + (secLabel ? `: ${secLabel}` : '');
+  document.querySelectorAll('#horizon button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.h) === hours)));
+  $('#horizon').hidden = mode === 'missed';
+  $('#count').textContent = `${rows.length.toLocaleString('en-AU')} lot${rows.length === 1 ? '' : 's'}${mode === 'missed' ? `, last ${missedDays} days` : ''}`;
+  $('#searchbar').hidden = !activeSearch;
+  if (activeSearch) $('#searchbar').innerHTML = `Matches for your alert <b style="color:var(--ink)">${esc(activeSearch.terms)}</b>${activeSearch.maxPrice ? ` (under ${money(activeSearch.maxPrice)})` : ''} <button class="btn sm" id="clearSearch">Show everything</button>`;
+  if (!rows.length) {
+    const why = mode === 'missed' && !lots.length ? '<b>No missed bargains yet.</b><br>As lots close, the ones that went cheap show up here.'
+      : !lots.length ? '<b>Scanning the auction sites…</b><br>The first full pass takes a few minutes. This page refreshes on its own.'
+      : sector === 'core' && pool.some(l => l.sector === 'general') ? 'Nothing in the main sectors matches. <a href="#" data-sector-go="general">Look in general goods</a> or clear the filters.'
+      : 'Nothing matches these filters.';
+    $('#list').innerHTML = `<div class="empty">${why}</div>`;
+    return;
+  }
+  const th = (label, key, cls = '') => `<th class="${cls} ${key && sortBy === key ? 'sorted' : ''}" ${key ? `data-sort="${key}"` : ''}>${label}</th>`;
+  $('#list').innerHTML = `<table class="grid"><thead><tr>${th('', '', 'col-photo')}${th('Lot', 'near')}${th(closedMode() ? 'Closed' : 'Closes', 'ending')}${th(closedMode() ? 'Sold for' : 'Bid', 'price', 'r')}${th('All-in', '', 'r col-allin')}${th('Value', 'hot')}${th('Margin', 'profit', 'r')}<th></th></tr></thead>
+    <tbody>${rows.slice(0, 400).map(l => rowHtml(l, now)).join('')}</tbody></table>${rows.length > 400 ? `<div class="empty" style="padding:14px">Showing the first 400 of ${rows.length.toLocaleString('en-AU')}. Narrow it with a sector, filters or search.</div>` : ''}`;
+  document.querySelectorAll('[data-hist]').forEach(loadHist);
+}
+
+const histCache = {};
+async function loadHist(el) {
+  const key = el.dataset.hist;
+  if (!histCache[key]) histCache[key] = fetch(`/api/lots/${encodeURIComponent(key)}/history`).then(r => r.json()).catch(() => ({}));
+  const h = await histCache[key];
+  el.querySelector('ul').innerHTML = (h.examples || []).map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.title)}</a> — <b>${money(x.price)}</b>${x.km ? ` · ${Number(x.km).toLocaleString('en-AU')} km` : ''} · ${new Date(x.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</li>`).join('') || '<li class="muted">No details</li>';
 }
 
 function tick() {
@@ -525,177 +663,150 @@ function tick() {
 
 async function load() {
   try {
-    const sold = filter === 'sold', missed = filter === 'missed';
-    missedDays = Number($('#hours').value) >= 168 ? 30 : 7;
-    fetch('/api/searches').then(x => x.json()).then(x => { searches = x; const n = x.length; $('#alertsN').hidden = !n; $('#alertsN').textContent = n; }).catch(() => {});
+    mode = view === 'sold' ? 'sold' : view === 'missed' ? 'missed' : 'live';
     const wl = fetch('/api/watchlist').then(x => x.json()).then(w => {
-      // remember the previous price so a rise shows as "▲ was $X" until the next change
       for (const l of w.lots) {
         if (curBid[l.key] !== undefined && l.bid != null && l.bid !== curBid[l.key]) lastBid[l.key] = curBid[l.key];
         if (l.bid != null) curBid[l.key] = l.bid;
       }
       watch = w.lots; watchEvery = w.every;
     }).catch(() => {});
-    const [r, s] = await Promise.all([fetch(missed ? '/api/missed?days=' + missedDays : sold ? '/api/closed?hours=' + Math.max(24, Number($('#hours').value)) : '/api/lots?hours=' + $('#hours').value), fetch('/api/status')]);
-    const data = await r.json(), st = await s.json();
-    aiOn = !!st.ai;
+    const url = mode === 'missed' ? '/api/missed?days=' + missedDays : mode === 'sold' ? '/api/closed?hours=' + Math.max(24, hours) : '/api/lots?hours=' + hours;
+    const [r, s] = await Promise.all([fetch(url), fetch('/api/status')]);
+    const data = await r.json(); status = await s.json();
+    aiOn = !!status.ai;
     clockSkew = data.now - Date.now();
     lots = data.lots;
-    if (data.base) { myBase = data.base; $('#baseName').textContent = 'from ' + myBase; }
-    soldStats = data.stats || [];
-    mode = missed ? 'missed' : sold ? 'sold' : 'live';
+    if (data.base) myBase = data.base;
     await wl;
-    $('#status').innerHTML = Object.keys(SITE_NAMES).map(site => {
-      const x = st.sites.find(z => z.site === site) || {};
-      if (!x.site && ['slattery', 'auctionbarn', 'grays'].includes(site) && !st.sites.length) return '';
-      const age = x.last_ok ? (Date.now() - x.last_ok) / 60000 : Infinity;
-      const err = x.last_error_at && (!x.last_ok || x.last_error_at > x.last_ok);
-      const cls = err ? 'bad' : age < 30 ? 'ok' : 'warn';
-      const tip = err ? x.last_error : x.last_ok ? `last scan ${Math.round(age)} min ago` : 'waiting for first scan';
-      return `<span class="pill" title="${esc(tip)}"><span class="dot ${cls}"></span>${SITE_NAMES[site]}${x.last_count != null ? ' · ' + x.last_count : ''}${x.logged_in ? ' · logged in' : ''}</span>`;
-    }).join('') + `<span class="pill"><span class="dot ${st.push ? 'ok' : 'warn'}"></span>Alerts ${st.push ? 'on' : 'not set up'}</span>`;
     $('#updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
     render();
-  } catch (e) { $('#updated').textContent = 'Connection problem — retrying'; }
+  } catch (e) { $('#updated').textContent = 'Connection problem, retrying'; }
 }
+const loadMissed = () => fetch('/api/missed?days=7').then(r => r.json()).then(m => { missedTotal = m.lots.filter(l => l.sector !== 'general').reduce((a, l) => a + (l.saving > 0 ? l.saving : 0), 0); if (mode === 'live') renderDesk([]); }).catch(() => {});
+const loadSearches = () => fetch('/api/searches').then(x => x.json()).then(x => { searches = x; $('#alertsN').hidden = !x.length; $('#alertsN').textContent = x.length; }).catch(() => {});
 
-$('#filters').addEventListener('click', e => {
-  const b = e.target.closest('button'); if (!b) return;
-  if (b.id === 'hideStat') { const v = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', String(v)); save('hideStat', v); return render(); }
-  const was = filter;
-  filter = b.dataset.f; save('filter', filter);
-  const kind = f => (f === 'sold' || f === 'missed' ? f : 'live');
-  if (kind(was) !== kind(filter)) { lots = []; load(); }
-  document.querySelectorAll('[data-f]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-  render();
+// ---------- interaction ----------
+const post = (u, body) => fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+document.addEventListener('click', async e => {
+  const t = e.target;
+  const v = t.closest('[data-view]');
+  if (v) {
+    const was = mode; view = v.dataset.view; save('view', view); $('#side').classList.remove('open');
+    const next = view === 'sold' ? 'sold' : view === 'missed' ? 'missed' : 'live';
+    if (next !== was) { lots = []; mode = next; openKey = null; render(); load(); } else render();
+    return;
+  }
+  const sc = t.closest('[data-sector]'); if (sc) { sector = sc.dataset.sector; save('sector', sector); $('#side').classList.remove('open'); render(); return; }
+  const go = t.closest('[data-sector-go]'); if (go) { e.preventDefault(); sector = go.dataset.sectorGo; save('sector', sector); render(); return; }
+  const hz = t.closest('#horizon button'); if (hz) { hours = Number(hz.dataset.h); save('hours', hours); load(); return; }
+  const th = t.closest('th[data-sort]'); if (th) { sortBy = th.dataset.sort; $('#sort').value = sortBy; save('sort', sortBy); render(); return; }
+  if (t.id === 'clearSearch') { activeSearch = null; render(); return; }
+  const star = t.closest('[data-star]');
+  if (star) { const l = lots.find(x => x.key === star.dataset.star); l.starred = !l.starred; await post(`/api/lots/${encodeURIComponent(l.key)}/star`, { starred: l.starred }); load(); return; }
+  const un = t.closest('[data-unwatch]');
+  if (un) { if (!confirm('Stop watching this lot?')) return; await post(`/api/lots/${encodeURIComponent(un.dataset.unwatch)}/star`, { starred: false }); load(); return; }
+  const mb = t.closest('[data-mybid]');
+  if (mb) {
+    const l = watch.find(x => x.key === mb.dataset.mybid) || lots.find(x => x.key === mb.dataset.mybid) || {};
+    const val = prompt(`The most you've bid on:\n${l.title || 'this lot'}\n\nCurrent price ${money(l.bid ?? l.startPrice)}. If you set a max (proxy) bid, enter that. Leave blank to clear.`, l.myBid ?? '');
+    if (val === null) return;
+    const r = await post(`/api/lots/${encodeURIComponent(mb.dataset.mybid)}/mybid`, { value: val.replace(/[$,\s]/g, '') });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return alert(j.error || 'Could not save.');
+    if ((j.rivals || []).length) alert(`Heads up: ${j.rivals.map(x => `${x.user} has also bid (max ${money(x.myBid)})`).join(', ')}. Bidding against each other only pushes the price up. They've been told too.`);
+    load(); return;
+  }
+  const est = t.closest('[data-est]');
+  if (est) {
+    const l = lots.find(x => x.key === est.dataset.est) || watch.find(x => x.key === est.dataset.est);
+    const val = prompt(`Your resale estimate for:\n${l.title}\n\nDollars (leave blank to clear)`, l.manualEstimate ?? '');
+    if (val === null) return;
+    await post(`/api/lots/${encodeURIComponent(l.key)}/estimate`, { value: val.replace(/[$,\s]/g, '') }); load(); return;
+  }
+  const rs = t.closest('[data-research]'), ck = t.closest('[data-check]');
+  if (rs || ck) {
+    if (!aiOn) { openSettings(); return alert('Add your Claude API key in Settings first.'); }
+    const b = rs || ck; b.disabled = true; b.textContent = rs ? 'Searching…' : 'Reading listing…';
+    const r = await post(`/api/lots/${encodeURIComponent(b.dataset.research || b.dataset.check)}/${rs ? 'research' : 'check'}`);
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) alert(j.error || 'That didn\'t work. Try again in a minute.');
+    load(); return;
+  }
+  const row = t.closest('tr.row');
+  if (row && !t.closest('button, a, input')) { openKey = openKey === row.dataset.key ? null : row.dataset.key; render(); }
 });
-document.querySelectorAll('[data-f]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.f === filter)));
+$('#side').addEventListener('change', e => {
+  const s = e.target.dataset.site; if (!s) return;
+  e.target.checked ? siteOff.delete(s) : siteOff.add(s); save('siteOff', [...siteOff]); render();
+});
+$('#menuBtn').addEventListener('click', () => $('#side').classList.toggle('open'));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#side').classList.remove('open'); });
 $('#q').addEventListener('input', render);
-$('#site').addEventListener('change', e => { save('site', e.target.value); render(); });
-$('#sort').addEventListener('change', e => { save('sort', e.target.value); render(); });
-$('#hours').addEventListener('change', e => { save('hours', Number(e.target.value)); load(); });
-$('#list').addEventListener('click', async e => {
-  const star = e.target.closest('[data-star]'), estB = e.target.closest('[data-est]');
-  if (star) {
-    const l = lots.find(x => x.key === star.dataset.star); l.starred = !l.starred;
-    await fetch(`/api/lots/${encodeURIComponent(l.key)}/star`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ starred: l.starred }) });
-    load();
-  }
-  if (estB) {
-    const l = lots.find(x => x.key === estB.dataset.est);
-    const v = prompt(`Your resale estimate for:\n${l.title}\n\nDollars (leave blank to clear)`, l.manualEstimate ?? '');
-    if (v === null) return;
-    await fetch(`/api/lots/${encodeURIComponent(l.key)}/estimate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ value: v.replace(/[$,\s]/g, '') }) });
-    load();
-  }
-});
-$('#list').addEventListener('click', e => {
-  if (e.target.id !== 'showStat') return;
-  e.preventDefault(); $('#hideStat').setAttribute('aria-pressed', 'false'); save('hideStat', false); render();
-});
-$('#watchList').addEventListener('click', async e => {
-  const b = e.target.closest('[data-unwatch]'); if (!b) return;
-  if (!confirm('Stop watching this lot?')) return;
-  await fetch(`/api/lots/${encodeURIComponent(b.dataset.unwatch)}/star`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ starred: false }) });
-  load();
-});
-document.addEventListener('click', async e => {
-  const b = e.target.closest('[data-research]'); if (!b) return;
-  if (!aiOn) { openSettings(); return alert('Add your Claude API key in Settings first.'); }
-  b.disabled = true; b.textContent = 'Searching…';
-  const r = await fetch(`/api/lots/${encodeURIComponent(b.dataset.research)}/research`, { method: 'POST' });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) alert(j.error || 'Research failed.');
-  load();
-});
-document.addEventListener('click', async e => {
-  const b = e.target.closest('[data-mybid]'); if (!b) return;
-  const l = watch.find(x => x.key === b.dataset.mybid) || lots.find(x => x.key === b.dataset.mybid) || {};
-  const v = prompt(`What's the most you've bid on:\n${l.title || 'this lot'}\n\nCurrent price ${money(l.bid ?? l.startPrice)}. If you set a max (proxy) bid, enter that.\nLeave blank to clear.`, l.myBid ?? '');
-  if (v === null) return;
-  const r = await fetch(`/api/lots/${encodeURIComponent(b.dataset.mybid)}/mybid`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ value: v.replace(/[$,\s]/g, '') }) });
-  if (!r.ok) return alert((await r.json().catch(() => ({}))).error || 'Could not save.');
-  load();
-});
-document.addEventListener('click', async e => {
-  const b = e.target.closest('[data-check]'); if (!b) return;
-  if (!aiOn) { openSettings(); return alert('Add your Claude API key in Settings first.'); }
-  b.disabled = true; b.textContent = 'Reading…';
-  const r = await fetch(`/api/lots/${encodeURIComponent(b.dataset.check)}/check`, { method: 'POST' });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) alert(j.error || 'Listing check failed.');
-  load();
-});
-document.addEventListener('toggle', async e => {
-  const d = e.target; if (!d.matches?.('details[data-hist]') || !d.open || d.dataset.loaded) return;
-  d.dataset.loaded = '1';
-  const h = await (await fetch(`/api/lots/${encodeURIComponent(d.dataset.hist)}/history`)).json();
-  d.querySelector('ul').innerHTML = (h.examples || []).map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a> — <b>${money(x.price)}</b>${x.km ? ` · ${Number(x.km).toLocaleString('en-AU')} km` : ''} · ${new Date(x.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} · ${esc(SITE_NAMES[x.site] || x.site)}</li>`).join('') || '<li>No details</li>';
-}, true);
-// ---- More filters ----
-function syncMore() {
-  $('#fMin').value = more.min ?? ''; $('#fMax').value = more.max ?? ''; $('#fYear').value = more.year ?? ''; $('#fKm').value = more.km ?? ''; $('#fDist').value = more.dist ?? '';
-  $('#fType').value = more.type || ''; $('#fWovr').value = more.wovr || ''; $('#fBids').value = more.bids || ''; $('#fEnds').value = more.ends || '';
-  document.querySelectorAll('[data-state]').forEach(x => x.setAttribute('aria-pressed', String((more.states || []).includes(x.dataset.state))));
-  const n = moreActive(); $('#moreN').hidden = !n; $('#moreN').textContent = n;
-}
-const readMore = () => {
-  more = { ...more, min: $('#fMin').value.trim(), max: $('#fMax').value.trim(), year: $('#fYear').value.trim(), km: $('#fKm').value.trim(), dist: $('#fDist').value.trim(),
-    type: $('#fType').value, wovr: $('#fWovr').value, bids: $('#fBids').value, ends: $('#fEnds').value };
-  save('more', more); syncMore(); render();
-};
-$('#more').addEventListener('input', readMore);
-$('#more').addEventListener('change', readMore);
-$('#fStates').addEventListener('click', e => {
-  const b = e.target.closest('[data-state]'); if (!b) return;
-  const set = new Set(more.states || []); set.has(b.dataset.state) ? set.delete(b.dataset.state) : set.add(b.dataset.state);
-  more.states = [...set]; save('more', more); syncMore(); render();
-});
-$('#moreReset').addEventListener('click', () => { more = {}; save('more', more); syncMore(); render(); });
-$('#moreBtn').addEventListener('click', () => { const open = $('#more').classList.toggle('open'); $('#moreBtn').setAttribute('aria-pressed', String(open || moreActive() > 0)); save('moreOpen', open); });
-if (pref('moreOpen', false)) $('#more').classList.add('open');
-syncMore();
-$('#moreBtn').setAttribute('aria-pressed', String($('#more').classList.contains('open') || moreActive() > 0));
-// ---- My alerts (saved searches) ----
-function renderSearches() {
-  $('#sList').innerHTML = searches.length ? searches.map(x => `<div class="srow"><div><b>${esc(x.terms)}</b>
-      <div class="sub">${x.maxPrice ? `alert in final 10 min if under ${money(x.maxPrice)}` : 'new listings only (add a max price for final-minutes alerts)'}${x.site ? ' · ' + esc(SITE_NAMES[x.site] || x.site) : ''} · ${x.matches} open match${x.matches === 1 ? '' : 'es'}</div></div>
-      <button class="icon" data-show="${x.id}">Show</button><button class="icon" data-del="${x.id}" title="Delete this alert">✕</button></div>`).join('')
-    : '<div class="sub" style="padding:8px 0">No alerts yet — add one above.</div>';
-}
-async function loadSearches() { searches = await (await fetch('/api/searches')).json(); renderSearches(); $('#alertsN').hidden = !searches.length; $('#alertsN').textContent = searches.length; }
-$('#alertsBtn').addEventListener('click', async () => { await loadSearches(); $('#alerts').showModal(); });
-$('#closeAlerts').addEventListener('click', () => $('#alerts').close());
-$('#sForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  const r = await fetch('/api/searches', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ terms: $('#sTerms').value, maxPrice: $('#sMax').value, site: $('#sSite').value }) });
-  const j = await r.json();
-  if (!r.ok) return alert(j.error || 'Could not add that alert.');
-  $('#sTerms').value = ''; $('#sMax').value = '';
-  await loadSearches();
-});
-$('#sList').addEventListener('click', async e => {
-  const del = e.target.closest('[data-del]'), show = e.target.closest('[data-show]');
-  if (del && confirm('Delete this alert?')) { await fetch('/api/searches/' + del.dataset.del, { method: 'DELETE' }); if (activeSearch?.id === Number(del.dataset.del)) activeSearch = null; await loadSearches(); render(); }
-  if (show) {
-    activeSearch = searches.find(x => x.id === Number(show.dataset.show)); $('#alerts').close();
-    if (filter !== 'all') { filter = 'all'; save('filter', filter); document.querySelectorAll('[data-f]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.f === 'all'))); lots = []; await load(); }
-    render();
-  }
-});
-document.addEventListener('click', e => { if (e.target.id === 'clearSearch') { activeSearch = null; render(); } });
+$('#sort').addEventListener('change', e => { sortBy = e.target.value; save('sort', sortBy); render(); });
+$('#hideStat').addEventListener('change', e => { save('hideStat', e.target.checked); render(); });
 $('#watchAdd').addEventListener('submit', async e => {
   e.preventDefault();
   const url = $('#watchUrl').value.trim(); if (!url) return;
-  const r = await fetch('/api/watch', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url }) });
-  const j = await r.json();
+  const r = await post('/api/watch', { url }); const j = await r.json();
   if (!r.ok) return alert(j.error || 'Could not add that link.');
-  $('#watchUrl').value = '';
-  load();
+  $('#watchUrl').value = ''; load();
 });
+
+// filters
+function syncMore() {
+  const set = (id, k) => { $(id).value = more[k] ?? ''; };
+  set('#fMin', 'min'); set('#fMax', 'max'); set('#fYear', 'year'); set('#fKm', 'km'); set('#fDist', 'dist'); set('#fWovr', 'wovr'); set('#fRes', 'res'); set('#fBids', 'bids'); set('#fEnds', 'ends');
+  document.querySelectorAll('[data-state]').forEach(x => x.setAttribute('aria-pressed', String((more.states || []).includes(x.dataset.state))));
+  const n = moreActive(); $('#moreN').textContent = n ? `(${n})` : '';
+}
+const readMore = () => {
+  const g = id => $(id).value.trim();
+  more = { ...more, min: g('#fMin'), max: g('#fMax'), year: g('#fYear'), km: g('#fKm'), dist: g('#fDist'), wovr: g('#fWovr'), res: g('#fRes'), bids: g('#fBids'), ends: g('#fEnds') };
+  save('more', more); syncMore(); render();
+};
+$('#more').addEventListener('input', readMore); $('#more').addEventListener('change', readMore);
+$('#fStates').addEventListener('click', e => {
+  const b = e.target.closest('[data-state]'); if (!b) return;
+  const s = new Set(more.states || []); s.has(b.dataset.state) ? s.delete(b.dataset.state) : s.add(b.dataset.state);
+  more.states = [...s]; save('more', more); syncMore(); render();
+});
+$('#moreReset').addEventListener('click', () => { more = {}; save('more', more); syncMore(); render(); });
+$('#moreBtn').addEventListener('click', () => { const open = $('#more').classList.toggle('open'); save('moreOpen', open); });
+if (pref('moreOpen', false)) $('#more').classList.add('open');
+syncMore();
+
+// alerts
+function renderSearches() {
+  $('#sList').innerHTML = searches.length ? searches.map(x => `<div class="srow"><div><b>${esc(x.terms)}</b>
+      <div class="muted" style="font-size:12.5px">${x.maxPrice ? `push in the final 10 min if under ${money(x.maxPrice)}` : 'new listings only; add a max price for final-minutes pushes'}${x.site ? ' · ' + esc(SITE_NAMES[x.site] || x.site) : ''} · ${x.matches} open match${x.matches === 1 ? '' : 'es'}</div></div>
+      <button class="btn sm" data-show="${x.id}">Show</button><button class="btn sm" data-del="${x.id}">Delete</button></div>`).join('')
+    : '<div class="muted" style="padding:8px 0">No alerts yet. Add one above.</div>';
+}
+$('#sSite').insertAdjacentHTML('beforeend', Object.entries(SITE_NAMES).map(([k, v]) => `<option value="${k}">${v}</option>`).join(''));
+$('#alertsBtn').addEventListener('click', async () => { await loadSearches(); renderSearches(); $('#alerts').showModal(); });
+$('#closeAlerts').addEventListener('click', () => $('#alerts').close());
+$('#sForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const r = await post('/api/searches', { terms: $('#sTerms').value, maxPrice: $('#sMax').value, site: $('#sSite').value });
+  const j = await r.json(); if (!r.ok) return alert(j.error || 'Could not add that alert.');
+  $('#sTerms').value = ''; $('#sMax').value = ''; await loadSearches(); renderSearches();
+});
+$('#sList').addEventListener('click', async e => {
+  const del = e.target.closest('[data-del]'), show = e.target.closest('[data-show]');
+  if (del && confirm('Delete this alert?')) { await fetch('/api/searches/' + del.dataset.del, { method: 'DELETE' }); if (activeSearch?.id === Number(del.dataset.del)) activeSearch = null; await loadSearches(); renderSearches(); render(); }
+  if (show) {
+    activeSearch = searches.find(x => x.id === Number(show.dataset.show)); $('#alerts').close();
+    sector = 'all'; save('sector', 'core');
+    if (view !== 'live') { view = 'live'; save('view', view); lots = []; await load(); }
+    render();
+  }
+});
+
+// settings
 function openSettings() {
   fetch('/api/settings').then(r => r.json()).then(st => {
-    $('#keyState').textContent = st.anthropicKeySet ? `· saved ${st.anthropicKeyMasked}${st.anthropicKeyFrom === '.env' ? ' (from .env)' : ''}` : '· not set';
+    $('#keyState').textContent = st.anthropicKeySet ? `(saved ${st.anthropicKeyMasked}${st.anthropicKeyFrom === '.env' ? ', from .env' : ''})` : '(not set)';
     $('#sKey').value = ''; $('#keyResult').textContent = '';
     $('#sResearch').checked = st.researchEnabled; $('#sPerDay').value = st.researchPerDay; $('#sNtfy').value = st.ntfyUrl;
     $('#sMyNtfy').value = st.myNtfyUrl || ''; $('#meName').textContent = `(${st.user})`;
@@ -705,44 +816,39 @@ function openSettings() {
     $('#settings').showModal();
   });
 }
-$('#openSettings').addEventListener('click', e => { e.preventDefault(); openSettings(); });
+$('#openSettings').addEventListener('click', openSettings);
 $('#closeSettings').addEventListener('click', () => $('#settings').close());
 async function saveSettings(extra = {}) {
-  const body = { researchEnabled: $('#sResearch').checked, researchPerDay: Number($('#sPerDay').value), ntfyUrl: $('#sNtfy').value.trim(), myNtfyUrl: $('#sMyNtfy').value.trim(), base: $('#sBase').value, digestHour: Number($('#sDigestHour').value), digestTz: $('#sDigestTz').value, digestOn: $('#sDigest').checked, ...extra };
+  const body = { researchEnabled: $('#sResearch').checked, researchPerDay: Number($('#sPerDay').value), ntfyUrl: $('#sNtfy').value.trim(), myNtfyUrl: $('#sMyNtfy').value.trim(),
+    base: $('#sBase').value, digestHour: Number($('#sDigestHour').value), digestTz: $('#sDigestTz').value, digestOn: $('#sDigest').checked, ...extra };
   if ($('#sKey').value.trim()) body.anthropicKey = $('#sKey').value.trim();
-  const r = await fetch('/api/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-  const j = await r.json();
+  const r = await post('/api/settings', body); const j = await r.json();
   if (!r.ok) { alert(j.error || 'Could not save.'); return false; }
-  $('#keyState').textContent = j.anthropicKeySet ? `· saved ${j.anthropicKeyMasked}` : '· not set';
-  $('#sKey').value = '';
-  return true;
+  $('#keyState').textContent = j.anthropicKeySet ? `(saved ${j.anthropicKeyMasked})` : '(not set)';
+  $('#sKey').value = ''; return true;
 }
 $('#saveSettings').addEventListener('click', async e => { e.preventDefault(); if (await saveSettings()) { $('#settings').close(); load(); } });
 $('#testKey').addEventListener('click', async () => {
   if ($('#sKey').value.trim() && !(await saveSettings())) return;
   $('#keyResult').textContent = 'Testing…';
-  const j = await (await fetch('/api/settings/test-key', { method: 'POST' })).json();
+  const j = await (await post('/api/settings/test-key')).json();
   $('#keyResult').textContent = j.ok ? '✓ Key works' : '✗ ' + (j.error || 'Key rejected');
 });
-$('#clearKey').addEventListener('click', async () => { if (confirm('Remove the saved Claude API key?')) { await saveSettings({ clearKey: true }); } });
-$('#previewDigest').addEventListener('click', async e => {
-  e.preventDefault();
-  const j = await (await fetch('/api/digest/preview')).json();
-  alert(j.text || 'Nothing worth sending right now — the digest is skipped on quiet days.');
-});
+$('#clearKey').addEventListener('click', async () => { if (confirm('Remove the saved Claude API key?')) await saveSettings({ clearKey: true }); });
+$('#previewDigest').addEventListener('click', async e => { e.preventDefault(); const j = await (await fetch('/api/digest/preview')).json(); alert(j.text || 'Nothing worth sending right now. The digest is skipped on quiet days.'); });
 $('#testAlert').addEventListener('click', async e => {
   e.preventDefault();
-  const r = await (await fetch('/api/test-alert', { method: 'POST' })).json();
-  alert(r.configured ? (r.ok ? 'Test alert sent — check your phone.' : 'Sending failed — check the alert link in Settings.') : 'Alerts are not set up yet: add an alert link in Settings.');
+  const r = await (await post('/api/test-alert')).json();
+  alert(r.configured ? (r.ok ? 'Test alert sent. Check your phone.' : 'Sending failed. Check the alert link in Settings.') : 'Alerts aren\'t set up yet: add an alert link in Settings.');
 });
-fetch('/api/me').then(r => r.json()).then(x => { me = x.user; $('#who').textContent = 'Logged in as ' + me; }).catch(() => {});
+
+fetch('/api/me').then(r => r.json()).then(x => { $('#who').textContent = x.user; SECTORS = x.sectors || []; render(); }).catch(() => {});
 const loadHistory = () => fetch('/api/history').then(r => r.json()).then(h => {
-  $('#stored').textContent = `Stored: ${Number(h.lots).toLocaleString('en-AU')} lots, ${Number(h.closed || 0).toLocaleString('en-AU')} results, ${Number(h.bids).toLocaleString('en-AU')} price changes${h.since ? ' since ' + new Date(h.since).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : ''}`;
+  $('#stored').textContent = `${Number(h.lots).toLocaleString('en-AU')} lots and ${Number(h.closed || 0).toLocaleString('en-AU')} results stored`;
 }).catch(() => {});
-loadHistory(); setInterval(loadHistory, 300000);
+loadHistory(); loadSearches(); loadMissed();
 load();
-setInterval(load, 20000);
-setInterval(tick, 1000);
+setInterval(load, 20000); setInterval(tick, 1000); setInterval(loadHistory, 300000); setInterval(loadMissed, 300000);
 </script>
 </body>
 </html>

@@ -5,11 +5,11 @@ import { config } from './config.js';
 import { distanceKm } from './geo.js';
 import { isVehicle } from './extract.js';
 
-/** Pickles / Manheim charge a flat buyer's fee by price band: "1000:110,5000:275,15000:440,*:660" */
-function tierFee(spec, price) {
+/** Buyer's fee by price band: "2000:495,5000:650,30000:7%,*:5%" (a flat $ or a % of the price). */
+export function tierFee(spec, price) {
   for (const part of String(spec || '').split(',')) {
     const [lim, fee] = part.split(':').map(s => s.trim());
-    if (lim === '*' || price <= Number(lim)) return Number(fee) || 0;
+    if (lim === '*' || price <= Number(lim)) return /%$/.test(fee) ? Math.round(price * parseFloat(fee) / 100) : Number(fee) || 0;
   }
   return 0;
 }

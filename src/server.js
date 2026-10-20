@@ -9,6 +9,8 @@ import { baseByName, bases } from './geo.js';
 import { soldLike } from './history.js';
 import { checkListing } from './inspect.js';
 import { buildDigest } from './digest.js';
+import { sectorOf, SECTORS } from './categories.js';
+import { photo } from './photos.js';
 import { isVehicle } from './extract.js';
 import { push } from './notify.js';
 import { watchUrl } from './scheduler.js';
@@ -48,11 +50,12 @@ const shape = (l, alertKinds, base = null) => {
   const cost = allIn(l, base, price);
   const hist = soldLike(l);
   return {
-    key: l.key, site: l.site, url: l.url, title: l.title, image: l.image, category: l.category,
+    key: l.key, site: l.site, url: l.url, title: l.title, photo: l.image ? `/photo/${encodeURIComponent(l.key)}` : null, category: l.category,
+    sector: sectorOf(l),
     year: l.year, odometer: l.odometer, wovr: l.wovr, location: l.location, state: l.state,
     buyMethod: l.buy_method, sale: l.sale_name, lotNo: l.lot_no,
     bid: l.bid, bidCount: l.bid_count, startPrice: l.start_price, buyNow: l.buy_now,
-    endAt: l.end_at, lastChecked: l.last_checked, starred: !!l.starred,
+    endAt: l.end_at, opensAt: l.opens_at ?? null, reserve: l.reserve ?? null, lastChecked: l.last_checked, starred: !!l.starred,
     estLow: l.est_low, estHigh: l.est_high, estNote: l.est_note, manualEstimate: l.manual_estimate,
     estimate: est, estSource: est ? estimateSource(l) : null,
     // judged on what you'd pay the auction house; profit also takes off transport home
@@ -70,6 +73,9 @@ const shape = (l, alertKinds, base = null) => {
 export function startServer() {
   const app = express();
   app.use(express.json());
+  // Private tool: never pass our address on to the auction sites, never get indexed.
+  app.use((_req, res, next) => { res.set({ 'Referrer-Policy': 'no-referrer', 'X-Robots-Tag': 'noindex, nofollow', 'X-Frame-Options': 'DENY' }); next(); });
+  app.get('/robots.txt', (_req, res) => res.type('text/plain').send('User-agent: *\nDisallow: /\n'));
   app.get('/healthz', (_req, res) => res.send('ok'));
   app.use(basicAuth);
   app.use(express.static(path.join(here, '..', 'public')));
@@ -77,14 +83,21 @@ export function startServer() {
   app.get('/api/lots', (req, res) => {
     const now = Date.now();
     const hours = Math.min(Number(req.query.hours) || 48, 24 * 14);
-    const rows = q.dashboard.all(now - 60000, now + hours * 3600000, 3000);
+    const rows = q.dashboard.all(now - 60000, now + hours * 3600000, hours >= 168 ? 1 : 0, 4000);
     const alertKinds = new Map();
     for (const a of q.alertKinds.all(now - 7 * 86400000)) alertKinds.set(a.key, [...(alertKinds.get(a.key) || []), a.kind]);
     const mine = new Set(q.myWatchKeys.all(req.user).map(w => w.key));
     const base = baseOf(req.user);
     res.json({ now, base: base?.name, lots: rows.map(l => ({ ...shape(l, alertKinds, base), starred: mine.has(l.key) })) });
   });
-  app.get('/api/me', (req, res) => res.json({ user: req.user, users: Object.keys(config.users) }));
+  app.get('/api/me', (req, res) => res.json({ user: req.user, users: Object.keys(config.users), sectors: SECTORS }));
+  app.get('/photo/:key', async (req, res) => {
+    try {
+      const p = await photo(q.lot.get(req.params.key));
+      if (!p) return res.status(404).end();
+      res.set({ 'content-type': p.type, 'cache-control': 'private, max-age=86400' }).sendFile(p.file);
+    } catch { res.status(404).end(); }
+  });
   // Deals that got away: closed lots whose final price was a bargain.
   app.get('/api/missed', (req, res) => {
     const days = Math.min(Number(req.query.days) || 7, 365);

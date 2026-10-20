@@ -10,6 +10,10 @@ Watches Pickles, Manheim, ALLBIDS (incl. CARBIDS), Lloyds, Grays, Slattery and T
 
 **My alerts** (🔔): type what you're after, e.g. `renault master, mercedes sprinter, hiace -crash`, with an optional max price. You get a push when a new one is listed, and again in its final 10 minutes if it's still at or under your max.
 
+**Sectors:** lots are sorted into Vehicles (cars & utes, vans & buses, trucks & prime movers, trailers, motorbikes, boats & caravans), Freight & plant (forklifts & warehouse, plant & machinery, tools & electrical) and Business equipment (vending & retail, hospitality & laundry, IT & office). Paint, household bits and the like go in **General goods**, kept off the main board and out of penny-lot pushes (`PENNY_GENERAL=true` to include them).
+
+**Privacy:** lot photos are fetched by the KAMRADS server and links out carry no referrer, so the auction sites never see the dashboard's address; search engines are told not to index it.
+
 **More filters:** price range, year, km, type (cars, vans, trucks, bikes, machinery, boats, goods), write-off status, bids, closing day and state.
 
 **Missed deals** tab: bargains that closed without you — under half the estimate or market price, vehicles under $3,000, penny lots. Only lots read within 15 minutes of the close count, so the prices are real.

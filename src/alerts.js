@@ -5,6 +5,7 @@ import { isVehicle } from './extract.js';
 import { finalMinutes } from './users.js';
 import { historyEstimate } from './history.js';
 import { allIn } from './costs.js';
+import { sectorOf } from './categories.js';
 
 const FRESH_MS = 3 * 60000;
 const money = n => (n == null ? '?' : '$' + Math.round(n).toLocaleString('en-AU'));
@@ -35,7 +36,8 @@ export function classify(lot, now = Date.now()) {
   if (!est && isVehicle(lot) && price <= config.cheapVehicleMax) {
     return { kind: 'cheap', why: `vehicle still under ${money(config.cheapVehicleMax)}` };
   }
-  if (price <= config.pennyMax) return { kind: 'penny', why: `only ${money(price)}` };
+  // Penny lots: only in the sectors that matter (paint and household bits don't buzz your phone).
+  if (price <= config.pennyMax && (config.pennyGeneral || sectorOf(lot) !== 'general')) return { kind: 'penny', why: `only ${money(price)}` };
   return null;
 }
 

@@ -89,12 +89,15 @@ export function makeSite(def) {
     if (looksBlocked(r)) throw new Error(`blocked by ${def.label} (HTTP ${r.status})`);
     learn(site, lot.ext_id, r);
     const json = lotsFromCapture(r).map(l => finish(l));
-    const match = json.find(l => l.ext_id === lot.ext_id) || (json.length === 1 ? json[0] : null);
+    // Only this lot's own record: lot pages also load "similar items" with their own prices and times.
+    const match = json.find(l => l.ext_id === lot.ext_id);
     const merged = { ...(match || {}), ext_id: lot.ext_id, url: lot.url, site };
     for (const [k, v] of Object.entries(factsFromText(r.text))) if (merged[k] == null) merged[k] = v;
+    // The site's own labelled times ("Closes: 27 October 20:00 AEDT") beat anything else.
+    if (def.pageFacts) Object.assign(merged, def.pageFacts(r.text));
     merged.title = merged.title || titleFromPage(r.html, lot.url);
     return merged;
   }
 
-  return { site, label: def.label, owns, idFromUrl, loginUrl: null, discover, refresh };
+  return { site, label: def.label, owns, idFromUrl, loginUrl: null, discover, refresh, timesFromLotPage: !!def.timesFromLotPage };
 }

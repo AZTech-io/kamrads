@@ -21,7 +21,8 @@ export const config = {
     return out;
   })(),
 
-  backupKeep: num('BACKUP_KEEP', 14),          // daily database copies kept in data/backups
+  backupKeep: num('BACKUP_KEEP', 14),
+  photoCacheMb: num('PHOTO_CACHE_MB', 400),   // lot thumbnails cached on the server          // daily database copies kept in data/backups
 
   // Where you are: distance filter, transport estimates. "Name:lat,lon|Name:lat,lon"
   homeBases: (env.HOME_BASES || 'Karnup WA:-32.369,115.857|Canberra ACT:-35.281,149.129').split('|').map(p => {
@@ -44,7 +45,8 @@ export const config = {
     manheim: { tiers: env.MANHEIM_FEES || '1000:110,5000:275,15000:440,*:660', goodsPct: num('MANHEIM_GOODS_PREMIUM', 16.5) },
     allbids: { premiumPct: num('ALLBIDS_PREMIUM', 15) },
     lloyds: { premiumPct: num('LLOYDS_PREMIUM', 16.5) },
-    grays: { premiumPct: num('GRAYS_PREMIUM', 16.5) },
+    // Grays vehicles: from their lot pages (Oct 2026); other goods vary by lot
+    grays: { tiers: env.GRAYS_FEES || '2000:495,5000:650,10000:710,30000:7%,40000:6%,*:5%', goodsPct: num('GRAYS_GOODS_PREMIUM', 16.5) },
     slattery: { premiumPct: num('SLATTERY_PREMIUM', 12) },
     auctionbarn: { premiumPct: num('AUCTIONBARN_PREMIUM', 16.5) },
   },
@@ -72,6 +74,7 @@ export const config = {
   warmWindowMin: num('WARM_WINDOW_MIN', 60),   // lots closing within this get re-checked every WARM_EVERY_MIN
   warmEveryMin: num('WARM_EVERY_MIN', 5),
   hotBatch: num('HOT_BATCH', 4),
+  fillTimesPerScan: num('FILL_TIMES_PER_SCAN', 40),  // lot pages read per scan where lists show no close time (Grays)
   fastBatch: num('FAST_BATCH', 80),          // max fast-feed reads per cycle (each ~0.3 s)               // max detail pages per hot cycle
   hotMaxBid: num('HOT_MAX_BID', 25000),        // don't waste browser time on lots already above this
 
@@ -80,6 +83,7 @@ export const config = {
   sleeperRatio: num('SLEEPER_RATIO', 0.25),
   cheapVehicleMax: num('CHEAP_VEHICLE_MAX', 3000),
   pennyMax: num('PENNY_MAX', 5),
+  pennyGeneral: bool('PENNY_GENERAL', false),  // penny alerts for general goods (paint, household...) too
   includeStatutory: bool('INCLUDE_STATUTORY', false),
   ntfyUrl: env.NTFY_URL || '',                 // e.g. https://ntfy.sh/katara-auctions-8f3k2
   ntfyToken: env.NTFY_TOKEN || '',

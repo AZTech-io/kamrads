@@ -19,9 +19,13 @@ export async function domCards(page, hrefRe) {
       const heading = (a.querySelector('h1,h2,h3,h4,h5,h6,[class*="title" i]') || card.querySelector('h1,h2,h3,h4,h5,h6,[class*="title" i]'))?.innerText?.trim() || '';
       const img = a.querySelector('img') || card.querySelector('img');
       const named = (a.getAttribute('title') || img?.getAttribute('title') || img?.getAttribute('alt') || '').trim();
+      // photos are blocked from loading, but their address is still on the tag
+      const imgSrc = img ? (img.getAttribute('data-src') || img.getAttribute('data-lazy') || img.getAttribute('srcset')?.split(/[\s,]+/)[0] || img.getAttribute('src') || '') : '';
+      const image = imgSrc && !/^data:|logo|icon|placeholder|\.svg/i.test(imgSrc) ? new URL(imgSrc, location.href).href : '';
       const text = (card.innerText || a.innerText || '').trim();
       const prev = byHref.get(href);
-      if (!prev || text.length > prev.text.length) byHref.set(href, { href, heading: heading || prev?.heading || '', named: named || prev?.named || '', text });
+      if (!prev || text.length > prev.text.length) byHref.set(href, { href, heading: heading || prev?.heading || '', named: named || prev?.named || '', text, image: image || prev?.image || '' });
+      else if (image && !prev.image) prev.image = image;
     }
     return [...byHref.values()];
   }, hrefRe.source);
@@ -63,7 +67,7 @@ export function cardToLot(card, { idFromUrl, now = Date.now() }) {
     const m = /\$\s?([\d,]{1,9})(?!\s*(?:k|K)?\s*(?:fee|premium))/.exec(card.text);
     if (m) facts.bid = parseMoney(m[1]);
   }
-  return { ext_id, url: card.href, title, ...facts };
+  return { ext_id, url: card.href, title, ...(card.image ? { image: card.image } : {}), ...facts };
 }
 
 /** Lots from captured JSON responses and JSON embedded in the HTML. */

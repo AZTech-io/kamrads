@@ -52,7 +52,7 @@ export function rowToLot(card, auction, now = Date.now()) {
     end_at: ms != null ? now + ms : auction?.at ?? null,
     location: base.location ?? null, state: base.state ?? auction?.state ?? null,
     odometer: base.odometer ?? null, wovr: base.wovr ?? null,
-    sale_name: auction?.name ?? null, buy_method: 'Lloyds Online', site,
+    sale_name: auction?.name ?? null, buy_method: 'Lloyds Online', site, image: card.image || null,
   };
 }
 
@@ -77,10 +77,13 @@ const ownRows = (page, re, param, stopRe) => page.evaluate(([src, param, stopSrc
       if (stop && stop.test(box.innerText || '')) break;
     }
     const label = (a.innerText || '').trim() || (a.querySelector('img')?.getAttribute('alt') || '').trim();
+    const im = (a.querySelector('img') || box.querySelector('img'));
+    const src = im ? (im.getAttribute('data-src') || im.getAttribute('src') || '') : '';
+    const image = src && !/^data:|logo|icon|\.svg|\/images\/(?:state|seller|type)/i.test(src) ? new URL(src, location.href).href : '';
     const prev = out.get(id);
     const text = (box.innerText || '').trim();
-    if (!prev) out.set(id, { href: a.href.split('#')[0], heading: label, named: '', text });
-    else { if (label.length > prev.heading.length) prev.heading = label; if (text.length > prev.text.length) prev.text = text; }
+    if (!prev) out.set(id, { href: a.href.split('#')[0], heading: label, named: '', text, image });
+    else { if (label.length > prev.heading.length) prev.heading = label; if (text.length > prev.text.length) prev.text = text; if (!prev.image && image) prev.image = image; }
   }
   return [...out.values()];
 }, [re.source, param, stopRe?.source || null]);

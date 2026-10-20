@@ -229,7 +229,7 @@ export function factsFromText(text, now = Date.now()) {
   const t = String(text || '').replace(/ /g, ' ');
   const out = {};
   const money = re => { const m = re.exec(t); return m ? parseMoney(m[m.length - 1]) : null; };
-  out.bid = money(/(?:current|highest|high|top|winning|leading)\s*(?:top\s*)?bid\s*(?:is|:)?\s*(?:AU)?\$\s?([\d,]+(?:\.\d+)?)/i)
+  out.bid = money(/(?:current|highest|high|top|winning|leading)\s*(?:top\s*)?bid\s*(?:\(\s*\d+\s*bids?\s*\))?\s*(?:is|:)?\s*(?:AU)?\$\s?([\d,]+(?:\.\d+)?)/i)
     ?? money(/(?<!(?:starting|start|opening|minimum|min|next|reserve)\s*)\bbid\s*:?\s*(?:AU)?\$\s?([\d,]+(?:\.\d+)?)/i);
   out.start_price = money(/(?:starting|start|opening|minimum)\s*(?:bid|price)\s*:?\s*(?:AU)?\$\s?([\d,]+)/i);
   out.buy_now = money(/buy\s*now\s*(?:price)?\s*:?\s*(?:AU)?\$\s?([\d,]+)/i);
@@ -257,12 +257,33 @@ export function factsFromText(text, now = Date.now()) {
   }
   const loc = /([A-Z][A-Za-z .'-]{2,30}),\s*(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b/.exec(t);
   if (loc) { out.location = `${loc[1].trim()}, ${loc[2]}`; out.state = loc[2]; }
+  // Reserve: "Reserve not met" / "No Reserve" / "Reserve met" (not the "once the reserve is met..." help text)
+  if (/\breserve\s+not\s+(?:yet\s+)?met\b/i.test(t)) out.reserve = 'not met';
+  else if (/\bno\s+reserve\b|\bunreserved\b|\babsolute\s+sale\b/i.test(t)) out.reserve = 'none';
+  else if (/\breserve\s+(?:has\s+been\s+)?(?:met|reached)\b(?!,)/i.test(t) && !/once the reserve/i.test(t)) out.reserve = 'met';
   // "Buyer's Premium: 16.5% GST Inclusive"
   const bp = /buyer'?s?\s*premium[^0-9%\n]{0,30}(\d{1,2}(?:\.\d{1,2})?)\s*%/i.exec(t);
   if (bp && +bp[1] <= 30) out.buyer_premium = +bp[1];
   if (/(?:\+|plus)\s*GST\b|\bGST\s+(?:applies|applicable|is\s+payable|payable\s+on\s+(?:the\s+)?(?:hammer|purchase))/i.test(t)) out.gst_extra = 1;
   for (const k of Object.keys(out)) if (out[k] == null) delete out[k];
   return out;
+}
+
+/** "27 October 20:00 AEDT" (no year): the next such date, in the zone given (Sydney if none). */
+export function parseDayMonthTime(s, now = Date.now()) {
+  const m = /(\d{1,2})\s+([A-Za-z]{3})[a-z]*\.?,?\s+(?:(\d{4})\s+)?(?:at\s+)?(\d{1,2})[:.](\d{2})\s*(am|pm)?\s*(AEDT|AEST|ACDT|ACST|AWST)?/i.exec(String(s || ''));
+  if (!m) return null;
+  const mo = MONTHS.indexOf(m[2].toLowerCase());
+  if (mo < 0) return null;
+  let h = +m[4];
+  if (/pm/i.test(m[6] || '') && h < 12) h += 12;
+  if (/am/i.test(m[6] || '') && h === 12) h = 0;
+  const zone = (m[7] || '').toLowerCase();
+  const build = y => parseAuDate(`${m[1]} ${MONTHS[mo]} ${y} ${h}:${m[5]} ${zone}`);
+  if (m[3]) return build(+m[3]);
+  const y = new Date(now).getUTCFullYear();
+  const t = build(y);
+  return t && t < now - 60 * 86400000 ? build(y + 1) : t; // "3 January" seen in December
 }
 
 /** "Today at 7:12 PM" as shown in the browser (Sydney time) -> ms */

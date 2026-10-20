@@ -23,7 +23,7 @@ CREATE INDEX IF NOT EXISTS bids_key ON bids(key, at);
 CREATE TABLE IF NOT EXISTS alerts (key TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL, message TEXT, PRIMARY KEY(key, kind));
 CREATE TABLE IF NOT EXISTS site_status (site TEXT PRIMARY KEY, last_ok INTEGER, last_count INTEGER, last_error TEXT, last_error_at INTEGER, logged_in INTEGER);
 `);
-for (const col of ['final_seen_at INTEGER', 'est_avg REAL', 'est_comps TEXT', 'est_method TEXT', 'buyer_premium REAL', 'gst_extra INTEGER', 'check_verdict TEXT', 'check_note TEXT', 'check_at INTEGER']) { try { db.exec(`ALTER TABLE lots ADD COLUMN ${col}`); } catch { /* exists */ } }
+for (const col of ['final_seen_at INTEGER', 'est_avg REAL', 'est_comps TEXT', 'est_method TEXT', 'buyer_premium REAL', 'gst_extra INTEGER', 'check_verdict TEXT', 'check_note TEXT', 'check_at INTEGER', 'opens_at INTEGER', 'reserve TEXT']) { try { db.exec(`ALTER TABLE lots ADD COLUMN ${col}`); } catch { /* exists */ } }
 db.exec(`UPDATE lots SET title = NULL WHERE title IS NOT NULL AND (trim(title) = '' OR title LIKE '%{{%')`);
 db.exec(`UPDATE lots SET bid_count = NULL WHERE bid_count > 500`); // bad counts read from site-wide text
 // v1.1 cleanup: drop duplicate Pickles records created from internal ids
@@ -42,8 +42,16 @@ CREATE INDEX IF NOT EXISTS lots_closed ON lots(status, closed_at);
 // v1.2: stars from before logins existed belong to the main login
 db.prepare(`INSERT OR IGNORE INTO watches (user, key, added_at) SELECT ?, key, ? FROM lots WHERE starred = 1`).run((config.dashUser || 'admin').toLowerCase(), Date.now());
 
+// v1.3: Grays close times were sometimes taken from "similar items" on the lot page - clear them
+// once so every Grays lot is re-read with the fixed reader.
+const ver = db.prepare('PRAGMA user_version').get().user_version;
+if (ver < 13) {
+  db.exec(`UPDATE lots SET end_at = NULL, last_checked = NULL, status = 'open', closed_at = NULL, final_bid = NULL, final_seen_at = NULL WHERE site = 'grays'`);
+  db.exec('PRAGMA user_version = 13');
+}
+
 const FIELDS = ['url', 'title', 'category', 'year', 'make', 'model', 'odometer', 'wovr', 'location', 'state', 'image',
-  'buy_method', 'sale_name', 'lot_no', 'bid', 'bid_count', 'buy_now', 'start_price', 'end_at', 'buyer_premium', 'gst_extra'];
+  'buy_method', 'sale_name', 'lot_no', 'bid', 'bid_count', 'buy_now', 'start_price', 'end_at', 'buyer_premium', 'gst_extra', 'opens_at', 'reserve'];
 
 const upsertStmt = db.prepare(`
 INSERT INTO lots (key, site, ext_id, ${FIELDS.join(', ')}, first_seen, last_seen, last_checked)
@@ -73,7 +81,8 @@ export function upsertLot(lot, { checked = false } = {}) {
 export const q = {
   lot: db.prepare('SELECT * FROM lots WHERE key = ?'),
   openWindow: db.prepare(`SELECT * FROM lots WHERE status = 'open' AND end_at IS NOT NULL AND end_at BETWEEN ? AND ? ORDER BY end_at`),
-  dashboard: db.prepare(`SELECT * FROM lots WHERE status = 'open' AND (end_at IS NULL OR end_at > ?) AND (end_at IS NULL OR end_at < ?) ORDER BY end_at IS NULL, end_at LIMIT ?`),
+  // Lots with no known close time only show in the widest view (they'd crowd "next 3 hours" otherwise).
+  dashboard: db.prepare(`SELECT * FROM lots WHERE status = 'open' AND ((end_at > ? AND end_at < ?) OR (end_at IS NULL AND ? = 1)) ORDER BY end_at IS NULL, end_at LIMIT ?`),
   recentClosed: db.prepare(`SELECT * FROM lots WHERE status = 'closed' AND closed_at > ? ORDER BY end_at DESC LIMIT 3000`),
   closedStats: db.prepare(`SELECT site, count(*) AS closed, sum(final_bid IS NOT NULL) AS priced, sum(final_seen_at IS NOT NULL AND end_at - final_seen_at <= 60000) AS hammer FROM lots WHERE status = 'closed' AND closed_at > ? GROUP BY site`),
   closeDue: db.prepare(`UPDATE lots SET status = 'closed', final_bid = bid, final_seen_at = last_checked, closed_at = ? WHERE status = 'open' AND end_at < ? RETURNING key`),
@@ -142,6 +151,7 @@ export const q = {
     AND EXISTS (SELECT 1 FROM watches w WHERE w.key = l.key AND w.my_bid IS NOT NULL) ORDER BY l.end_at LIMIT 5`),
   checksToday: db.prepare(`SELECT count(*) AS n FROM lots WHERE check_at > ?`),
   rivals: db.prepare('SELECT user, my_bid FROM watches WHERE key = ? AND user != ? AND my_bid IS NOT NULL'),
+  missingTimes: db.prepare(`SELECT * FROM lots WHERE site = ? AND status = 'open' AND end_at IS NULL AND last_checked IS NULL AND url IS NOT NULL ORDER BY first_seen DESC LIMIT ?`),
   closingToday: db.prepare(`SELECT * FROM lots WHERE status = 'open' AND end_at BETWEEN ? AND ? ORDER BY end_at`),
   bidExport: db.prepare(`SELECT l.site, l.ext_id, l.title, b.at AS seen_at, b.bid FROM bids b JOIN lots l ON l.key = b.key WHERE b.at > ? ORDER BY b.key, b.at`),
 };

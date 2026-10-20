@@ -153,3 +153,37 @@ test('morning digest: matches, deals, watchlist, missed - sent once at the chose
   assert.equal(pushes[0].url, 'https://ntfy.test/aaron');
   assert.equal(dec(pushes[0].title), 'KAMRADS morning digest');
 });
+
+test('sectors: vehicles by type, freight/business gear, paint stays in general goods', async () => {
+  const { sectorOf } = await import('../src/categories.js');
+  const cases = [['2011 Isuzu NPR 400 Medium Tipper', 'trucks', 'trucks'], ['2017 Renault Master Van LWB', null, 'vans'], ['Crown Electric Pallet Truck', null, 'warehouse'],
+    ['Toyota 8FG25 Forklift', null, 'warehouse'], ['8x5 Box Trailer', null, 'trailers'], ['Dulux Wash & Wear Paint 10L', null, 'general'],
+    ['Speed Queen Commercial Washer', null, 'hospitality'], ['Snack Vending Machine with coin mech', null, 'vending'], ['Dell Latitude 5420 Laptop', null, 'it'],
+    ['Pallet of Makita power tools', null, 'tools'], ['2015 Jayco Starcraft Caravan', null, 'marine']];
+  for (const [title, category, want] of cases) assert.equal(sectorOf({ title, category }), want, title);
+});
+
+test('Grays lot page: labelled close/open times win, reserve read, "(0 bids)" bid read', async () => {
+  const { grays } = await import('../src/sites/extra.js');
+  const { factsFromText } = await import('../src/extract.js');
+  const now = Date.parse('2026-10-20T19:07:00Z');
+  const text = 'Opens: 22 October 18:00 AEDT\nCloses: (27 October 20:00 AEDT)\nCurrent Bid (0 bids)\n$1\nReserve not met\nOnce the reserve is met, it will be green';
+  assert.equal(grays.timesFromLotPage, true);
+  const { tierFee } = await import('../src/costs.js');
+  assert.equal(tierFee('2000:495,5000:650,10000:710,30000:7%,40000:6%,*:5%', 1500), 495);
+  assert.equal(tierFee('2000:495,5000:650,10000:710,30000:7%,40000:6%,*:5%', 20000), 1400);
+  const f = factsFromText(text, now);
+  assert.equal(f.bid, 1);
+  assert.equal(f.reserve, 'not met');
+  const { parseDayMonthTime } = await import('../src/extract.js');
+  assert.equal(new Date(parseDayMonthTime('27 October 20:00 AEDT', now)).toISOString(), '2026-10-27T09:00:00.000Z');
+  assert.equal(new Date(parseDayMonthTime('3 January 9:00 AEDT', Date.parse('2026-12-20T00:00:00Z'))).toISOString(), '2027-01-02T22:00:00.000Z', 'next year');
+});
+
+test('board: lots without a close time only show in the 7-day view', () => {
+  const t = Date.now();
+  upsertLot({ site: 'grays', ext_id: '0016-23502700', title: '2006 Audi TT Petrol', bid: 1, url: 'https://www.grays.com/lot/0016-23502700/x/2006-audi-tt-petrol' });
+  const keys = all => q.dashboard.all(t - 60000, t + 3 * 3600000, all, 4000).map(l => l.key);
+  assert.ok(!keys(0).includes('grays:0016-23502700'));
+  assert.ok(keys(1).includes('grays:0016-23502700'));
+});

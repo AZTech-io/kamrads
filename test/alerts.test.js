@@ -37,8 +37,9 @@ test('statutory write-offs are skipped unless starred', () => {
   assert.equal(classify(lot({ bid: 300, wovr: 'Statutory Write-Off', starred: 1 }), NOW).kind, 'watched');
 });
 
-test('penny lots on general goods', () => {
-  assert.equal(classify(lot({ bid: 2, url: 'https://www.pickles.com.au/used/details/general-goods/x/2' }), NOW).kind, 'penny');
+test('penny lots: tools and equipment yes, paint and household no', () => {
+  assert.equal(classify(lot({ bid: 2, title: 'Makita 18V drill kit', url: 'https://www.pickles.com.au/used/details/general-goods/x/2' }), NOW).kind, 'penny');
+  assert.equal(classify(lot({ bid: 2, title: 'Dulux Wash & Wear paint 10L', url: 'https://www.pickles.com.au/used/details/general-goods/x/3' }), NOW), null);
 });
 
 test('db merge keeps known values and records bid history', () => {

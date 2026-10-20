@@ -2,6 +2,7 @@
 // first thing to check (npm run probe -- <a lot url> shows what the page returns).
 import { makeSite } from './generic.js';
 import { config } from '../config.js';
+import { parseDayMonthTime } from '../extract.js';
 
 const lastNum = u => { const m = String(u || '').split(/[?#]/)[0].match(/\d{3,}/g); return m ? m[m.length - 1] : null; };
 
@@ -11,6 +12,18 @@ export const grays = makeSite({
   detailRe: /grays\.com\/lot\/\d{2,6}-\d{5,}(?:[/?#]|$)/i,
   idFromUrl: u => (/\/lot\/(\d{2,6}-\d{5,})/i.exec(u || '') || [])[1] || null,
   listings: config.sites.grays.listings, pageParam: 'page', maxPages: config.sites.grays.maxPages, scrolls: 4,
+  timesFromLotPage: true, // search cards show no close time
+  // "Opens: 22 October 18:00 AEDT"  "Closes: (27 October 20:00 AEDT)" or a countdown "Closes: 6d 13h 52m"
+  pageFacts: text => {
+    const out = {};
+    const t = String(text || '').replace(/\s+/g, ' ');
+    const closes = /closes:?\s*\(?\s*(\d{1,2}\s+[A-Za-z]+\.?\s+(?:\d{4}\s+)?\d{1,2}[:.]\d{2}\s*(?:am|pm)?\s*(?:AEDT|AEST|ACDT|ACST|AWST)?)/i.exec(t);
+    if (closes) out.end_at = parseDayMonthTime(closes[1]);
+    const opens = /opens:?\s*\(?\s*(\d{1,2}\s+[A-Za-z]+\.?\s+(?:\d{4}\s+)?\d{1,2}[:.]\d{2}\s*(?:am|pm)?\s*(?:AEDT|AEST|ACDT|ACST|AWST)?)/i.exec(t);
+    if (opens) out.opens_at = parseDayMonthTime(opens[1]);
+    for (const k of Object.keys(out)) if (out[k] == null) delete out[k];
+    return out;
+  },
 });
 
 export const slattery = makeSite({

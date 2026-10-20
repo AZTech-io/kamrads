@@ -17,6 +17,7 @@ import { runSearches, searchFinalAlert } from './searches.js';
 import { geocodePending } from './geo.js';
 import { digestTick } from './digest.js';
 import { checkPending } from './inspect.js';
+import { prunePhotos } from './photos.js';
 
 export const adapters = { pickles, manheim, allbids, lloyds, grays, slattery, auctionbarn };
 // Sites where a re-read is cheap (learned JSON feed, or plain-HTML lot pages)
@@ -24,7 +25,7 @@ const quick = site => hasFeed(site) || !!adapters[site]?.cheapRefresh;
 const enabled = () => Object.values(adapters).filter(a => config.sites[a.site]?.enabled);
 
 const FINAL_GRACE_MS = 6 * 60000; // soft-close extensions + one final read before we mark a lot closed
-const LIVE_FIELDS = ['bid', 'bid_count', 'end_at', 'buy_now', 'start_price', 'buy_method'];
+const LIVE_FIELDS = ['bid', 'bid_count', 'end_at', 'buy_now', 'start_price', 'buy_method', 'reserve', 'opens_at'];
 const REFRESH_TIMEOUT_MS = 75000;
 const withTimeout = (p, ms, msg) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(msg)), ms))]);
 
@@ -46,11 +47,32 @@ async function discoverSite(a) {
     q.statusOk.run(a.site, Date.now(), lots.length);
     const withBid = lots.filter(l => l.bid != null).length, withEnd = lots.filter(l => l.end_at).length;
     log.info(a.site, `discovery done: ${lots.length} lots (${withBid} with bid, ${withEnd} with close time) in ${Math.round((Date.now() - t0) / 1000)}s`);
+    // Sites whose lists don't show close times (Grays): read some lot pages each pass to fill them in.
+    if (a.timesFromLotPage) await fillTimes(a);
     await runSearches().catch(e => log.warn('search', e.message));
   } catch (e) {
     q.statusErr.run(a.site, e.message.slice(0, 300), Date.now());
     log.error(a.site, `discovery failed: ${e.message}`);
   }
+}
+
+async function fillTimes(a) {
+  const todo = q.missingTimes.all(a.site, config.fillTimesPerScan);
+  let got = 0;
+  for (const lot of todo) {
+    if (stopping) break;
+    try {
+      const fresh = await withTimeout(a.refresh(lot), REFRESH_TIMEOUT_MS, 'took too long');
+      const update = { site: lot.site, ext_id: lot.ext_id };
+      for (const [k, v] of Object.entries(fresh)) if (v != null && (LIVE_FIELDS.includes(k) || lot[k] == null)) update[k] = v;
+      upsertLot(update, { checked: true });
+      if (fresh.end_at) got++;
+    } catch (e) {
+      upsertLot({ site: lot.site, ext_id: lot.ext_id }, { checked: true });
+      log.warn(a.site, `${lot.key}: ${e.message}`);
+    }
+  }
+  if (todo.length) log.info(a.site, `close times read for ${got} of ${todo.length} lots`);
 }
 
 async function discoveryLoop() {
@@ -170,6 +192,7 @@ async function choresLoop() {
   while (!stopping) {
     try { await digestTick(); } catch (e) { log.warn('digest', e.message); }
     try { await checkPending(); } catch (e) { log.warn('check', e.message); }
+    if (n % 60 === 0) prunePhotos();
     if (n++ % 5 === 0) { try { await geocodePending(q.openLots.all(Date.now())); } catch (e) { log.warn('geo', e.message); } }
     await sleep(60000);
   }
