@@ -2,6 +2,8 @@
 
 Watches Pickles, Manheim and ALLBIDS (incl. CARBIDS), lists every lot by what ends soonest, and pushes an alert to your phone when something is still cheap in its final 10 minutes.
 
+**My watchlist** sits at the top of the dashboard: star any lot (or paste its link) and its price is re-checked every 60 seconds until it closes.
+
 Every lot gets one last read just after it closes, so the **Sold** tab shows what things actually went for — the auction sites hide this once a lot ends.
 
 Server: RackNerd 2 GB KVM, `198.84.85.8`, Ubuntu 24.04.

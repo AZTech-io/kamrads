@@ -23,6 +23,7 @@ export const config = {
   // Polling
   discoveryEveryMin: num('DISCOVERY_EVERY_MIN', 10),
   hotEverySec: num('HOT_EVERY_SEC', 30),
+  watchEverySec: num('WATCH_EVERY_SEC', 60),   // your watchlist is re-checked this often until it closes
   hotWindowMin: num('HOT_WINDOW_MIN', 15),     // lots closing within this get re-checked every HOT_EVERY_SEC
   warmWindowMin: num('WARM_WINDOW_MIN', 60),   // lots closing within this get re-checked every WARM_EVERY_MIN
   warmEveryMin: num('WARM_EVERY_MIN', 5),

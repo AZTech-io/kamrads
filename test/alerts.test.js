@@ -71,3 +71,21 @@ test('final price: a lot just past its close gets one last read, then is closed 
   assert.equal(row.final_bid, 950);
   assert.ok(row.final_seen_at >= now);
 });
+
+test('watchlist: add by link, re-checked every 60 s however far from close', async () => {
+  const { watchUrl } = await import('../src/scheduler.js');
+  const key = watchUrl('https://www.allbids.com.au/c/antiques-art-memorabilia/collectible-watches/seiko-5-sports-supercars-2023-limited-edition-number-1678197');
+  assert.equal(key, 'allbids:1678197');
+  assert.throws(() => watchUrl('https://example.com/whatever'), /not a lot page/);
+  const now = Date.now();
+  // a starred lot closing in 3 days, last checked 2 minutes ago -> due; checked 10 s ago -> not due
+  upsertLot({ site: 'pickles', ext_id: 'W', title: 'watched', bid: 99000, end_at: now + 3 * 86400000, url: 'https://x/w' });
+  q.star.run(1, 'pickles:W');
+  db().prepare('UPDATE lots SET last_checked = ? WHERE key = ?').run(now - 120000, 'pickles:W');
+  assert.ok(dueForRefresh(now).some(l => l.ext_id === 'W'), 'due after 60 s');
+  db().prepare('UPDATE lots SET last_checked = ? WHERE key = ?').run(now - 10000, 'pickles:W');
+  assert.ok(!dueForRefresh(now).some(l => l.ext_id === 'W'), 'not due again within 60 s');
+  assert.ok(dueForRefresh(now).some(l => l.key === 'allbids:1678197'), 'new link read straight away');
+});
+const db = () => dbMod.db;
+const dbMod = await import('../src/db.js');

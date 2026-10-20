@@ -40,6 +40,16 @@ export function slugTitle(href) {
   return words.map(w => (/^\d/.test(w) ? w : w[0].toUpperCase() + w.slice(1))).join(' ');
 }
 
+/** Best lot name on a detail page: <h1>, then og:title / <title> without the site suffix, then the URL. */
+export function titleFromPage(html, url) {
+  const strip = t => clean(String(t || '').replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"'));
+  const h1 = /<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(html || '');
+  const og = /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)/i.exec(html || '');
+  const tt = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html || '');
+  const tidy = t => strip(t).replace(/\s*[|\-–]\s*(pickles|allbids|carbids|manheim)\b.*$/i, '').replace(/,\s*\d{6,9}$/, '').trim();
+  return [h1 && strip(h1[1]), og && tidy(og[1]), tt && tidy(tt[1])].find(goodTitle) || slugTitle(url) || null;
+}
+
 const JUNK_LINE = /^(salvage|interested\??|view \d+ more photos?|share|add a note|finance enquiry|watch|photos?|\d+\/\d+|fullscreen)$/i;
 
 export function cardToLot(card, { idFromUrl, now = Date.now() }) {

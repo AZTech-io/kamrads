@@ -59,6 +59,22 @@ main { max-width: 1240px; margin: 0 auto; padding: 12px 16px 60px; }
 .icon.on { color: var(--amber); border-color: var(--amber); }
 .empty { color: var(--muted); text-align: center; padding: 60px 20px; border: 1px dashed var(--line); border-radius: 12px; }
 .empty b { color: var(--ink); }
+.watch { background: var(--navy); border: 1px solid var(--line); border-top: 3px solid var(--amber); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; }
+.watch-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.watch-head h2 { margin: 0; font-size: 16px; }
+.watch-head .hint { color: var(--muted); font-size: 12px; }
+.watch-add { margin-left: auto; display: flex; gap: 6px; flex: 1 1 320px; max-width: 520px; }
+.watch-add input { flex: 1; background: var(--navy-2); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; min-width: 0; }
+.watch-add button { background: var(--amber); color: #1a1300; border: 0; border-radius: 8px; padding: 6px 12px; font: inherit; font-weight: 600; cursor: pointer; }
+.wrow { display: grid; grid-template-columns: 86px 1fr auto auto; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); }
+.wrow .wt { font-weight: 600; text-decoration: none; }
+.wrow .wm { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.wrow .wp { text-align: right; font-variant-numeric: tabular-nums; }
+.wrow .wp b { font-size: 18px; }
+.wrow .up { color: var(--red); font-size: 12px; font-weight: 600; }
+.wrow.sold { opacity: .75; }
+.watch-empty { color: var(--muted); font-size: 13px; padding: 6px 0 2px; }
+@media (max-width: 720px) { .wrow { grid-template-columns: 64px 1fr auto; } .wrow .wx { display: none; } .watch-add { max-width: none; } }
 footer { color: var(--muted); font-size: 12px; text-align: center; padding: 20px; }
 @media (max-width: 720px) {
   .summary { grid-template-columns: repeat(2, minmax(0,1fr)); }
@@ -89,7 +105,6 @@ footer { color: var(--muted); font-size: 12px; text-align: center; padding: 20px
     <button class="chip" data-f="deals" aria-pressed="false">Deals</button>
     <button class="chip" data-f="vehicles" aria-pressed="false">Vehicles</button>
     <button class="chip" data-f="under500" aria-pressed="false">Under $500</button>
-    <button class="chip" data-f="starred" aria-pressed="false">★ Starred</button>
     <button class="chip" data-f="sold" aria-pressed="false">Sold</button>
     <button class="chip" id="hideStat" aria-pressed="true">Hide statutory</button>
     <select id="site"><option value="">All sites</option><option value="pickles">Pickles</option><option value="manheim">Manheim</option><option value="allbids">ALLBIDS</option></select>
@@ -99,6 +114,13 @@ footer { color: var(--muted); font-size: 12px; text-align: center; padding: 20px
   </div>
 </header>
 <main>
+  <section class="watch" id="watch">
+    <div class="watch-head">
+      <h2>★ My watchlist</h2><span class="hint" id="watchHint">re-checked every 60 s</span>
+      <form class="watch-add" id="watchAdd"><input id="watchUrl" type="url" placeholder="Paste a Pickles / ALLBIDS / Manheim lot link to watch it"><button>Watch</button></form>
+    </div>
+    <div id="watchList"></div>
+  </section>
   <div class="summary" id="summary"></div>
   <div id="list"></div>
 </main>
@@ -109,10 +131,10 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = n => n == null ? '—' : '$' + Math.round(n).toLocaleString('en-AU');
 const SLEEPER = 0.25;
-let lots = [], filter = 'all', clockSkew = 0, mode = 'live';
+let watch = [], lastBid = {}, curBid = {}, lots = [], filter = 'all', clockSkew = 0, mode = 'live';
 const pref = (k, d) => { try { return JSON.parse(localStorage.getItem('k_' + k)) ?? d; } catch { return d; } };
 const save = (k, v) => { try { localStorage.setItem('k_' + k, JSON.stringify(v)); } catch {} };
-filter = pref('filter', 'all');
+filter = pref('filter', 'all'); if (filter === 'starred') filter = 'all';
 $('#hideStat').setAttribute('aria-pressed', String(pref('hideStat', true)));
 $('#site').value = pref('site', '');
 $('#sort').value = pref('sort', 'hot');
@@ -166,6 +188,7 @@ function visible() {
     if (q && !`${l.title} ${l.location} ${l.state} ${l.sale} ${l.category}`.toLowerCase().includes(q)) return false;
     const p = l.bid ?? l.startPrice;
     if (filter === 'sold') return true;
+    if (l.starred) return false; // shown in the watchlist panel instead
     if (filter === 'deals') return isDeal(l);
     if (filter === 'vehicles') return l.vehicle;
     if (filter === 'under500') return p != null && p <= 500;
@@ -174,7 +197,38 @@ function visible() {
   });
 }
 
+function ago(t) {
+  if (!t) return 'not checked yet';
+  const s = Math.max(0, Math.round((Date.now() + clockSkew - t) / 1000));
+  return s < 90 ? `checked ${s}s ago` : `checked ${Math.round(s / 60)} min ago`;
+}
+
+const slugName = u => { const w = String(u || '').split(/[?#]/)[0].replace(/\/$/, '').split('/').pop().replace(/-?\d{5,}$/, '').split('-').filter(Boolean); return w.length > 1 ? w.map(x => x[0].toUpperCase() + x.slice(1)).join(' ') : ''; };
+
+function renderWatch() {
+  const now = Date.now() + clockSkew;
+  $('#watchList').innerHTML = !watch.length
+    ? '<div class="watch-empty">Nothing yet. Tap ★ on any lot below, or paste a lot link above, and it lives here with its price checked every minute.</div>'
+    : watch.map(l => {
+      const closed = l.status === 'closed';
+      const ms = l.endAt ? l.endAt - now : null;
+      const cls = closed || ms == null ? '' : ms < 600000 ? 'now' : ms < 3600000 ? 'soon' : '';
+      const price = closed ? (l.finalBid ?? l.bid) : (l.bid ?? l.startPrice);
+      const moved = !closed && lastBid[l.key] != null && l.bid != null && l.bid > lastBid[l.key];
+      return `<div class="wrow ${closed ? 'sold' : ''}">
+        <div class="clock ${cls}">${closed ? '<div class="t">SOLD</div>' : `<div class="t" data-end="${l.endAt ?? ''}">${ms == null ? '…' : left(ms)}</div>`}<div class="d">${l.endAt ? esc(fmtClose(l.endAt)) : 'reading lot…'}</div></div>
+        <div><a class="wt" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title || slugName(l.url) || 'Loading lot details…')}</a>
+          <div class="wm"><span class="tag site">${esc(l.site)}</span> ${esc([l.location, l.state].filter(Boolean).join(' '))}${l.odometer ? ' · ' + l.odometer.toLocaleString('en-AU') + ' km' : ''}${l.wovr ? ' · ' + esc(l.wovr) : ''} · ${closed ? (l.seenMinsBeforeClose != null && l.seenMinsBeforeClose <= 1 ? 'hammer price' : 'final price seen') : ago(l.lastChecked)}</div></div>
+        <div class="wp"><b>${money(price)}</b><div class="sub">${closed ? 'sold' : l.bidCount != null ? l.bidCount + (l.bidCount === 1 ? ' bid' : ' bids') : l.bid == null ? 'no bid seen' : 'current bid'}</div>${moved ? `<div class="up">▲ was ${money(lastBid[l.key])}</div>` : ''}${l.estimate ? `<div class="sub">est ${money(l.estimate)}</div>` : ''}</div>
+        <div class="wx"><button class="icon on" data-unwatch="${esc(l.key)}" title="Stop watching">★</button></div>
+      </div>`;
+    }).join('');
+  $('#watchHint').textContent = `${watch.filter(l => l.status === 'open').length} watching · re-checked every ${watchEvery} s`;
+}
+let watchEvery = 60;
+
 function render() {
+  renderWatch();
   const now = Date.now() + clockSkew;
   const sortBy = $('#sort').value;
   const rows = visible().sort(mode === 'sold' && sortBy === 'ending' ? (a, b) => (b.endAt ?? 0) - (a.endAt ?? 0) : SORTS[sortBy] || SORTS.hot);
@@ -245,11 +299,20 @@ function tick() {
 async function load() {
   try {
     const sold = filter === 'sold';
+    const wl = fetch('/api/watchlist').then(x => x.json()).then(w => {
+      // remember the previous price so a rise shows as "▲ was $X" until the next change
+      for (const l of w.lots) {
+        if (curBid[l.key] !== undefined && l.bid != null && l.bid !== curBid[l.key]) lastBid[l.key] = curBid[l.key];
+        if (l.bid != null) curBid[l.key] = l.bid;
+      }
+      watch = w.lots; watchEvery = w.every;
+    }).catch(() => {});
     const [r, s] = await Promise.all([fetch(sold ? '/api/closed?hours=' + Math.max(24, Number($('#hours').value)) : '/api/lots?hours=' + $('#hours').value), fetch('/api/status')]);
     const data = await r.json(), st = await s.json();
     clockSkew = data.now - Date.now();
     lots = data.lots;
     mode = sold ? 'sold' : 'live';
+    await wl;
     $('#status').innerHTML = ['pickles', 'manheim', 'allbids'].map(site => {
       const x = st.sites.find(z => z.site === site) || {};
       const age = x.last_ok ? (Date.now() - x.last_ok) / 60000 : Infinity;
@@ -282,7 +345,7 @@ $('#list').addEventListener('click', async e => {
   if (star) {
     const l = lots.find(x => x.key === star.dataset.star); l.starred = !l.starred;
     await fetch(`/api/lots/${encodeURIComponent(l.key)}/star`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ starred: l.starred }) });
-    render();
+    load();
   }
   if (estB) {
     const l = lots.find(x => x.key === estB.dataset.est);
@@ -291,6 +354,21 @@ $('#list').addEventListener('click', async e => {
     await fetch(`/api/lots/${encodeURIComponent(l.key)}/estimate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ value: v.replace(/[$,\s]/g, '') }) });
     load();
   }
+});
+$('#watchList').addEventListener('click', async e => {
+  const b = e.target.closest('[data-unwatch]'); if (!b) return;
+  if (!confirm('Stop watching this lot?')) return;
+  await fetch(`/api/lots/${encodeURIComponent(b.dataset.unwatch)}/star`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ starred: false }) });
+  load();
+});
+$('#watchAdd').addEventListener('submit', async e => {
+  e.preventDefault();
+  const url = $('#watchUrl').value.trim(); if (!url) return;
+  const r = await fetch('/api/watch', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url }) });
+  const j = await r.json();
+  if (!r.ok) return alert(j.error || 'Could not add that link.');
+  $('#watchUrl').value = '';
+  load();
 });
 $('#testAlert').addEventListener('click', async e => {
   e.preventDefault();

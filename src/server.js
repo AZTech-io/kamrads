@@ -6,6 +6,7 @@ import { q } from './db.js';
 import { estimateOf } from './alerts.js';
 import { isVehicle } from './extract.js';
 import { push } from './notify.js';
+import { watchUrl } from './scheduler.js';
 import { log } from './log.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -62,6 +63,20 @@ export function startServer() {
       out.seenMinsBeforeClose = l.final_seen_at && l.end_at ? Math.max(0, Math.round((l.end_at - l.final_seen_at) / 60000)) : null;
       return out;
     }) });
+  });
+  app.get('/api/watchlist', (_req, res) => {
+    const now = Date.now();
+    const alertKinds = new Map();
+    for (const a of q.alertKinds.all(now - 7 * 86400000)) alertKinds.set(a.key, [...(alertKinds.get(a.key) || []), a.kind]);
+    res.json({ now, every: config.watchEverySec, lots: q.watchlist.all(now - 24 * 3600000).map(l => ({
+      ...shape(l.status === 'closed' ? { ...l, bid: l.final_bid ?? l.bid } : l, alertKinds),
+      status: l.status, finalBid: l.final_bid, closedAt: l.closed_at,
+      seenMinsBeforeClose: l.final_seen_at && l.end_at ? Math.max(0, Math.round((l.end_at - l.final_seen_at) / 60000)) : null,
+    })) });
+  });
+  app.post('/api/watch', (req, res) => {
+    try { res.json({ ok: true, key: watchUrl(String(req.body.url || '').trim()) }); }
+    catch (e) { res.status(400).json({ error: e.message }); }
   });
   app.get('/api/status', (_req, res) => res.json({ sites: q.statusAll.all(), alerts: q.recentAlerts.all(), ai: !!config.anthropicKey, push: !!config.ntfyUrl }));
   app.get('/api/lots/:key/bids', (req, res) => res.json(q.bidHistory.all(req.params.key)));

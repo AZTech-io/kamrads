@@ -61,6 +61,10 @@ export const q = {
   recentClosed: db.prepare(`SELECT * FROM lots WHERE status = 'closed' AND closed_at > ? AND final_bid IS NOT NULL ORDER BY end_at DESC LIMIT 1000`),
   closeDue: db.prepare(`UPDATE lots SET status = 'closed', final_bid = bid, final_seen_at = last_checked, closed_at = ? WHERE status = 'open' AND end_at < ? RETURNING key`),
   star: db.prepare('UPDATE lots SET starred = ? WHERE key = ?'),
+  watchedOpen: db.prepare(`SELECT * FROM lots WHERE starred = 1 AND status = 'open' ORDER BY end_at IS NULL, end_at`),
+  watchlist: db.prepare(`SELECT * FROM lots WHERE starred = 1 AND (status = 'open' OR closed_at > ?) ORDER BY status = 'closed', end_at IS NULL, end_at`),
+  addWatch: db.prepare(`INSERT INTO lots (key, site, ext_id, url, starred, first_seen, last_seen) VALUES (?, ?, ?, ?, 1, ?, ?)
+    ON CONFLICT(key) DO UPDATE SET starred = 1, status = CASE WHEN lots.end_at IS NULL OR lots.end_at > ? THEN 'open' ELSE lots.status END`),
   manualEstimate: db.prepare('UPDATE lots SET manual_estimate = ? WHERE key = ?'),
   setEstimate: db.prepare('UPDATE lots SET est_low = ?, est_high = ?, est_note = ?, est_at = ? WHERE key = ?'),
   needsEstimate: db.prepare(`SELECT * FROM lots WHERE status = 'open' AND est_at IS NULL AND manual_estimate IS NULL AND end_at BETWEEN ? AND ? ORDER BY end_at LIMIT ?`),

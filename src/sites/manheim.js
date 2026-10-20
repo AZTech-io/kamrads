@@ -2,15 +2,16 @@ import { withPage, looksBlocked } from '../browser.js';
 import { factsFromText } from '../extract.js';
 import { config } from '../config.js';
 import { log } from '../log.js';
-import { domCards, cardToLot, lotsFromCapture, mergeLots, absUrl } from './common.js';
+import { domCards, cardToLot, lotsFromCapture, mergeLots, absUrl, titleFromPage } from './common.js';
 
 export const site = 'manheim';
 const ORIGIN = 'https://www.manheim.com.au';
 // Lot detail links: same site, a lot-ish path segment and a long number.
 const DETAIL_RE = /manheim\.com\.au\/[^?#]*(?:lot|item|vehicle|asset|detail|stock|listing|passenger|truck|machinery|damage)[^?#]*\d{5,}/;
+export const owns = u => DETAIL_RE.test(u || '');
 export const loginUrl = ORIGIN + '/';
 
-const idFromUrl = u => { const m = (u || '').split(/[?#]/)[0].match(/\d{5,}/g); return m ? m[m.length - 1] : null; };
+export const idFromUrl = u => { const m = (u || '').split(/[?#]/)[0].match(/\d{5,}/g); return m ? m[m.length - 1] : null; };
 
 function finish(lot, saleName) {
   lot.url = absUrl(lot.url, ORIGIN);
@@ -76,5 +77,6 @@ export async function refresh(lot) {
   const facts = factsFromText(r.text);
   const merged = { ...(match || {}), ext_id: lot.ext_id, url: lot.url, site };
   for (const [k, v] of Object.entries(facts)) if (merged[k] == null) merged[k] = v;
+  merged.title = merged.title || titleFromPage(r.html, lot.url);
   return merged;
 }

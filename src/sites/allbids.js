@@ -4,15 +4,16 @@ import { withPage, looksBlocked } from '../browser.js';
 import { factsFromText } from '../extract.js';
 import { config } from '../config.js';
 import { log } from '../log.js';
-import { domCards, cardToLot, lotsFromCapture, mergeLots, absUrl, alignToCards } from './common.js';
+import { domCards, cardToLot, lotsFromCapture, mergeLots, absUrl, titleFromPage, alignToCards } from './common.js';
 
 export const site = 'allbids';
 const ORIGIN = 'https://www.allbids.com.au';
 // Lot pages look like /c/office-business/phone-communication-systems/panasonic-kxns700al-...-1100784
 const DETAIL_RE = /(?:allbids|carbids|boatbids|ehva)\.com\.au\/c\/[^?#]+-\d{5,}(?:[/?#]|$)/;
+export const owns = u => DETAIL_RE.test(u || '');
 export const loginUrl = null; // no login needed
 
-const idFromUrl = u => (/-(\d{5,})\/?(?:[?#]|$)/.exec(u || '') || [])[1] || null;
+export const idFromUrl = u => (/-(\d{5,})\/?(?:[?#]|$)/.exec(u || '') || [])[1] || null;
 const categoryFromUrl = u => (/\/c\/([^/]+)\//.exec(u || '') || [])[1] || null;
 
 function finish(lot, origin = ORIGIN) {
@@ -55,5 +56,6 @@ export async function refresh(lot) {
   const facts = factsFromText(r.text);
   const merged = { ...(match || {}), ext_id: lot.ext_id, url: lot.url, site };
   for (const [k, v] of Object.entries(facts)) if (merged[k] == null) merged[k] = v;
+  merged.title = merged.title || titleFromPage(r.html, lot.url);
   return merged;
 }

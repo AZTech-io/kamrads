@@ -2,14 +2,15 @@ import { withPage, looksBlocked } from '../browser.js';
 import { factsFromText } from '../extract.js';
 import { config } from '../config.js';
 import { log } from '../log.js';
-import { domCards, cardToLot, lotsFromCapture, mergeLots, absUrl } from './common.js';
+import { domCards, cardToLot, lotsFromCapture, mergeLots, absUrl, titleFromPage } from './common.js';
 
 export const site = 'pickles';
 const ORIGIN = 'https://www.pickles.com.au';
 const DETAIL_RE = /pickles\.com\.au\/used\/details\/[^/]+\/(?:[^/]+\/)?\d{6,9}/;
+export const owns = u => DETAIL_RE.test(u || '');
 export const loginUrl = ORIGIN + '/';
 
-const idFromUrl = u => (/\/used\/details\/[^?#]*?\/(\d{6,9})(?:[/?#]|$)/.exec(u || '') || [])[1] || null;
+export const idFromUrl = u => (/\/used\/details\/[^?#]*?\/(\d{6,9})(?:[/?#]|$)/.exec(u || '') || [])[1] || null;
 const categoryFromUrl = u => (/\/used\/details\/([^/]+)\//.exec(u || '') || [])[1] || null;
 
 function finish(lot) {
@@ -65,6 +66,7 @@ export async function refresh(lot) {
   const facts = factsFromText(r.text);
   const merged = { ...(match || {}), ext_id: lot.ext_id, url: lot.url, site };
   for (const [k, v] of Object.entries(facts)) if (merged[k] == null) merged[k] = v;
+  merged.title = merged.title || titleFromPage(r.html, lot.url);
   if (/pickles\s*live/i.test(r.text) && !merged.buy_method) merged.buy_method = 'Pickles Live';
   else if (/pickles\s*online|\(online\)/i.test(r.text) && !merged.buy_method) merged.buy_method = 'Pickles Online';
   return merged;

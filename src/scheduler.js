@@ -43,7 +43,15 @@ async function discoveryLoop() {
 
 /** Pick the lots that need a fresh look: closing within the hot/warm windows. */
 export function dueForRefresh(now = Date.now()) {
-  const rows = q.openWindow.all(now - FINAL_GRACE_MS, now + config.warmWindowMin * 60000);
+  const usable = l => adapters[l.site] && config.sites[l.site]?.enabled && l.url;
+  // Your watchlist: every WATCH_EVERY_SEC (faster in the final minutes), whatever the price or close time.
+  const watched = q.watchedOpen.all().filter(l => usable(l) && (l.end_at == null || l.end_at > now - FINAL_GRACE_MS)).filter(l => {
+    const since = now - (l.last_checked || 0);
+    if (l.end_at && l.end_at <= now) return (l.last_checked || 0) < l.end_at;
+    const every = l.end_at && l.end_at - now <= config.hotWindowMin * 60000 ? Math.min(config.hotEverySec, config.watchEverySec) : config.watchEverySec;
+    return since >= every * 900;
+  });
+  const rows = q.openWindow.all(now - FINAL_GRACE_MS, now + config.warmWindowMin * 60000).filter(l => !l.starred);
   const due = rows.filter(l => {
     if (!adapters[l.site] || !config.sites[l.site]?.enabled || !l.url) return false;
     if (!l.starred && l.bid != null && l.bid > config.hotMaxBid) return false;
@@ -56,7 +64,8 @@ export function dueForRefresh(now = Date.now()) {
   });
   // Final reads first (they can't wait), then whatever closes soonest.
   due.sort((a, b) => ((a.end_at <= now) === (b.end_at <= now) ? a.end_at - b.end_at : a.end_at <= now ? -1 : 1));
-  return due.slice(0, config.hotBatch);
+  // Watchlist always goes first and doesn't count against the batch limit.
+  return [...watched, ...due.slice(0, config.hotBatch)];
 }
 
 async function hotCycle() {
@@ -98,6 +107,18 @@ async function estimateLoop() {
     try { await estimatePending(); } catch (e) { log.warn('estimate', e.message); }
     await sleep(120000);
   }
+}
+
+/** Add any lot by its link. Returns the stored key, or throws if the site isn't supported. */
+export function watchUrl(url) {
+  const a = Object.values(adapters).find(x => x.owns(url));
+  if (!a) throw new Error('That link is not a lot page on Pickles, Manheim or ALLBIDS.');
+  const id = a.idFromUrl(url);
+  if (!id) throw new Error('Could not find the lot number in that link.');
+  const now = Date.now();
+  const key = `${a.site}:${id}`;
+  q.addWatch.run(key, a.site, id, url.split('#')[0], now, now, now);
+  return key;
 }
 
 export async function startScheduler() {
