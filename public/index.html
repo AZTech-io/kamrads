@@ -30,6 +30,8 @@ header { background: var(--navy); border-bottom: 1px solid var(--line); position
 input[type=search], select { background: var(--navy-2); border: 1px solid var(--line); color: var(--ink); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; }
 input[type=search] { flex: 1 1 180px; min-width: 140px; }
 main { max-width: 1240px; margin: 0 auto; padding: 12px 16px 60px; }
+.capture { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 12.5px; }
+.capture b { color: var(--ink); }
 .summary { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 14px; }
 .stat { background: var(--navy); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
 .stat .n { font-size: 22px; font-weight: 700; } .stat .l { color: var(--muted); font-size: 12px; }
@@ -131,7 +133,7 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = n => n == null ? '—' : '$' + Math.round(n).toLocaleString('en-AU');
 const SLEEPER = 0.25;
-let watch = [], lastBid = {}, curBid = {}, lots = [], filter = 'all', clockSkew = 0, mode = 'live';
+let soldStats = [], watch = [], lastBid = {}, curBid = {}, lots = [], filter = 'all', clockSkew = 0, mode = 'live';
 const pref = (k, d) => { try { return JSON.parse(localStorage.getItem('k_' + k)) ?? d; } catch { return d; } };
 const save = (k, v) => { try { localStorage.setItem('k_' + k, JSON.stringify(v)); } catch {} };
 filter = pref('filter', 'all'); if (filter === 'starred') filter = 'all';
@@ -231,17 +233,19 @@ function render() {
   renderWatch();
   const now = Date.now() + clockSkew;
   const sortBy = $('#sort').value;
-  const rows = visible().sort(mode === 'sold' && sortBy === 'ending' ? (a, b) => (b.endAt ?? 0) - (a.endAt ?? 0) : SORTS[sortBy] || SORTS.hot);
+  const rows = visible().sort(mode === 'sold' && (sortBy === 'ending' || sortBy === 'hot') ? (a, b) => (b.endAt ?? 0) - (a.endAt ?? 0) : SORTS[sortBy] || SORTS.hot);
   if (mode === 'sold') {
     const shown = visible();
+    const priced = shown.filter(l => l.finalBid != null);
     const bargains = shown.filter(l => l.ratio != null && l.ratio <= 0.5);
     const under500 = shown.filter(l => l.finalBid != null && l.finalBid <= 500);
     const exact = shown.filter(l => l.seenMinsBeforeClose != null && l.seenMinsBeforeClose <= 1);
     $('#summary').innerHTML = `
       <div class="stat hot"><div class="n">${bargains.length}</div><div class="l">Sold under half the estimate</div></div>
       <div class="stat"><div class="n">${under500.length}</div><div class="l">Sold for $500 or less</div></div>
-      <div class="stat"><div class="n">${shown.length.toLocaleString('en-AU')}</div><div class="l">Results shown${shown.length < lots.length ? ` (of ${lots.length})` : ''}</div></div>
-      <div class="stat"><div class="n">${exact.length}</div><div class="l">Read in the final minute</div></div>`;
+      <div class="stat"><div class="n">${priced.length.toLocaleString('en-AU')} / ${shown.length.toLocaleString('en-AU')}</div><div class="l">Closed lots with a final price${shown.length < lots.length ? ` (${lots.length - shown.length} hidden by filters)` : ''}</div></div>
+      <div class="stat"><div class="n">${exact.length}</div><div class="l">Read in the final minute</div></div>
+      <div class="capture">${soldStats.map(x => `<span><b>${({ pickles: 'Pickles', manheim: 'Manheim', allbids: 'ALLBIDS' })[x.site] || x.site}</b> ${x.closed} closed · ${x.priced} priced · ${x.hammer} at the hammer</span>`).join('') || '<span>No lots have closed yet in this period.</span>'}</div>`;
   }
   const hour = lots.filter(l => l.endAt && l.endAt - now < 3600000);
   const deals = lots.filter(isDeal);
@@ -279,7 +283,7 @@ function render() {
         </div>
       </div>
       <div class="price">
-        <div><div class="bid">${money(p)}</div><div class="sub">${mode === 'sold' ? (l.seenMinsBeforeClose == null ? 'final price seen' : l.seenMinsBeforeClose <= 1 ? 'hammer price' : `last seen ${l.seenMinsBeforeClose} min before close`) : l.bid == null && l.startPrice != null ? 'start price' : l.bidCount != null ? l.bidCount + (l.bidCount === 1 ? ' bid' : ' bids') : l.bid == null ? 'bid not visible yet' : 'current bid'}</div>${est}</div>
+        <div><div class="bid">${money(p)}</div><div class="sub">${mode === 'sold' ? (l.finalBid == null ? 'price not captured' : l.seenMinsBeforeClose == null ? 'price from listing' : l.seenMinsBeforeClose <= 1 ? 'hammer price' : `last seen ${l.seenMinsBeforeClose} min before close`) : l.bid == null && l.startPrice != null ? 'start price' : l.bidCount != null ? l.bidCount + (l.bidCount === 1 ? ' bid' : ' bids') : l.bid == null ? 'bid not visible yet' : 'current bid'}</div>${est}</div>
         <div class="acts">
           <button class="icon ${l.starred ? 'on' : ''}" data-star="${esc(l.key)}" title="Star: alert me in the final minutes">★</button>
           <button class="icon" data-est="${esc(l.key)}" title="Set your own resale estimate">Est</button>
@@ -314,6 +318,7 @@ async function load() {
     const data = await r.json(), st = await s.json();
     clockSkew = data.now - Date.now();
     lots = data.lots;
+    soldStats = data.stats || [];
     mode = sold ? 'sold' : 'live';
     await wl;
     $('#status').innerHTML = ['pickles', 'manheim', 'allbids'].map(site => {

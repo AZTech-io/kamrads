@@ -8,6 +8,7 @@
     "start": "node --no-warnings src/index.js",
     "probe": "node --no-warnings scripts/probe.js",
     "login": "node --no-warnings scripts/login.js",
+    "stats": "node --no-warnings scripts/stats.js",
     "import-cookies": "node --no-warnings scripts/import-cookies.js",
     "test": "node --no-warnings --test test/*.test.js"
   },

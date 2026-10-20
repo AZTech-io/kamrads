@@ -55,7 +55,7 @@ export function startServer() {
   app.get('/api/closed', (req, res) => {
     const hours = Math.min(Number(req.query.hours) || 24, 24 * 90);
     const rows = q.recentClosed.all(Date.now() - hours * 3600000);
-    res.json({ now: Date.now(), lots: rows.map(l => {
+    res.json({ now: Date.now(), stats: q.closedStats.all(Date.now() - hours * 3600000), lots: rows.map(l => {
       const out = shape({ ...l, bid: l.final_bid }, new Map());
       out.finalBid = l.final_bid;
       out.closedAt = l.closed_at;
