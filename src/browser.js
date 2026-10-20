@@ -123,6 +123,13 @@ export async function withPage(site, url, fn = null, { scrolls = 0, waitMs = 250
     for (let i = 0; i < scrolls; i++) {
       await page.mouse.wheel(0, 2500);
       await page.waitForTimeout(900);
+      // Lists that need a "See more" / "Load more" click (ALLBIDS) rather than scrolling.
+      const more = page.locator('a, button').filter({ hasText: /^\s*(see|load|show|view)\s+more(\s+(auctions|lots|items|results))?\s*$/i });
+      const n = await more.count().catch(() => 0);
+      for (let j = 0; j < n; j++) {
+        const el = more.nth(j);
+        if (await el.isVisible().catch(() => false)) { await el.click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(1500); break; }
+      }
     }
     await page.waitForTimeout(waitMs);
     const result = fn ? await fn(page) : null;

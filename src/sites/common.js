@@ -17,12 +17,27 @@ export async function domCards(page, hrefRe) {
         if ((card.innerText || '').length > 160) break;
       }
       const heading = (a.querySelector('h1,h2,h3,h4,h5,h6,[class*="title" i]') || card.querySelector('h1,h2,h3,h4,h5,h6,[class*="title" i]'))?.innerText?.trim() || '';
+      const img = a.querySelector('img') || card.querySelector('img');
+      const named = (a.getAttribute('title') || img?.getAttribute('title') || img?.getAttribute('alt') || '').trim();
       const text = (card.innerText || a.innerText || '').trim();
       const prev = byHref.get(href);
-      if (!prev || text.length > prev.text.length) byHref.set(href, { href, heading, text });
+      if (!prev || text.length > prev.text.length) byHref.set(href, { href, heading: heading || prev?.heading || '', named: named || prev?.named || '', text });
     }
     return [...byHref.values()];
   }, hrefRe.source);
+}
+
+const clean = t => String(t || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+/** Reject things that aren't a lot name: prices, countdowns, buttons, unrendered {{templates}}. */
+export const goodTitle = t => !!t && t.length >= 4 && /[a-z]{3}/i.test(t) && !/\{\{|\}\}/.test(t)
+  && !/^(\$|au\$|current|start|no bids|today|tomorrow|closing|closes|ends|watch|bid now|view|under offer|auction|lot \d)/i.test(t)
+  && !/^[\d\s:dhms$,.]+$/i.test(t);
+/** ".../seiko-5-sports-supercars-2023-limited-edition-number-1678197" -> "Seiko 5 Sports Supercars 2023 Limited Edition Number" */
+export function slugTitle(href) {
+  const last = String(href || '').split(/[?#]/)[0].replace(/\/$/, '').split('/').pop() || '';
+  const words = last.replace(/-?\d{5,}$/, '').split('-').filter(Boolean);
+  if (words.length < 2) return '';
+  return words.map(w => (/^\d/.test(w) ? w : w[0].toUpperCase() + w.slice(1))).join(' ');
 }
 
 const JUNK_LINE = /^(salvage|interested\??|view \d+ more photos?|share|add a note|finance enquiry|watch|photos?|\d+\/\d+|fullscreen)$/i;
@@ -31,7 +46,7 @@ export function cardToLot(card, { idFromUrl, now = Date.now() }) {
   const ext_id = idFromUrl(card.href);
   if (!ext_id) return null;
   const lines = card.text.split('\n').map(s => s.trim()).filter(s => s && !JUNK_LINE.test(s));
-  const title = (card.heading || lines[0] || '').replace(/\s+/g, ' ').slice(0, 160);
+  const title = [card.heading, card.named, ...lines.slice(0, 3)].map(clean).find(goodTitle) || slugTitle(card.href) || '';
   const facts = factsFromText(card.text, now);
   // On listing cards a bare "$2,200" is normally the current bid / price.
   if (facts.bid == null) {

@@ -93,6 +93,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; padding: 20px
     <button class="chip" data-f="sold" aria-pressed="false">Sold</button>
     <button class="chip" id="hideStat" aria-pressed="true">Hide statutory</button>
     <select id="site"><option value="">All sites</option><option value="pickles">Pickles</option><option value="manheim">Manheim</option><option value="allbids">ALLBIDS</option></select>
+    <select id="sort"><option value="hot">Hottest deals first</option><option value="ending">Ends soonest</option><option value="price">Lowest price</option><option value="profit">Biggest est. profit</option></select>
     <select id="hours"><option value="3">Next 3 h</option><option value="24">Next 24 h</option><option value="48" selected>Next 48 h</option><option value="168">Next 7 days</option></select>
     <input type="search" id="q" placeholder="Search: hilux, tipper, Perth…">
   </div>
@@ -114,6 +115,7 @@ const save = (k, v) => { try { localStorage.setItem('k_' + k, JSON.stringify(v))
 filter = pref('filter', 'all');
 $('#hideStat').setAttribute('aria-pressed', String(pref('hideStat', true)));
 $('#site').value = pref('site', '');
+$('#sort').value = pref('sort', 'hot');
 $('#hours').value = String(pref('hours', 48));
 
 function left(ms) {
@@ -124,7 +126,29 @@ function left(ms) {
   return `${m}:${String(sec).padStart(2, '0')}`;
 }
 const fmtClose = t => new Date(t).toLocaleString('en-AU', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Australia/Perth' }) + ' AWST';
-const isDeal = l => (l.ratio != null && l.ratio <= SLEEPER) || (l.estimate == null && l.vehicle && (l.bid ?? l.startPrice) != null && (l.bid ?? l.startPrice) <= 3000) || l.alerts.length > 0;
+const CHEAP_VEHICLE = 3000;
+// Deal strength from the CURRENT price: lower = better. As bidding climbs the number rises and the lot sinks.
+function strength(l) {
+  const p = l.bid ?? l.startPrice;
+  if (p == null) return null;
+  if (l.estimate) return p / l.estimate;
+  if (l.vehicle) return (p / CHEAP_VEHICLE) * SLEEPER;   // no estimate: a $3,000 vehicle scores the same as 25% of value
+  if (p <= 5) return 0;                                   // penny lot
+  return null;
+}
+const isDeal = l => { const s = strength(l); return s != null && s <= SLEEPER; };
+const priceOf = l => (mode === 'sold' ? l.finalBid : l.bid ?? l.startPrice);
+const SORTS = {
+  ending: (a, b) => (a.endAt ?? Infinity) - (b.endAt ?? Infinity),
+  price: (a, b) => (priceOf(a) ?? Infinity) - (priceOf(b) ?? Infinity) || SORTS.ending(a, b),
+  profit: (a, b) => (b.profit ?? -Infinity) - (a.profit ?? -Infinity) || SORTS.ending(a, b),
+  hot: (a, b) => {
+    const da = isDeal(a), db = isDeal(b);
+    if (da !== db) return da ? -1 : 1;
+    if (da) return strength(a) - strength(b) || SORTS.ending(a, b);
+    return SORTS.ending(a, b);
+  },
+};
 
 function wovrTag(w) {
   if (!w) return '';
@@ -152,7 +176,8 @@ function visible() {
 
 function render() {
   const now = Date.now() + clockSkew;
-  const rows = visible();
+  const sortBy = $('#sort').value;
+  const rows = visible().sort(mode === 'sold' && sortBy === 'ending' ? (a, b) => (b.endAt ?? 0) - (a.endAt ?? 0) : SORTS[sortBy] || SORTS.hot);
   if (mode === 'sold') {
     const bargains = lots.filter(l => l.ratio != null && l.ratio <= 0.5);
     const under500 = lots.filter(l => l.finalBid != null && l.finalBid <= 500);
@@ -250,6 +275,7 @@ $('#filters').addEventListener('click', e => {
 document.querySelectorAll('[data-f]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.f === filter)));
 $('#q').addEventListener('input', render);
 $('#site').addEventListener('change', e => { save('site', e.target.value); render(); });
+$('#sort').addEventListener('change', e => { save('sort', e.target.value); render(); });
 $('#hours').addEventListener('change', e => { save('hours', Number(e.target.value)); load(); });
 $('#list').addEventListener('click', async e => {
   const star = e.target.closest('[data-star]'), estB = e.target.closest('[data-est]');

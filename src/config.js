@@ -65,7 +65,7 @@ export const config = {
     },
     allbids: {
       enabled: bool('ALLBIDS_ENABLED', true),
-      scrolls: num('ALLBIDS_SCROLLS', 12),
+      scrolls: num('ALLBIDS_SCROLLS', 25),
       pages: list('ALLBIDS_PAGES', [
         'https://www.allbids.com.au/closing-today',                                  // everything closing today, all categories
         'https://www.carbids.com.au/c/allbids-car-auctions/motor-vehicles-cars',     // cars (close on weekdays)

@@ -126,3 +126,15 @@ test('ALLBIDS close times and calendar text', async () => {
   assert.equal(relativeSydney('Today', 7, 12, 'PM', NOW), Date.parse('2026-10-20T08:12:00Z'));
   assert.equal(factsFromText('Closes Tomorrow at 9:00 AM', NOW).end_at, Date.parse('2026-10-20T22:00:00Z'));
 });
+
+test('card titles: skip prices, countdowns and templates; fall back to the URL', async () => {
+  const { cardToLot, slugTitle } = await import('../src/sites/common.js');
+  const href = 'https://www.allbids.com.au/c/antiques-art-memorabilia/collectible-watches/seiko-5-sports-supercars-2023-limited-edition-number-1678197';
+  const idFromUrl = u => (/-(\d{5,})$/.exec(u) || [])[1];
+  assert.equal(slugTitle(href), 'Seiko 5 Sports Supercars 2023 Limited Edition Number');
+  const fromAlt = cardToLot({ href, heading: '', named: 'Seiko 5 Sports Supercars 2023 Limited Edition Number - 1743/2023', text: 'Today 7:12 PM\n$45\nACT Mitchell' }, { idFromUrl });
+  assert.equal(fromAlt.title, 'Seiko 5 Sports Supercars 2023 Limited Edition Number - 1743/2023');
+  const fromSlug = cardToLot({ href, heading: '{{auction.aucTitle}}', named: '', text: '$45\nNo bids\n3h 12m' }, { idFromUrl });
+  assert.equal(fromSlug.title, 'Seiko 5 Sports Supercars 2023 Limited Edition Number');
+  assert.equal(fromSlug.ext_id, '1678197');
+});

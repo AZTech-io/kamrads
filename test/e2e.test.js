@@ -12,7 +12,7 @@ process.env.PICKLES_SEARCHES = 'https://www.pickles.com.au/used/search/trucks?co
 process.env.PICKLES_MAX_PAGES = '1';
 process.env.MANHEIM_SCROLLS = '1';
 process.env.ALLBIDS_PAGES = 'https://www.allbids.com.au/closing-today';
-process.env.ALLBIDS_SCROLLS = '1';
+process.env.ALLBIDS_SCROLLS = '3';
 process.env.PAGE_TIMEOUT_MS = '15000';
 if (!process.env.CHROME_PATH && fs.existsSync('/opt/google/chrome/chrome')) process.env.CHROME_PATH = '/opt/google/chrome/chrome';
 
@@ -49,11 +49,14 @@ const MANHEIM = {
 
 const utcNoZone = new Date(Date.now() + 25 * 60000).toISOString().slice(0, 19); // ALLBIDS style: UTC without a Z
 const ALLBIDS = {
-  '/closing-today': html('<ul id="l"></ul>', `
+  '/closing-today': html('<ul id="l"></ul><a href="#" id="more" style="display:block;margin-top:3000px">SEE MORE</a>', `
     fetch('/Search/GetAuctions?tab=closingtoday').then(r => r.json()).then(d => {
       document.getElementById('l').innerHTML = d.auctions.map(a =>
         '<li><a href="/c/' + a.cat + '/' + a.slug + '-' + a.pageId + '"><h4>' + a.aucTitle + '</h4></a><b>$' + a.aucCurrentBid + '</b></li>').join('');
-    });`),
+    });
+    document.getElementById('more').onclick = e => { e.preventDefault();
+      document.getElementById('l').insertAdjacentHTML('beforeend', '<li><a href="/c/tools/makita-drill-kit-1101234"><h4>Makita drill kit</h4></a><span>Current bid $12</span><span>Closes Today at 9:45 PM</span></li>');
+      e.target.remove(); };`),
   '/Search/GetAuctions': JSON.stringify({ total: 2, auctions: [
     { aucID: 1100784, pageId: 1100784, cat: 'computers-it/notebooks-laptops', slug: 'dell-latitude-5420-i5-laptop', aucTitle: 'Dell Latitude 5420 i5 Laptop',
       aucCurrentBid: 3, aucCloseUtc: utcNoZone, aucCity: 'Fyshwick', aucState: 'ACT', aucBidCount: 2, aucThumbnailUrl: '/img/1.jpg' },
@@ -112,7 +115,7 @@ test('Manheim: finds matching events and their lots', { skip: !chromeOk }, async
 test('ALLBIDS: lots, UTC close times and ids lined up with the page', { skip: !chromeOk }, async () => {
   await fakeSite('allbids', 'https://www.allbids.com.au', ALLBIDS);
   const lots = await allbids.discover();
-  assert.equal(lots.length, 2);
+  assert.equal(lots.length, 3, 'includes the lot behind See more');
   const dell = lots.find(l => l.ext_id === '1100784');
   assert.equal(dell.bid, 3);
   assert.equal(dell.state, 'ACT');

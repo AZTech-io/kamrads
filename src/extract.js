@@ -151,7 +151,7 @@ export function lotFromObject(obj, now = Date.now()) {
   const model = firstOf(f, ['model', 'modelname', 'family']);
   const variant = firstOf(f, ['variant', 'series', 'badge', 'trim']);
   let title = firstOf(f, TITLE_KEYS);
-  if (typeof title !== 'string' || title.length > 200) title = null;
+  if (typeof title !== 'string' || title.length > 200 || /\{\{/.test(title)) title = null;
   const builtTitle = [year, make, model, variant].filter(Boolean).join(' ').trim();
   if (!title || (builtTitle && title.length < builtTitle.length)) title = builtTitle || title;
 
