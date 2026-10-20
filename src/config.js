@@ -98,6 +98,21 @@ export const config = {
   estimatesPerHour: num('ESTIMATES_PER_HOUR', 60),
   estimateWithinHours: num('ESTIMATE_WITHIN_HOURS', 24),
 
+  // Freight board (/freight): Airtasker + Truckit job lists
+  freight: {
+    everyMin: num('FREIGHT_EVERY_MIN', 10),
+    keepHours: num('FREIGHT_KEEP_HOURS', 36),   // a job that drops off the lists this long is treated as taken
+    airtasker: {
+      enabled: bool('AIRTASKER_ENABLED', true),
+      categories: list('AIRTASKER_CATEGORIES', ['delivery', 'removals', 'courier-services', 'man-with-a-van', 'ute-removals']),
+      cities: list('AIRTASKER_CITIES', ['canberra', 'sydney']),
+    },
+    truckit: {
+      enabled: bool('TRUCKIT_ENABLED', true),
+      pages: list('TRUCKIT_PAGES', ['https://www.truckit.net/search-for-jobs']),
+    },
+  },
+
   sites: {
     pickles: {
       enabled: bool('PICKLES_ENABLED', true),

@@ -18,6 +18,7 @@ import { geocodePending } from './geo.js';
 import { digestTick } from './digest.js';
 import { checkPending } from './inspect.js';
 import { prunePhotos } from './photos.js';
+import { freightLoop } from './freight/loop.js';
 
 export const adapters = { pickles, manheim, allbids, lloyds, grays, slattery, auctionbarn };
 // Sites where a re-read is cheap (learned JSON feed, or plain-HTML lot pages)
@@ -226,4 +227,5 @@ export async function startScheduler() {
   estimateLoop();
   backupLoop();
   choresLoop();
+  freightLoop();
 }

@@ -11,6 +11,7 @@ import { checkListing } from './inspect.js';
 import { buildDigest } from './digest.js';
 import { sectorOf, SECTORS } from './categories.js';
 import { photo } from './photos.js';
+import { freightRoutes } from './freight/routes.js';
 import { isVehicle } from './extract.js';
 import { push } from './notify.js';
 import { watchUrl } from './scheduler.js';
@@ -78,6 +79,7 @@ export function startServer() {
   app.get('/robots.txt', (_req, res) => res.type('text/plain').send('User-agent: *\nDisallow: /\n'));
   app.get('/healthz', (_req, res) => res.send('ok'));
   app.use(basicAuth);
+  freightRoutes(app);
   app.use(express.static(path.join(here, '..', 'public')));
 
   app.get('/api/lots', (req, res) => {

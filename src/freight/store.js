@@ -1,0 +1,48 @@
+// Freight jobs (Airtasker, Truckit...) in the same database as the auction lots.
+import { db } from '../db.js';
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS jobs (
+  key TEXT PRIMARY KEY, site TEXT NOT NULL, ext_id TEXT NOT NULL, url TEXT, title TEXT, category TEXT,
+  price REAL, price_kind TEXT, from_text TEXT, to_text TEXT, km REAL, posted_at INTEGER, due_text TEXT,
+  status TEXT NOT NULL DEFAULT 'open', offers INTEGER, first_seen INTEGER, last_seen INTEGER
+);
+CREATE INDEX IF NOT EXISTS jobs_seen ON jobs(status, last_seen);
+CREATE TABLE IF NOT EXISTS freight_alerts (id INTEGER PRIMARY KEY AUTOINCREMENT, user TEXT NOT NULL, kind TEXT NOT NULL,
+  name TEXT, a_text TEXT, a_lat REAL, a_lon REAL, b_text TEXT, b_lat REAL, b_lon REAL, radius_km REAL, both_ways INTEGER,
+  min_price REAL, created_at INTEGER);
+CREATE TABLE IF NOT EXISTS freight_hits (alert_id INTEGER NOT NULL, key TEXT NOT NULL, at INTEGER NOT NULL, notified INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(alert_id, key));
+CREATE TABLE IF NOT EXISTS freight_status (site TEXT PRIMARY KEY, last_ok INTEGER, last_count INTEGER, last_error TEXT, last_error_at INTEGER);
+`);
+
+const F = ['url', 'title', 'category', 'price', 'price_kind', 'from_text', 'to_text', 'km', 'posted_at', 'due_text', 'offers'];
+const up = db.prepare(`INSERT INTO jobs (key, site, ext_id, ${F.join(', ')}, status, first_seen, last_seen)
+  VALUES (:key, :site, :ext_id, ${F.map(f => ':' + f).join(', ')}, :status, :now, :now)
+  ON CONFLICT(key) DO UPDATE SET ${F.map(f => `${f} = COALESCE(excluded.${f}, jobs.${f})`).join(', ')},
+  status = excluded.status, last_seen = excluded.last_seen`);
+
+export function upsertJob(j, now = Date.now()) {
+  const row = { key: `${j.site}:${j.ext_id}`, site: j.site, ext_id: String(j.ext_id), now, status: j.status || 'open' };
+  for (const f of F) row[f] = typeof j[f] === 'string' && !j[f].trim() ? null : j[f] ?? null;
+  up.run(row);
+  return row.key;
+}
+
+export const fq = {
+  job: db.prepare('SELECT * FROM jobs WHERE key = ?'),
+  // Jobs still listed recently (lists only show open jobs; one that drops off has been taken or expired)
+  live: db.prepare(`SELECT * FROM jobs WHERE status = 'open' AND last_seen > ? ORDER BY COALESCE(posted_at, first_seen) DESC LIMIT 3000`),
+  expire: db.prepare(`UPDATE jobs SET status = 'gone' WHERE status = 'open' AND last_seen < ?`),
+  statusOk: db.prepare(`INSERT INTO freight_status (site, last_ok, last_count) VALUES (?, ?, ?) ON CONFLICT(site) DO UPDATE SET last_ok = excluded.last_ok, last_count = excluded.last_count`),
+  statusErr: db.prepare(`INSERT INTO freight_status (site, last_error, last_error_at) VALUES (?, ?, ?) ON CONFLICT(site) DO UPDATE SET last_error = excluded.last_error, last_error_at = excluded.last_error_at`),
+  statusAll: db.prepare('SELECT * FROM freight_status'),
+  addAlert: db.prepare(`INSERT INTO freight_alerts (user, kind, name, a_text, a_lat, a_lon, b_text, b_lat, b_lon, radius_km, both_ways, min_price, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`),
+  delAlert: db.prepare('DELETE FROM freight_alerts WHERE id = ? AND user = ?'),
+  delHits: db.prepare('DELETE FROM freight_hits WHERE alert_id = ?'),
+  alertsOf: db.prepare('SELECT * FROM freight_alerts WHERE user = ? ORDER BY id'),
+  allAlerts: db.prepare('SELECT * FROM freight_alerts'),
+  addHit: db.prepare('INSERT OR IGNORE INTO freight_hits (alert_id, key, at, notified) VALUES (?, ?, ?, ?)'),
+  counts: db.prepare(`SELECT h.alert_id, count(*) AS n FROM freight_hits h JOIN jobs j ON j.key = h.key WHERE j.status = 'open' AND j.last_seen > ? GROUP BY h.alert_id`),
+  stats: db.prepare(`SELECT count(*) AS jobs, sum(status = 'open') AS open FROM jobs`),
+};

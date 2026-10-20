@@ -30,6 +30,16 @@ Watches Pickles, Manheim, ALLBIDS (incl. CARBIDS), Lloyds, Grays, Slattery and T
 
 **Morning digest:** one push at 7am (change hour, time zone or turn it off in Settings): your alert matches closing today, the best deals, your watchlist, yesterday's missed deals.
 
+## Freight board (`/freight`)
+
+Same login, at **kamrads.katara.com.au/freight** (or the 🚚 Freight button). It reads Airtasker's public delivery, removals, courier, man-with-a-van and ute job lists (nationally plus Canberra and Sydney) and the Truckit job board, every 10 minutes.
+
+- **Plan a run:** type *Canberra → Sydney*, a detour allowance and tick *and back*: jobs that fit on the way out and return loads home are marked and listed first, with the extra km each adds. Leave "to" blank for everything around one place.
+- **Routes & alerts:** save runs ("Sydney run": Canberra ⇄ Sydney, 30 km detour) or areas ("within 25 km of Canberra, at least $100") and get a push the moment a new job fits. Each person has their own.
+- Each job shows its route, job km, price and $ per km, and how far the pickup is from your home base.
+- More cities: `AIRTASKER_CITIES=canberra|sydney|wollongong` in `.env`. Airtasker is read from its public category lists only (never individual task pages), every 10 minutes.
+- If Truckit's board needs a login, sign in on your own Chrome, export cookies with Cookie-Editor and run `docker compose exec kamrads npm run import-cookies -- truckit data/truckit-cookies.json`.
+
 **History:** everything is kept in `data/auctions.db` on the server (every lot, every price change, every final price), with a daily copy in `data/backups/` (last 14 days). **Download all results (CSV)** at the bottom of the dashboard opens in Excel; bid history is at `/api/export/bids.csv`.
 
 Every lot gets one last read just after it closes, so the **Sold** tab shows what things actually went for — the auction sites hide this once a lot ends.

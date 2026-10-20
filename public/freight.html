@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0d1824">
+<title>KAMRADS Freight</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230d1824'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%235fa4ee' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%235fa4ee'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b1520; --panel: #101d2b; --raised: #162637; --hover: #1b2e42; --rule: #20334a; --rule-2: #2a4058;
+  --ink: #e4ecf4; --muted: #8496ab; --dim: #5d7086;
+  --gain: #2fcb8c; --gain-bg: rgba(47,203,140,.12); --loss: #ef5b67; --warn: #e5a93f; --warn-bg: rgba(229,169,63,.13);
+  --info: #5fa4ee; --info-bg: rgba(95,164,238,.14);
+  --side: 236px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 13.5px/1.45 "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; font-feature-settings: "tnum" 1; }
+a { color: inherit; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); } .dim { color: var(--dim); } .gain { color: var(--gain); } .warn { color: var(--warn); }
+
+.top { position: sticky; top: 0; z-index: 20; background: var(--panel); border-bottom: 1px solid var(--rule); }
+.topbar { display: grid; grid-template-columns: var(--side) 1fr auto; align-items: center; height: 54px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 18px; text-decoration: none; height: 100%; border-right: 1px solid var(--rule); }
+.brand b { font-size: 17px; font-weight: 700; letter-spacing: .6px; }
+.brand span { display: block; color: var(--info); font-size: 11px; margin-top: -3px; font-weight: 600; }
+.switch { display: flex; gap: 2px; padding: 0 18px; align-items: center; }
+.switch a { text-decoration: none; padding: 6px 12px; border-radius: 6px; color: var(--muted); }
+.switch a:hover { background: var(--raised); color: var(--ink); }
+.switch a.on { background: var(--raised); color: var(--ink); font-weight: 600; }
+.top-actions { display: flex; align-items: center; gap: 4px; padding: 0 14px; }
+.tbtn { background: none; border: 1px solid transparent; border-radius: 6px; padding: 6px 10px; cursor: pointer; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.tbtn:hover { background: var(--raised); color: var(--ink); }
+.badge { background: var(--info); color: #061626; border-radius: 9px; padding: 0 6px; font-size: 11px; font-weight: 700; }
+.badge[hidden] { display: none; }
+.who { color: var(--dim); font-size: 12.5px; padding-left: 10px; border-left: 1px solid var(--rule); margin-left: 4px; }
+.menu-btn { display: none; }
+
+.desk { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid var(--rule); }
+.kpi { padding: 9px 18px 10px; border-right: 1px solid var(--rule); min-width: 0; }
+.kpi:last-child { border-right: 0; }
+.kpi .v { font-size: 19px; font-weight: 600; white-space: nowrap; }
+.kpi .l { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.frame { display: grid; grid-template-columns: var(--side) minmax(0, 1fr); min-height: calc(100vh - 110px); }
+aside { border-right: 1px solid var(--rule); background: var(--panel); padding: 8px 0 30px; position: sticky; top: 110px; align-self: start; max-height: calc(100vh - 110px); overflow-y: auto; }
+.side-h { color: var(--dim); font-size: 12px; font-weight: 600; padding: 14px 18px 6px; display: flex; justify-content: space-between; align-items: center; }
+.side-h button { background: none; border: 0; color: var(--info); cursor: pointer; font-size: 12px; padding: 0; }
+.nav { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; background: none; border: 0; border-left: 3px solid transparent; padding: 6px 15px; text-align: left; cursor: pointer; color: var(--muted); }
+.nav:hover { background: var(--raised); color: var(--ink); }
+.nav[aria-pressed="true"] { border-left-color: var(--info); background: var(--raised); color: var(--ink); font-weight: 600; }
+.nav .c { color: var(--dim); font-size: 12px; font-weight: 400; }
+.nav .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.site-row { display: flex; align-items: center; gap: 9px; padding: 5px 18px; color: var(--muted); }
+.site-row .c { margin-left: auto; color: var(--dim); font-size: 12px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); flex: none; }
+.dot.ok { background: var(--gain); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--loss); }
+.side-foot { padding: 16px 18px 0; color: var(--dim); font-size: 12px; line-height: 1.7; }
+.side-foot a { color: var(--muted); }
+
+main { padding: 16px 20px 60px; min-width: 0; }
+.planner { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; display: grid; grid-template-columns: minmax(150px, 1fr) auto minmax(150px, 1fr) 110px auto auto auto; gap: 10px; align-items: end; }
+.planner label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; }
+.planner input[type=text], .planner input[type=number] { background: var(--bg); border: 1px solid var(--rule-2); border-radius: 6px; padding: 7px 10px; width: 100%; }
+.planner .arrow { color: var(--dim); padding-bottom: 8px; font-size: 16px; }
+.planner .chk { flex-direction: row; align-items: center; gap: 6px; padding-bottom: 8px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.planner .chk input { accent-color: var(--info); }
+.planner .hint { grid-column: 1 / -1; color: var(--dim); font-size: 12px; margin-top: -2px; }
+.planner .hint.err { color: var(--warn); }
+.btn { background: var(--raised); border: 1px solid var(--rule-2); border-radius: 6px; padding: 7px 12px; cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-block; }
+.btn:hover { background: var(--hover); }
+.btn.primary { background: var(--info); border-color: var(--info); color: #061626; font-weight: 600; }
+.btn.sm { padding: 3px 9px; font-size: 12.5px; }
+
+.toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.toolbar h1 { margin: 0 6px 0 0; font-size: 18px; font-weight: 600; }
+.seg { display: inline-flex; border: 1px solid var(--rule-2); border-radius: 6px; overflow: hidden; }
+.seg button { background: none; border: 0; border-right: 1px solid var(--rule-2); padding: 5px 11px; cursor: pointer; color: var(--muted); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--raised); color: var(--ink); font-weight: 600; }
+select.sel, input.q { background: var(--panel); border: 1px solid var(--rule-2); border-radius: 6px; padding: 5px 8px; }
+input.q { min-width: 200px; }
+.count { margin-left: auto; color: var(--muted); font-size: 12.5px; }
+
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+table.grid { width: 100%; border-collapse: collapse; }
+.grid th { text-align: left; font-weight: 500; color: var(--dim); font-size: 12px; padding: 8px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+.grid th.r, .grid td.r { text-align: right; }
+.grid th[data-sort] { cursor: pointer; } .grid th[data-sort]:hover, .grid th.sorted { color: var(--ink); }
+.grid th.sorted::after { content: " ▾"; color: var(--info); }
+.grid td { padding: 9px 10px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+.grid tbody tr:last-child td { border-bottom: 0; }
+.grid tr:hover td { background: var(--hover); }
+.grid tr.fit td:first-child { box-shadow: inset 3px 0 0 var(--info); }
+.grid tr.fresh td:first-child { box-shadow: inset 3px 0 0 var(--gain); }
+.job-t { font-weight: 600; text-decoration: none; display: block; max-width: 460px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.job-t:hover { text-decoration: underline; }
+.job-m { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 3px 8px; margin-top: 2px; align-items: center; }
+.site { font-size: 11px; font-weight: 600; color: var(--muted); border: 1px solid var(--rule-2); border-radius: 4px; padding: 0 5px; }
+.tag { font-size: 11.5px; font-weight: 600; border-radius: 4px; padding: 0 6px; background: var(--raised); color: var(--muted); white-space: nowrap; }
+.tag.i { background: var(--info-bg); color: var(--info); } .tag.g { background: var(--gain-bg); color: var(--gain); } .tag.a { background: var(--warn-bg); color: var(--warn); }
+.route { white-space: nowrap; }
+.route .p { font-weight: 500; }
+.route .x { color: var(--dim); padding: 0 4px; }
+.sub { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+.money { font-weight: 600; white-space: nowrap; }
+.posted .t { font-weight: 600; white-space: nowrap; } .posted.new .t { color: var(--gain); }
+.empty { color: var(--muted); text-align: center; padding: 46px 20px; }
+.empty b { color: var(--ink); }
+
+dialog.box { background: var(--panel); color: var(--ink); border: 1px solid var(--rule-2); border-radius: 10px; padding: 18px 20px; width: min(640px, calc(100vw - 24px)); }
+dialog.box::backdrop { background: rgba(3,8,14,.6); }
+dialog.box h2 { margin: 0 0 4px; font-size: 17px; font-weight: 600; }
+dialog.box p.lead { color: var(--muted); margin: 0 0 10px; }
+.aform { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+.aform label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; }
+.aform input[type=text], .aform input[type=number] { background: var(--bg); border: 1px solid var(--rule-2); border-radius: 6px; padding: 7px 10px; }
+.aform .chk { flex-direction: row; align-items: center; gap: 6px; color: var(--muted); }
+.aform .full { grid-column: 1 / -1; }
+.arow { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--rule); }
+.end { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+@media (max-width: 1100px) { .col-km { display: none; } .planner { grid-template-columns: 1fr auto 1fr; } .planner .arrow { display: block; } }
+@media (max-width: 900px) {
+  :root { --side: 0px; }
+  .topbar { grid-template-columns: auto 1fr auto; }
+  .brand { border-right: 0; } .brand > div span { display: none; }
+  .menu-btn { display: inline-flex; } .who, .lbl { display: none; }
+  .switch { padding: 0 4px; }
+  .desk { grid-template-columns: repeat(3, minmax(0, 1fr)); } .kpi:nth-child(n+4) { display: none; }
+  .kpi { padding: 7px 12px; } .kpi .v { font-size: 16px; }
+  .frame { grid-template-columns: 1fr; }
+  aside { position: fixed; top: 0; left: 0; bottom: 0; width: 272px; max-height: none; z-index: 40; transform: translateX(-100%); transition: transform .18s ease; }
+  aside.open { transform: none; box-shadow: 0 0 0 100vmax rgba(3,8,14,.55); }
+  main { padding: 12px 10px 60px; }
+  .planner { grid-template-columns: 1fr 1fr; } .planner .arrow { display: none; }
+  .grid thead { display: none; } .grid, .grid tbody { display: block; }
+  .grid tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "job price" "route price" "fit posted"; gap: 4px 10px; padding: 10px 12px; border-bottom: 1px solid var(--rule); }
+  .grid td { padding: 0; border: 0; background: none !important; box-shadow: none !important; }
+  .grid tr.fit { box-shadow: inset 3px 0 0 var(--info); } .grid tr.fresh { box-shadow: inset 3px 0 0 var(--gain); }
+  .grid td.c-job { grid-area: job; min-width: 0; } .grid td.c-route { grid-area: route; } .grid td.c-price { grid-area: price; text-align: right; }
+  .grid td.c-fit { grid-area: fit; } .grid td.c-posted { grid-area: posted; text-align: right; } .grid td.c-open, .grid td.col-km { display: none; }
+  .job-t, .route { white-space: normal; }
+  .count { margin-left: 0; width: 100%; }
+  .aform { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="topbar">
+    <a class="brand" href="/freight">
+      <svg width="30" height="30" viewBox="0 0 34 34" aria-hidden="true">
+        <circle cx="17" cy="17" r="13" fill="none" stroke="#5fa4ee" stroke-width="2.6" stroke-dasharray="62 20" transform="rotate(-50 17 17)"/>
+        <circle cx="17" cy="17" r="7.5" fill="none" stroke="#5fa4ee" stroke-width="2.6" stroke-dasharray="34 13" transform="rotate(-50 17 17)"/>
+        <circle cx="17" cy="17" r="2.6" fill="#5fa4ee"/><line x1="17" y1="17" x2="27" y2="7" stroke="#5fa4ee" stroke-width="2.6" stroke-linecap="round"/>
+      </svg>
+      <div><b>KAMRADS</b><span>Freight board</span></div>
+    </a>
+    <div class="switch"><button class="tbtn menu-btn" id="menuBtn" aria-label="Menu">☰</button><a href="/">Auctions</a><a href="/freight" class="on">Freight</a></div>
+    <div class="top-actions">
+      <button class="tbtn" id="alertsBtn">🔔<span class="lbl"> Routes &amp; alerts</span> <span class="badge" id="alertsN" hidden></span></button>
+      <span class="who" id="who"></span>
+    </div>
+  </div>
+  <div class="desk" id="desk"></div>
+</div>
+
+<div class="frame">
+  <aside id="side">
+    <div class="side-h">Board</div>
+    <div id="views"></div>
+    <div class="side-h">My routes <button id="addRoute">+ Add</button></div>
+    <div id="routes"></div>
+    <div class="side-h">Work type</div>
+    <div id="cats"></div>
+    <div class="side-h">Sites</div>
+    <div id="sites"></div>
+    <div class="side-foot"><div id="stored"></div><a href="#" id="scanNow">Scan now</a><br><span id="updated"></span></div>
+  </aside>
+
+  <main>
+    <form class="planner" id="planner">
+      <label>Going from <input type="text" id="pA" placeholder="Canberra" autocomplete="off"></label>
+      <span class="arrow">→</span>
+      <label>to (blank = jobs around one place) <input type="text" id="pB" placeholder="Sydney" autocomplete="off"></label>
+      <label><span id="pDLabel">Detour, km</span> <input type="number" id="pD" min="1" max="500" value="30"></label>
+      <label class="chk"><input type="checkbox" id="pBoth" checked> and back</label>
+      <button class="btn primary">Show jobs</button>
+      <button class="btn" type="button" id="saveRoute">Alert me</button>
+      <div class="hint" id="pHint">Plan a run: jobs that fit along the way show first. Leave "to" blank to see everything within that many km of one place.</div>
+    </form>
+
+    <div class="toolbar">
+      <h1 id="title">All open jobs</h1>
+      <div class="seg" id="age"><button data-h="6">6 h</button><button data-h="24">24 h</button><button data-h="72">3 days</button></div>
+      <select class="sel" id="sort" aria-label="Sort">
+        <option value="new">Newest first</option><option value="fit">Best fit for my run</option><option value="price">Highest price</option>
+        <option value="perkm">Best $ per km</option><option value="near">Nearest pickup</option>
+      </select>
+      <input class="q" type="search" id="q" placeholder="Search: couch, pallet, Fyshwick…">
+      <span class="count" id="count"></span>
+    </div>
+    <div class="panel"><div id="list"></div></div>
+  </main>
+</div>
+
+<dialog id="alerts" class="box">
+  <h2>Routes &amp; alerts</h2>
+  <p class="lead">Get a push the moment a job is posted that suits you. Use one place for local work, or two for a run: jobs on the way that add no more than your detour are included, both directions if you tick "and back".</p>
+  <form class="aform" id="aForm">
+    <label>From / around <input type="text" id="aA" placeholder="Canberra" required></label>
+    <label>To (optional) <input type="text" id="aB" placeholder="Sydney"></label>
+    <label><span id="aRLabel">Radius / detour, km</span><input type="number" id="aR" value="30" min="1" max="500"></label>
+    <label>Only jobs paying at least <input type="text" id="aMin" placeholder="$ (optional)"></label>
+    <label>Name (optional) <input type="text" id="aName" placeholder="Sydney run"></label>
+    <label class="chk"><input type="checkbox" id="aBoth" checked> and back (return loads too)</label>
+    <div class="full"><button class="btn primary">Add alert</button> <span class="muted" id="aMsg"></span></div>
+  </form>
+  <div id="aList"></div>
+  <div class="end"><button class="btn" type="button" id="closeAlerts">Close</button></div>
+</dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = n => n == null ? '—' : '$' + Math.round(n).toLocaleString('en-AU');
+const pref = (k, d) => { try { return JSON.parse(localStorage.getItem('kf_' + k)) ?? d; } catch { return d; } };
+const save = (k, v) => { try { localStorage.setItem('kf_' + k, JSON.stringify(v)); } catch {} };
+const SITE_NAMES = { airtasker: 'Airtasker', truckit: 'Truckit' };
+const CAT_NAMES = { delivery: 'Delivery', removals: 'Removals', 'courier-services': 'Courier', 'man-with-a-van': 'Man with a van', 'ute-removals': 'Ute jobs' };
+const VIEWS = [['all', 'All open jobs'], ['routes', 'On my routes'], ['near', 'Near my base'], ['new', 'New in the last hour']];
+
+let view = pref('view', 'all'), cat = pref('cat', ''), routeFilter = null, hours = pref('hours', 24), sortBy = pref('sort', 'new');
+let jobs = [], alerts = [], status = { sites: [], enabled: [] }, base = '', clockSkew = 0, plan = pref('plan', null), planErr = null;
+$('#sort').value = sortBy;
+if (plan) { $('#pA').value = plan.a || ''; $('#pB').value = plan.b || ''; $('#pD').value = plan.d || 30; $('#pBoth').checked = plan.both !== false; }
+
+const ago = t => {
+  if (!t) return '';
+  const m = Math.max(0, Math.round((Date.now() + clockSkew - t) / 60000));
+  return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
+};
+const fresh = j => Date.now() + clockSkew - (j.postedAt || j.firstSeen) < 3600000;
+const NEAR_KM = 60;
+
+function visible() {
+  const q = $('#q').value.trim().toLowerCase();
+  return jobs.filter(j => {
+    if (cat && j.category !== cat) return false;
+    if (q && !`${j.title} ${j.from} ${j.to}`.toLowerCase().includes(q)) return false;
+    if (routeFilter != null && !j.fits.some(f => f.id === routeFilter)) return false;
+    if (view === 'routes' && !j.fits.length) return false;
+    if (view === 'near' && !(j.fromBase != null && j.fromBase <= NEAR_KM)) return false;
+    if (view === 'new' && !fresh(j)) return false;
+    return true;
+  });
+}
+const SORTS = {
+  new: (a, b) => (b.postedAt || b.firstSeen) - (a.postedAt || a.firstSeen),
+  price: (a, b) => (b.price ?? -1) - (a.price ?? -1) || SORTS.new(a, b),
+  perkm: (a, b) => (b.perKm ?? -1) - (a.perKm ?? -1) || SORTS.new(a, b),
+  near: (a, b) => (a.fromBase ?? Infinity) - (b.fromBase ?? Infinity) || SORTS.new(a, b),
+  fit: (a, b) => (a.plan ? (a.plan.extra ?? a.plan.km ?? 0) : Infinity) - (b.plan ? (b.plan.extra ?? b.plan.km ?? 0) : Infinity) || SORTS.new(a, b),
+};
+
+function fitCell(j) {
+  if (j.plan) {
+    const p = j.plan;
+    const label = p.how === 'back' ? 'Return leg' : p.how === 'out' ? 'On the way' : p.how === 'local' ? 'Local' : p.how === 'pickup' ? 'Pickup nearby' : 'Drop-off nearby';
+    return `<span class="tag i">${label}</span><div class="sub">${p.extra != null ? `+${p.extra} km detour` : p.km != null ? `${p.km} km away` : ''}</div>`;
+  }
+  return j.fromBase != null ? `<div class="num">${j.fromBase.toLocaleString('en-AU')} km</div><div class="sub">pickup from ${esc(base)}</div>` : '<span class="sub">place unknown</span>';
+}
+
+function render() {
+  renderSide();
+  const rows = visible().sort(plan && !planErr && sortBy === 'new' && view !== 'new' ? (a, b) => (b.plan ? 1 : 0) - (a.plan ? 1 : 0) || SORTS.new(a, b) : SORTS[sortBy] || SORTS.new);
+  renderDesk();
+  const rf = alerts.find(a => a.id === routeFilter);
+  $('#title').textContent = rf ? rf.name : (VIEWS.find(v => v[0] === view)?.[1] || 'All open jobs') + (cat ? `: ${CAT_NAMES[cat] || cat}` : '');
+  document.querySelectorAll('#age button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.h) === hours)));
+  const fitting = rows.filter(j => j.plan).length;
+  $('#count').textContent = `${rows.length.toLocaleString('en-AU')} job${rows.length === 1 ? '' : 's'}${plan && !planErr ? ` · ${fitting} fit your run` : ''}`;
+  $('#pHint').className = 'hint' + (planErr ? ' err' : '');
+  $('#pHint').textContent = planErr || (plan ? `${fitting} job${fitting === 1 ? '' : 's'} fit ${plan.b ? `${plan.a} → ${plan.b}${plan.both !== false ? ' and back' : ''} within ${plan.d} km of detour` : `within ${plan.d} km of ${plan.a}`}. They're marked in blue and listed first.` : 'Plan a run: jobs that fit along the way show first. Leave "to" blank to see everything within that many km of one place.');
+  if (!rows.length) {
+    $('#list').innerHTML = `<div class="empty">${!jobs.length ? '<b>Reading the job boards…</b><br>The first scan takes a few minutes. This page refreshes on its own.' : view === 'routes' && !alerts.length ? 'You have no saved routes yet. <a href="#" id="emptyAdd">Add one</a>, e.g. Canberra ⇄ Sydney.' : 'No jobs match.'}</div>`;
+    return;
+  }
+  const th = (label, key, cls = '') => `<th class="${cls} ${key && sortBy === key ? 'sorted' : ''}" ${key ? `data-sort="${key}"` : ''}>${label}</th>`;
+  $('#list').innerHTML = `<table class="grid"><thead><tr>${th('Posted', 'new')}${th('Job', '')}${th('Route', '')}${th('Job km', '', 'r col-km')}${th('Pays', 'price', 'r')}${th(plan ? 'Fit for your run' : 'From your base', plan ? 'fit' : 'near')}<th></th></tr></thead><tbody>${rows.slice(0, 500).map(j => `
+    <tr class="${j.plan ? 'fit' : fresh(j) ? 'fresh' : ''}">
+      <td class="c-posted"><div class="posted ${fresh(j) ? 'new' : ''}"><div class="t">${esc(ago(j.postedAt || j.firstSeen))}</div></div></td>
+      <td class="c-job"><a class="job-t" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer" title="${esc(j.title)}">${esc(j.title || 'Job')}</a>
+        <div class="job-m"><span class="site">${esc(SITE_NAMES[j.site] || j.site)}</span>${j.category ? `<span>${esc(CAT_NAMES[j.category] || j.category)}</span>` : ''}${j.offers != null ? `<span>${j.offers} offers</span>` : ''}${j.fits.map(f => `<span class="tag i">${esc(f.name)}${f.how === 'back' ? ' (return)' : ''}</span>`).join('')}</div></td>
+      <td class="c-route"><div class="route"><span class="p">${esc(j.from || '—')}</span>${j.to ? `<span class="x">→</span><span class="p">${esc(j.to)}</span>` : ''}</div>${!j.located && j.from ? '<div class="sub">finding this place…</div>' : ''}</td>
+      <td class="col-km r num">${j.km != null ? j.km.toLocaleString('en-AU') : ''}</td>
+      <td class="c-price r"><div class="money num">${money(j.price)}</div><div class="sub">${j.perKm != null && j.km >= 5 ? `$${j.perKm.toFixed(2)}/km` : j.priceKind === 'won quote' ? 'won quote' : 'budget'}</div></td>
+      <td class="c-fit">${fitCell(j)}</td>
+      <td class="c-open r"><a class="btn sm" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer">Open</a></td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+function renderSide() {
+  const counts = { all: jobs.length, routes: jobs.filter(j => j.fits.length).length, near: jobs.filter(j => j.fromBase != null && j.fromBase <= NEAR_KM).length, new: jobs.filter(fresh).length };
+  $('#views').innerHTML = VIEWS.map(([k, l]) => `<button class="nav" data-view="${k}" aria-pressed="${view === k && routeFilter == null}"><span class="t">${k === 'near' && base ? `Near ${esc(base.split(' ')[0])}` : l}</span><span class="c num">${counts[k] || ''}</span></button>`).join('');
+  $('#routes').innerHTML = alerts.length ? alerts.map(a => `<button class="nav" data-route="${a.id}" aria-pressed="${routeFilter === a.id}"><span class="t">${esc(a.name)}</span><span class="c num">${jobs.filter(j => j.fits.some(f => f.id === a.id)).length || ''}</span></button>`).join('')
+    : '<div class="site-row dim" style="font-size:12.5px">None yet. Add your regular runs.</div>';
+  const cc = {}; for (const j of jobs) if (j.category) cc[j.category] = (cc[j.category] || 0) + 1;
+  $('#cats').innerHTML = `<button class="nav" data-cat="" aria-pressed="${!cat}"><span class="t">All work</span></button>` + Object.keys(CAT_NAMES).map(k => `<button class="nav" data-cat="${k}" aria-pressed="${cat === k}"><span class="t">${CAT_NAMES[k]}</span><span class="c num">${cc[k] || ''}</span></button>`).join('');
+  const sc = {}; for (const j of jobs) sc[j.site] = (sc[j.site] || 0) + 1;
+  $('#sites').innerHTML = (status.enabled || []).map(s => {
+    const x = status.sites.find(z => z.site === s.site) || {};
+    const age = x.last_ok ? (Date.now() - x.last_ok) / 60000 : Infinity;
+    const err = x.last_error_at && (!x.last_ok || x.last_error_at > x.last_ok);
+    const cls = !s.on ? '' : err ? 'bad' : age < 30 ? 'ok' : 'warn';
+    const tip = !s.on ? 'Turned off' : err ? x.last_error : x.last_ok ? `Last scan ${Math.round(age)} min ago` : 'Waiting for its first scan';
+    return `<div class="site-row" title="${esc(tip)}"><span class="dot ${cls}"></span>${esc(s.label)}<span class="c num">${sc[s.site] || ''}</span></div>`;
+  }).join('');
+}
+
+function renderDesk() {
+  const vals = jobs.map(j => j.perKm).filter(v => v != null && v > 0).sort((a, b) => a - b);
+  const med = vals.length ? vals[vals.length >> 1] : null;
+  const k = (v, l, cls = '') => `<div class="kpi"><div class="v num ${cls}">${v}</div><div class="l">${l}</div></div>`;
+  $('#desk').innerHTML = k(jobs.length.toLocaleString('en-AU'), 'Open jobs') + k(jobs.filter(fresh).length, 'Posted in the last hour', 'gain')
+    + k(jobs.filter(j => j.fits.length).length, 'On your saved routes', 'warn') + k(jobs.filter(j => j.fromBase != null && j.fromBase <= NEAR_KM).length, `Pickup within ${NEAR_KM} km of ${esc(base || 'base')}`)
+    + k(med != null ? `$${med.toFixed(2)}` : '—', 'Typical $ per km');
+}
+
+async function load() {
+  try {
+    const p = new URLSearchParams({ hours });
+    if (plan) { p.set('a', plan.a); if (plan.b) p.set('b', plan.b); p.set('d', plan.d); if (plan.b && plan.both !== false) p.set('both', '1'); }
+    const [r, s, a] = await Promise.all([fetch('/api/freight/jobs?' + p), fetch('/api/freight/status'), fetch('/api/freight/alerts')]);
+    const data = await r.json(); status = await s.json(); alerts = await a.json();
+    jobs = data.jobs; base = data.base || ''; planErr = data.planErr; clockSkew = data.now - Date.now();
+    $('#alertsN').hidden = !alerts.length; $('#alertsN').textContent = alerts.length;
+    $('#stored').textContent = `${Number(status.stats?.jobs || 0).toLocaleString('en-AU')} jobs seen so far`;
+    $('#updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
+    render();
+  } catch { $('#updated').textContent = 'Connection problem, retrying'; }
+}
+
+document.addEventListener('click', async e => {
+  const t = e.target;
+  const v = t.closest('[data-view]'); if (v) { view = v.dataset.view; routeFilter = null; save('view', view); $('#side').classList.remove('open'); return render(); }
+  const r = t.closest('[data-route]'); if (r) { routeFilter = Number(r.dataset.route); $('#side').classList.remove('open'); return render(); }
+  const c = t.closest('[data-cat]'); if (c) { cat = c.dataset.cat; save('cat', cat); return render(); }
+  const h = t.closest('#age button'); if (h) { hours = Number(h.dataset.h); save('hours', hours); return load(); }
+  const th = t.closest('th[data-sort]'); if (th) { sortBy = th.dataset.sort; $('#sort').value = sortBy; save('sort', sortBy); return render(); }
+  if (t.id === 'emptyAdd' || t.id === 'addRoute') { e.preventDefault(); openAlerts(); }
+  const del = t.closest('[data-del]');
+  if (del && confirm('Delete this alert?')) { await fetch('/api/freight/alerts/' + del.dataset.del, { method: 'DELETE' }); if (routeFilter === Number(del.dataset.del)) routeFilter = null; await loadAlerts(); load(); }
+  const show = t.closest('[data-show]'); if (show) { routeFilter = Number(show.dataset.show); $('#alerts').close(); render(); }
+});
+$('#menuBtn').addEventListener('click', () => $('#side').classList.toggle('open'));
+$('#sort').addEventListener('change', e => { sortBy = e.target.value; save('sort', sortBy); render(); });
+$('#q').addEventListener('input', render);
+const syncPlanLabel = () => { $('#pDLabel').textContent = $('#pB').value.trim() ? 'Detour, km' : 'Within, km'; $('#pBoth').parentElement.style.visibility = $('#pB').value.trim() ? '' : 'hidden'; };
+$('#pB').addEventListener('input', syncPlanLabel); syncPlanLabel();
+$('#planner').addEventListener('submit', e => {
+  e.preventDefault();
+  const a = $('#pA').value.trim();
+  plan = a ? { a, b: $('#pB').value.trim(), d: Number($('#pD').value) || 30, both: $('#pBoth').checked } : null;
+  save('plan', plan);
+  if (plan && sortBy === 'new') { sortBy = 'fit'; $('#sort').value = 'fit'; }
+  load();
+});
+$('#saveRoute').addEventListener('click', () => {
+  openAlerts();
+  $('#aA').value = $('#pA').value; $('#aB').value = $('#pB').value; $('#aR').value = $('#pD').value; $('#aBoth').checked = $('#pBoth').checked;
+});
+$('#scanNow').addEventListener('click', async e => { e.preventDefault(); await fetch('/api/freight/scan', { method: 'POST' }); $('#updated').textContent = 'Scanning… results in a few minutes'; });
+
+async function loadAlerts() {
+  alerts = await (await fetch('/api/freight/alerts')).json();
+  $('#aList').innerHTML = alerts.length ? alerts.map(a => `<div class="arow"><div><b>${esc(a.name)}</b><div class="muted" style="font-size:12.5px">${a.kind === 'route' ? `${esc(a.a)} → ${esc(a.b)}${a.bothWays ? ' and back' : ''}, up to ${a.radius} km detour` : `within ${a.radius} km of ${esc(a.a)}`}${a.minPrice ? ` · at least ${money(a.minPrice)}` : ''} · ${a.matches} open job${a.matches === 1 ? '' : 's'}</div></div>
+    <button class="btn sm" data-show="${a.id}">Show</button><button class="btn sm" data-del="${a.id}">Delete</button></div>`).join('') : '<div class="muted" style="padding:6px 0">No alerts yet.</div>';
+  $('#alertsN').hidden = !alerts.length; $('#alertsN').textContent = alerts.length;
+}
+function openAlerts() { loadAlerts(); $('#aMsg').textContent = ''; $('#alerts').showModal(); }
+$('#alertsBtn').addEventListener('click', openAlerts);
+$('#closeAlerts').addEventListener('click', () => $('#alerts').close());
+const syncALabel = () => { $('#aRLabel').textContent = $('#aB').value.trim() ? 'Detour allowed, km' : 'Radius, km'; };
+$('#aB').addEventListener('input', syncALabel);
+$('#aForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('#aMsg').textContent = 'Finding places…';
+  const body = { a: $('#aA').value, b: $('#aB').value, radius: $('#aR').value, minPrice: $('#aMin').value, name: $('#aName').value, bothWays: $('#aBoth').checked };
+  const r = await fetch('/api/freight/alerts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json();
+  if (!r.ok) { $('#aMsg').textContent = j.error || 'Could not add that.'; return; }
+  $('#aMsg').textContent = 'Added. You\'ll get a push for new jobs that fit.';
+  $('#aA').value = $('#aB').value = $('#aMin').value = $('#aName').value = '';
+  await loadAlerts(); load();
+});
+
+fetch('/api/me').then(r => r.json()).then(x => { $('#who').textContent = x.user; }).catch(() => {});
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>

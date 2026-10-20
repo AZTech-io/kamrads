@@ -16,6 +16,8 @@ process.env.ALLBIDS_SCROLLS = '3';
 process.env.PAGE_TIMEOUT_MS = '15000';
 if (!process.env.CHROME_PATH && fs.existsSync('/opt/google/chrome/chrome')) process.env.CHROME_PATH = '/opt/google/chrome/chrome';
 
+process.env.AIRTASKER_CATEGORIES = 'delivery';
+process.env.AIRTASKER_CITIES = 'canberra';
 process.env.LLOYDS_MAX_PAGES = '2';
 process.env.LLOYDS_PAGE_SIZE = '3';
 const { getContext, closeBrowser } = await import('../src/browser.js');
@@ -111,6 +113,13 @@ const BARN = {
     { lotId: 689027, lotNumber: '12', title: '2012 Ford Ranger XL Cab Chassis', currentBid: 1550, endTime: soon, bidCount: 3 },
     { lotId: 689605, lotNumber: '13', title: 'Honda EU22i Generator', currentBid: 210, endTime: soon } ] }),
   '/auction-items/2565': html('<a href="/lot-details/2565/689061"><h4>Kubota Ride-on Mower</h4></a><span>Current Top Bid: $800</span>'),
+};
+
+const atCard = (slug, id, title, price, from, to, ago) => `<a href="/tasks/${slug}-${id}"><div class="card"><h3>${title}</h3><span>$${price}</span><div>${from}</div>${to ? `<div>${to}</div>` : ''}<p>Posted ${ago}</p><span>Open</span></div></a>`;
+const AIRTASKER = {
+  '/au/jobs/delivery/': html(atCard('move-my-bed', 'x01m5689s0jwrkx22z6n9mbswkn', 'Move my bed', 150, 'Mermaid Waters QLD 4218', 'Arana Hills QLD 4054', '4 minutes ago')),
+  '/au/jobs/delivery/canberra/': html('<div id="l"></div>', `document.getElementById('l').innerHTML = '${atCard('collect-couch-from-fyshwick-and-deliver-to-lyneham', 'x01m59jffph0bcq12w1q92vv7z9', 'Collect couch from Fyshwick and deliver to Lyneham', 80, 'Fyshwick ACT 2609', 'Lyneham ACT 2602', 'about 17 hours ago')}'
+    + '${atCard('bike-transported-from-canberra-to-sydney', 'x01m56wfbad7fvjdcm4v3886770', 'Bike transported from Canberra to Sydney', 100, 'Canberra ACT 2604', '', '2 days ago')}';`),
 };
 
 async function fakeSite(site, origin, pages) {
@@ -247,6 +256,23 @@ test('The Auction Barn (generic adapter): auctions page -> each auction -> lots 
   assert.ok(Math.abs(ranger.end_at - Date.parse(soon)) < 1000);
   assert.equal(ranger.url, 'https://bidding.theauctionbarn.com.au/lot-details/2564/689027');
   assert.equal(lots.find(l => l.ext_id === '689061').bid, 800);
+});
+
+test('Airtasker freight: category + city pages -> jobs with from/to, price, posted time', { skip: !chromeOk }, async () => {
+  const { airtasker } = await import('../src/freight/sites.js');
+  await fakeSite('airtasker', 'https://www.airtasker.com', AIRTASKER);
+  const jobs = await airtasker.discover();
+  assert.equal(jobs.length, 3);
+  const couch = jobs.find(j => j.ext_id === 'x01m59jffph0bcq12w1q92vv7z9');
+  assert.equal(couch.title, 'Collect couch from Fyshwick and deliver to Lyneham');
+  assert.equal(couch.from_text, 'Fyshwick ACT 2609');
+  assert.equal(couch.to_text, 'Lyneham ACT 2602');
+  assert.equal(couch.price, 80);
+  assert.equal(couch.category, 'delivery');
+  assert.ok(Math.abs(couch.posted_at - (Date.now() - 17 * 3600000)) < 60000);
+  const bike = jobs.find(j => /Bike/.test(j.title));
+  assert.equal(bike.from_text, 'Canberra ACT 2604');
+  assert.equal(bike.to_text, null);
 });
 
 test('login check: a "My Pickles" menu link alone is not a logged-in session', { skip: !chromeOk }, async () => {
