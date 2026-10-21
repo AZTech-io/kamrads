@@ -1,9 +1,9 @@
 // One adapter for sites that work the usual way: a listing page (or a page of auctions, each with
 // its lot list) -> lot pages. Lots are read from captured JSON plus the visible cards, like the
 // other sites. Each site is just a definition: where to look and what a lot link looks like.
-import { withPage, looksBlocked } from '../browser.js';
+import { withPage, looksBlocked, browserFetch } from '../browser.js';
 import { fastRead, learn } from '../fast.js';
-import { factsFromText } from '../extract.js';
+import { factsFromText, timeFromHtml } from '../extract.js';
 import { log } from '../log.js';
 import { domCards, cardToLot, lotsFromCapture, mergeLots, absUrl, titleFromPage, alignToCards } from './common.js';
 
@@ -82,9 +82,35 @@ export function makeSite(def) {
     return [...all.values()];
   }
 
+  // Quick read for sites whose lot page carries the price in its plain HTML (Grays): fetch the HTML (~0.3 s,
+  // no browser) instead of rendering the page (5-7 s). After 5 misses in a row the site goes back to full
+  // page reads (and the slow-site schedule) until a quick read works again.
+  const cheap = { misses: 0, lastTry: 0 };
+  const cheapOk = () => !!def.quickHtml && (cheap.misses < 5 || Date.now() - cheap.lastTry > 30 * 60000);
+  async function htmlRead(lot) {
+    cheap.lastTry = Date.now();
+    try {
+      const res = await browserFetch(site, lot.url, 'text/html');
+      if (res.status === 403 || res.status === 429) throw new Error(`blocked by ${def.label} (HTTP ${res.status})`);
+      if (res.status < 200 || res.status >= 300) throw new Error(`HTTP ${res.status}`);
+      const text = res.text.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, '\n')
+        .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#36;/g, '$').replace(/\n\s*\n+/g, '\n');
+      const facts = { ...factsFromText(text), ...(def.pageFacts ? def.pageFacts(text) : {}) };
+      if (facts.bid == null && facts.closed == null && !facts.gone) throw new Error('no price in the page HTML');
+      if (!(facts.end_at > Date.now())) { const t = timeFromHtml(res.text); if (t) facts.end_at = t; else delete facts.end_at; }
+      cheap.misses = 0;
+      return { ...facts, ext_id: lot.ext_id, url: lot.url, site, fast: true };
+    } catch (e) {
+      if (/blocked/.test(e.message)) throw e;
+      if (++cheap.misses === 5) log.warn(site, `quick reads failing (${e.message}) - full page reads for now`);
+      return null;
+    }
+  }
+
   async function refresh(lot) {
     const quick = await fastRead(site, lot);
     if (quick) return { ...quick, ext_id: lot.ext_id, url: lot.url, site, fast: true };
+    if (cheapOk()) { const h = await htmlRead(lot); if (h) return h; }
     const r = await withPage(site, lot.url, null, { waitMs: 1500, high: true });
     if (looksBlocked(r)) throw new Error(`blocked by ${def.label} (HTTP ${r.status})`);
     learn(site, lot.ext_id, r);
@@ -99,5 +125,6 @@ export function makeSite(def) {
     return merged;
   }
 
-  return { site, label: def.label, owns, idFromUrl, loginUrl: null, discover, refresh, timesFromLotPage: !!def.timesFromLotPage, pageFacts: def.pageFacts || null };
+  return { site, label: def.label, owns, idFromUrl, loginUrl: null, discover, refresh, timesFromLotPage: !!def.timesFromLotPage, pageFacts: def.pageFacts || null,
+    cheapRefresh: def.quickHtml ? cheapOk : false, htmlRead };
 }

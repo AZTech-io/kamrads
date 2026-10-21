@@ -25,7 +25,7 @@ import { sectorOf } from './categories.js';
 
 export const adapters = { pickles, manheim, allbids, lloyds, grays, slattery, auctionbarn };
 // Sites where a re-read is cheap (learned JSON feed, or plain-HTML lot pages)
-const quick = site => hasFeed(site) || !!adapters[site]?.cheapRefresh;
+const quick = site => { const c = adapters[site]?.cheapRefresh; return hasFeed(site) || (typeof c === 'function' ? c() : !!c); };
 const enabled = () => Object.values(adapters).filter(a => config.sites[a.site]?.enabled);
 
 const FINAL_GRACE_MS = 6 * 60000; // soft-close extensions + one final read before we mark a lot closed
@@ -263,11 +263,10 @@ export function watchUrl(url, user = config.dashUser) {
   return key;
 }
 
-/** Lots on slow sites that were called sold at their listed time without being read after it (the old rule):
+/** Lots that were called sold at their listed time without being read after it (the old rule):
  *  open the recent ones again so they get that read (a soft close may still be running). */
 export function reopenUnconfirmed(now = Date.now()) {
-  const slow = Object.keys(adapters).filter(s => !quick(s));
-  const rows = q.reopenUnconfirmed.all(now - config.closeWithoutReadMin * 60000, JSON.stringify(slow));
+  const rows = q.reopenUnconfirmed.all(now - config.closeWithoutReadMin * 60000, JSON.stringify(Object.keys(adapters)));
   if (rows.length) log.info('hot', `${rows.length} recently closed lots re-opened for a final read`);
   return rows.length;
 }

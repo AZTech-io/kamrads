@@ -254,7 +254,10 @@ test('Grays (generic adapter): pages until no new lots, ids from links, page rea
   assert.equal(hyundai.title, '2016 Hyundai Accent Active');
   assert.equal(hyundai.bid, 2809);
   assert.equal(hyundai.state, 'VIC');
+  const t0 = Date.now();
   const fresh = await extra.grays.refresh(hyundai);
+  assert.equal(fresh.fast, true, 'read from the plain HTML, no page render');
+  assert.ok(Date.now() - t0 < 3000, `quick (${Date.now() - t0} ms)`);
   assert.equal(fresh.bid, 2950);
   assert.equal(fresh.bid_count, 12);
   assert.equal(fresh.buyer_premium, 16.5);

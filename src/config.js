@@ -87,8 +87,8 @@ export const config = {
   fillTimesPerScan: num('FILL_TIMES_PER_SCAN', 40),  // lot pages read per scan where lists show no close time (Grays)
   fastBatch: num('FAST_BATCH', 80),
   // Most reads per re-check cycle for one site (a big sale closing lot by lot can otherwise mean hundreds a
-  // minute: Lloyds answers with HTTP 429). "lloyds:6,allbids:20"; the rest use FAST_BATCH.
-  perCycle: Object.fromEntries((env.SITE_PER_CYCLE || 'lloyds:6').split(',').map(x => x.split(':').map(s => s.trim()))
+  // minute: Lloyds answers with HTTP 429). "lloyds:6,grays:15"; the rest use FAST_BATCH.
+  perCycle: Object.fromEntries((env.SITE_PER_CYCLE || 'lloyds:6,grays:15').split(',').map(x => x.split(':').map(s => s.trim()))
     .filter(([k, v]) => k && Number(v) > 0).map(([k, v]) => [k, Number(v)])),          // max fast-feed reads per cycle (each ~0.3 s)               // max detail pages per hot cycle
   hotMaxBid: num('HOT_MAX_BID', 25000),        // don't waste browser time on lots already above this
 

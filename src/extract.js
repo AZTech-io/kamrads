@@ -229,7 +229,7 @@ export function factsFromText(text, now = Date.now()) {
   const t = String(text || '').replace(/ /g, ' ');
   const out = {};
   const money = re => { const m = re.exec(t); return m ? parseMoney(m[m.length - 1]) : null; };
-  out.bid = money(/(?:current|highest|high|top|winning|leading)\s*(?:top\s*)?bid\s*(?:\(\s*\d+\s*bids?\s*\))?\s*(?:is|:)?\s*(?:AU)?\$\s?([\d,]+(?:\.\d+)?)/i)
+  out.bid = money(/(?:current|highest|high|top|winning|leading)\s*(?:top\s*)?bid\s*(?:\(\s*\[?\s*\d+\s*bids?\s*\]?\s*\))?\s*(?:is|:)?\s*(?:AU)?\$\s?([\d,]+(?:\.\d+)?)/i)
     ?? money(/(?<!(?:starting|start|opening|minimum|min|next|reserve)\s*)\bbid\s*:?\s*(?:AU)?\$\s?([\d,]+(?:\.\d+)?)/i);
   out.start_price = money(/(?:starting|start|opening|minimum)\s*(?:bid|price)\s*:?\s*(?:AU)?\$\s?([\d,]+)/i);
   out.buy_now = money(/buy\s*now\s*(?:price)?\s*:?\s*(?:AU)?\$\s?([\d,]+)/i);
@@ -274,6 +274,21 @@ export function factsFromText(text, now = Date.now()) {
   if (/(?:\+|plus)\s*GST\b|\bGST\s+(?:applies|applicable|is\s+payable|payable\s+on\s+(?:the\s+)?(?:hammer|purchase))/i.test(t)) out.gst_extra = 1;
   for (const k of Object.keys(out)) if (out[k] == null) delete out[k];
   return out;
+}
+
+/**
+ * A close time tucked into a page's raw HTML (data attributes, script variables) when the visible countdown
+ * is drawn by script: "data-end-time="1792950000000"", "closingDate":"2026-10-22T09:00:00Z", endTime = 1792950000.
+ * Only times with a zone (or epoch numbers) within a day before / 60 days after now are taken.
+ */
+export function timeFromHtml(html, now = Date.now()) {
+  const re = /(?:end|clos|finish|expir)[a-z_-]*(?:date|time|at|utc|on)?["'\s]*[:=]\s*["']?(\d{13}|\d{10}|\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2}))\b/gi;
+  for (const m of String(html || '').matchAll(re)) {
+    const v = m[1];
+    const t = /^\d{13}$/.test(v) ? +v : /^\d{10}$/.test(v) ? +v * 1000 : Date.parse(v.replace(' ', 'T'));
+    if (Number.isFinite(t) && t > now - 864e5 && t < now + 60 * 864e5) return t;
+  }
+  return null;
 }
 
 /** "140 National Drive Dandenong South VIC 3125" / "Unit 3/12 Smith St, Fyshwick ACT 2609" -> { location: "Dandenong South, VIC", state: "VIC" } */

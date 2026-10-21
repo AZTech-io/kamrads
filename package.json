@@ -13,7 +13,8 @@
     "stats": "node --no-warnings scripts/stats.js",
     "import-cookies": "node --no-warnings scripts/import-cookies.js",
     "test": "node --no-warnings --test test/*.test.js",
-    "probe-freight": "node --no-warnings scripts/probe-freight.js"
+    "probe-freight": "node --no-warnings scripts/probe-freight.js",
+    "probe-feed": "node --no-warnings scripts/probe-feed.js"
   },
   "dependencies": {
     "express": "5.1.0",

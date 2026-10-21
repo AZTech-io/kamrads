@@ -18,6 +18,7 @@ export const grays = makeSite({
   maxAuctions: config.sites.grays.maxCategories,
   skipFilter: config.sites.grays.skipCategories,
   timesFromLotPage: true, // search cards show no close time
+  quickHtml: true,        // the lot page's plain HTML carries the bid, bids and reserve: no browser needed
   // "Opens: 22 October 18:00 AEDT"  "Closes: (27 October 20:00 AEDT)" or a countdown "Closes: 6d 13h 52m"
   pageFacts: text => {
     const out = {};
