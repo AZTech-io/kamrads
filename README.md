@@ -32,13 +32,14 @@ Watches Pickles, Manheim, ALLBIDS (incl. CARBIDS), Lloyds, Grays, Slattery and T
 
 ## Freight board (`/freight`)
 
-Same login, at **kamrads.katara.com.au/freight** (or the 🚚 Freight button). It reads Airtasker's public delivery, removals, courier, man-with-a-van and ute job lists (nationally plus Canberra and Sydney) and the Truckit job board, every 10 minutes.
+Same login, at **kamrads.katara.com.au/freight** (or the 🚚 Freight button). It reads Loadshift's public load board, Airtasker's public delivery, removals, courier, man-with-a-van and ute job lists (nationally plus Canberra and Sydney) and the Truckit job board, every 10 minutes.
 
 - **Plan a run:** type *Canberra → Sydney*, a detour allowance and tick *and back*: jobs that fit on the way out and return loads home are marked and listed first, with the extra km each adds. Leave "to" blank for everything around one place.
 - **Routes & alerts:** save runs ("Sydney run": Canberra ⇄ Sydney, 30 km detour) or areas ("within 25 km of Canberra, at least $100") and get a push the moment a new job fits. Each person has their own.
 - Each job shows its route, job km, price and $ per km, and how far the pickup is from your home base.
 - More cities: `AIRTASKER_CITIES=canberra|sydney|wollongong` in `.env`. Airtasker is read from its public category lists only (never individual task pages), every 10 minutes.
 - Truckit's job board is public: KAMRADS reads its job feed (pickup/delivery suburbs, collection and delivery dates, distance, quotes so far). Logged out, Truckit doesn't give each job a link, so **Board** opens the Truckit job board; log in there to view and quote.
+- **Loadshift**'s public load board (loadshift.com.au/search/loads) is read too: cargo, weight, pickup/drop-off, ready date, distance. Loads carry no price (shippers ask for quotes); quote with a free Loadshift Basic account.
 - `npm run probe-freight -- <url>` shows what a job board page loads, if a site changes.
 
 **History:** everything is kept in `data/auctions.db` on the server (every lot, every price change, every final price), with a daily copy in `data/backups/` (last 14 days). **Download all results (CSV)** at the bottom of the dashboard opens in Excel; bid history is at `/api/export/bids.csv`.

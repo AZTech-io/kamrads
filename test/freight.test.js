@@ -17,7 +17,7 @@ globalThis.fetch = async (url, opts = {}) => {
   return realFetch(url, opts);
 };
 
-const { jobFromCard, parseAgo, placesIn, jobsFromJson, truckitJob } = await import('../src/freight/parse.js');
+const { jobFromCard, parseAgo, placesIn, jobsFromJson, truckitJob, loadshiftJobsFromText } = await import('../src/freight/parse.js');
 const { upsertJob, fq } = await import('../src/freight/store.js');
 const { fit, runFreightAlerts } = await import('../src/freight/match.js');
 const geo = await import('../src/geo.js');
@@ -65,6 +65,17 @@ test('Truckit job feed records: places, dates, distance, quotes; stable id witho
   assert.equal(truckitJob({ ...rec }).ext_id, j.ext_id, 'same job, same id on every scan');
   const ready = truckitJob({ ...rec, collection_date_view: 'Ready Now', collection_date_earliest: null, min_quote: null, max_quote: null, active_quotes: null });
   assert.match(ready.due_text, /^collect ready now/); assert.equal(ready.price, null);
+});
+
+test('Loadshift board text: id, cargo, title, places, weight, ready date, distance', () => {
+  const t = 'Loads 1,803\nLoad ID 40778814\nMachinery\nTelehandler\nWeight\n8300 kg\nPickup\nMerredin, WA 6415\nDropoff\nWallumbilla, QLD 4428\nReady On\n27-Oct-26\nDistance\n3775 km\n'
+    + 'Load ID 40778728\nTruck or Prime Mover\nKenworth T409 Prime Mover - 8m L (9.5T)\nWeight 9500 kg\nPickup Freemans Reach, NSW 2756\nDropoff Perth, WA 6000\nReady On 20-Oct-26';
+  const [a, b] = loadshiftJobsFromText(t, { 40778814: 'https://www.loadshift.com.au/loads/40778814' });
+  assert.equal(a.ext_id, '40778814'); assert.equal(a.category, 'Machinery'); assert.equal(a.title, 'Telehandler');
+  assert.equal(a.from_text, 'Merredin WA 6415'); assert.equal(a.to_text, 'Wallumbilla QLD 4428'); assert.equal(a.km, 3775);
+  assert.equal(a.due_text, '8300 kg · ready 27 Oct'); assert.equal(a.url, 'https://www.loadshift.com.au/loads/40778814'); assert.equal(a.price, null);
+  assert.equal(b.category, 'Truck or Prime Mover'); assert.equal(b.title, 'Kenworth T409 Prime Mover - 8m L (9.5T)');
+  assert.equal(b.to_text, 'Perth WA 6000'); assert.equal(b.url, 'https://www.loadshift.com.au/search/loads', 'no link found: the board');
 });
 
 const route = { kind: 'route', a_lat: -35.2809, a_lon: 149.13, b_lat: -33.8688, b_lon: 151.2093, radius_km: 30, both_ways: 1, min_price: null };

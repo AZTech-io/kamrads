@@ -118,6 +118,11 @@ export const config = {
       pages: list('TRUCKIT_PAGES', ['https://www.truckit.net/search-for-jobs']),
       maxPages: num('TRUCKIT_MAX_PAGES', 5),
     },
+    loadshift: {
+      enabled: bool('LOADSHIFT_ENABLED', true),
+      pages: list('LOADSHIFT_PAGES', ['https://www.loadshift.com.au/search/loads']),
+      maxPages: num('LOADSHIFT_MAX_PAGES', 5),
+    },
   },
 
   sites: {

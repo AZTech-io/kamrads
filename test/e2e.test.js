@@ -130,6 +130,15 @@ const TRUCKIT = {
     : { data: [{ status: 'active', item_label: 'crane hoist rope', category_label: 'Other General', created_at: '1792526930', collection_date_view: 'Ready Now', suburb1: 'SOMERSBY', state1: 'NSW', postcode1: '2250', suburb2: 'WILLIAMSTOWN', state2: 'VIC', postcode2: '3016', distance_estimate: '952' }], page_count: 2, page: 1, record_count: 2 }),
 };
 
+const lsLoad = (id, cargo, title, w, from, to, ready, km) => `<div class="load"><a href="/loads/${id}">View</a><div>Load ID ${id}</div><div>${cargo}</div><h3>${title}</h3><dl><dt>Weight</dt><dd>${w} kg</dd><dt>Pickup</dt><dd>${from}</dd><dt>Dropoff</dt><dd>${to}</dd><dt>Ready On</dt><dd>${ready}</dd><dt>Distance</dt><dd>${km} km</dd></dl></div>`;
+const LOADSHIFT = {
+  '/search/loads': u => html(u.searchParams.get('page') === '2'
+    ? lsLoad(40777708, 'Shipping Container', '1x 20ft shipping container', 17000, 'Townsville City, QLD 4810', 'Noah, QLD 4873', '19-Oct-26', 120)
+    : u.searchParams.get('page') ? '<p>No loads</p>'
+    : lsLoad(40778814, 'Machinery', 'Telehandler', 8300, 'Merredin, WA 6415', 'Wallumbilla, QLD 4428', '27-Oct-26', 3775)
+      + lsLoad(40778728, 'Truck or Prime Mover', 'Kenworth T409 Prime Mover', 9500, 'Freemans Reach, NSW 2756', 'Perth, WA 6000', '20-Oct-26', 3960)),
+};
+
 async function fakeSite(site, origin, pages) {
   const ctx = await getContext(site);
   await ctx.route(origin + '/**', route => {
@@ -290,6 +299,16 @@ test('Truckit freight: job feed read from the board page, more pages fetched dir
   assert.equal(jobs.length, 2);
   assert.ok(jobs.some(j => j.from_text === 'Somersby NSW 2250' && j.to_text === 'Williamstown VIC 3016' && j.km === 952));
   assert.ok(jobs.some(j => j.title === 'Fridge' && j.from_text === 'Fyshwick ACT 2609'), 'page 2');
+});
+
+test('Loadshift freight: public board pages read from their labelled text, load links kept', { skip: !chromeOk }, async () => {
+  const { loadshift } = await import('../src/freight/sites.js');
+  await fakeSite('loadshift', 'https://www.loadshift.com.au', LOADSHIFT);
+  const jobs = await loadshift.discover();
+  assert.deepEqual(jobs.map(j => j.ext_id).sort(), ['40777708', '40778728', '40778814']);
+  const th = jobs.find(j => j.ext_id === '40778814');
+  assert.equal(th.title, 'Telehandler'); assert.equal(th.from_text, 'Merredin WA 6415'); assert.equal(th.km, 3775);
+  assert.equal(th.url, 'https://www.loadshift.com.au/loads/40778814');
 });
 
 test('login check: a "My Pickles" menu link alone is not a logged-in session', { skip: !chromeOk }, async () => {

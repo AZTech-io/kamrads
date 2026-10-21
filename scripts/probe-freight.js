@@ -6,7 +6,7 @@ import { withPage, closeBrowser, looksBlocked } from '../src/browser.js';
 import { config } from '../src/config.js';
 
 const url = process.argv[2] || 'https://www.truckit.net/search-for-jobs';
-const site = /airtasker/.test(url) ? 'airtasker' : 'truckit';
+const site = /airtasker/.test(url) ? 'airtasker' : /loadshift/.test(url) ? 'loadshift' : 'truckit';
 const out = path.join(config.dataDir, 'probe', `${site}-${Date.now()}`);
 fs.mkdirSync(out, { recursive: true });
 
@@ -31,7 +31,7 @@ if (/log ?in|sign ?in/i.test(r.text.slice(0, 2000))) console.log('Page mentions 
 console.log('\n--- Page text (first 1500 characters) ---');
 console.log(r.text.replace(/\n{2,}/g, '\n').slice(0, 1500));
 
-const own = (r.result?.links || []).filter(([h]) => /truckit|airtasker/.test(h));
+const own = (r.result?.links || []).filter(([h]) => /truckit|airtasker|loadshift/.test(h));
 console.log(`\n--- Links on the site (${own.length}), grouped by pattern ---`);
 const groups = new Map();
 for (const [h, t] of own) {

@@ -236,7 +236,9 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const money = n => n == null ? '—' : '$' + Math.round(n).toLocaleString('en-AU');
 const pref = (k, d) => { try { return JSON.parse(localStorage.getItem('kf_' + k)) ?? d; } catch { return d; } };
 const save = (k, v) => { try { localStorage.setItem('kf_' + k, JSON.stringify(v)); } catch {} };
-const SITE_NAMES = { airtasker: 'Airtasker', truckit: 'Truckit' };
+const SITE_NAMES = { airtasker: 'Airtasker', truckit: 'Truckit', loadshift: 'Loadshift' };
+const QUOTE_SITES = ['truckit', 'loadshift']; // shippers ask for quotes: no price shown
+const isBoard = u => /search-for-jobs|search\/loads/.test(u || '');
 const CAT_NAMES = { delivery: 'Delivery', removals: 'Removals', 'courier-services': 'Courier', 'man-with-a-van': 'Man with a van', 'ute-removals': 'Ute jobs' };
 const VIEWS = [['all', 'All open jobs'], ['routes', 'On my routes'], ['near', 'Near my base'], ['new', 'New in the last hour']];
 
@@ -302,12 +304,12 @@ function render() {
     <tr class="${j.plan ? 'fit' : fresh(j) ? 'fresh' : ''}">
       <td class="c-posted"><div class="posted ${fresh(j) ? 'new' : ''}"><div class="t">${esc(ago(j.postedAt || j.firstSeen))}</div></div></td>
       <td class="c-job"><a class="job-t" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer" title="${esc(j.title)}">${esc(j.title || 'Job')}</a>
-        <div class="job-m"><span class="site">${esc(SITE_NAMES[j.site] || j.site)}</span>${j.category ? `<span>${esc(CAT_NAMES[j.category] || j.category)}</span>` : ''}${j.offers ? `<span>${j.offers} ${j.site === 'truckit' ? 'quote' : 'offer'}${j.offers === 1 ? '' : 's'}</span>` : ''}${j.fits.map(f => `<span class="tag i">${esc(f.name)}${f.how === 'back' ? ' (return)' : ''}</span>`).join('')}</div></td>
+        <div class="job-m"><span class="site">${esc(SITE_NAMES[j.site] || j.site)}</span>${j.category ? `<span>${esc(CAT_NAMES[j.category] || j.category)}</span>` : ''}${j.site === 'loadshift' ? `<span>#${esc(j.key.split(':')[1])}</span>` : ''}${j.offers ? `<span>${j.offers} ${j.site === 'truckit' ? 'quote' : 'offer'}${j.offers === 1 ? '' : 's'}</span>` : ''}${j.fits.map(f => `<span class="tag i">${esc(f.name)}${f.how === 'back' ? ' (return)' : ''}</span>`).join('')}</div></td>
       <td class="c-route"><div class="route"><span class="p">${esc(j.from || '—')}</span>${j.to ? `<span class="x">→</span><span class="p">${esc(j.to)}</span>` : ''}</div>${j.due ? `<div class="sub">${esc(j.due)}</div>` : ''}${!j.located && j.from ? '<div class="sub">finding this place…</div>' : ''}</td>
       <td class="col-km r num">${j.km != null ? j.km.toLocaleString('en-AU') : ''}</td>
-      <td class="c-price r"><div class="money num">${j.price != null ? money(j.price) : j.site === 'truckit' ? 'Quote' : '—'}</div><div class="sub">${j.price == null ? (j.site === 'truckit' ? 'no quotes yet' : '') : [j.priceKind && j.priceKind !== 'budget' ? esc(j.priceKind) : '', j.perKm != null && j.km >= 5 ? `$${j.perKm.toFixed(2)}/km` : ''].filter(Boolean).join(' · ') || 'budget'}</div></td>
+      <td class="c-price r"><div class="money num">${j.price != null ? money(j.price) : QUOTE_SITES.includes(j.site) ? 'Quote' : '—'}</div><div class="sub">${j.price == null ? (j.site === 'truckit' ? 'no quotes yet' : j.site === 'loadshift' ? 'quote to win' : '') : [j.priceKind && j.priceKind !== 'budget' ? esc(j.priceKind) : '', j.perKm != null && j.km >= 5 ? `$${j.perKm.toFixed(2)}/km` : ''].filter(Boolean).join(' · ') || 'budget'}</div></td>
       <td class="c-fit">${fitCell(j)}</td>
-      <td class="c-open r"><a class="btn sm" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer" title="${j.site === 'truckit' ? 'Truckit job board (log in to see the job and quote)' : 'Open on Airtasker'}">${j.site === 'truckit' ? 'Board' : 'Open'}</a></td>
+      <td class="c-open r"><a class="btn sm" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer" title="${isBoard(j.url) ? `${SITE_NAMES[j.site]} board: log in there to see the job and quote` : `Open on ${SITE_NAMES[j.site]}`}">${isBoard(j.url) ? 'Board' : 'Open'}</a></td>
     </tr>`).join('')}</tbody></table>`;
 }
 

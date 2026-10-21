@@ -144,3 +144,39 @@ export function truckitJob(r) {
     status: !r.status || r.status === 'active' ? 'open' : 'taken',
   };
 }
+
+// ---- Loadshift: public load board (/search/loads). Read from the page text, which is labelled:
+// "Load ID 40778814 · Machinery · Telehandler · Weight 8300 kg · Pickup Merredin, WA 6415 ·
+//  Dropoff Wallumbilla, QLD 4428 · Ready On 27-Oct-26 · Distance 3775 km". No prices (quotes only).
+const LS_FIELD = /(Load ID|Freight|Title|Weight|Pick ?up|Drop ?off|Ready On|Distance|Truck type|Posted)\s*:?\s*/gi;
+const lsPlace = s => { const m = /([A-Za-z][A-Za-z' .-]+?),?\s+(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b\s*(\d{4})?/.exec(s || ''); return m ? tidy(`${titleCase(tidy(m[1].split(',').pop()))} ${m[2]} ${m[3] || ''}`) : null; };
+const lsDate = s => { const m = /(\d{1,2})-([A-Za-z]{3})-(\d{2})/.exec(s || ''); return m ? `${+m[1]} ${m[2]}` : null; };
+
+export function loadshiftJobsFromText(text, links = {}) {
+  const out = [];
+  const blocks = String(text || '').split(/(?=Load ID\s*:?\s*\d{5,})/i).slice(1);
+  for (const b of blocks) {
+    const id = (/Load ID\s*:?\s*(\d{5,})/i.exec(b) || [])[1];
+    if (!id) continue;
+    const f = {};
+    const parts = b.split(LS_FIELD);
+    for (let i = 1; i < parts.length - 1; i += 2) {
+      const k = parts[i].toLowerCase().replace(/\s+/g, '');
+      if (!(k in f)) f[k] = tidy(parts[i + 1].split('\n').filter(Boolean)[0] || parts[i + 1]);
+    }
+    // unlabelled lines right after the id: cargo type, then the shipper's title
+    const afterId = (parts[2] || '').split('\n').map(tidy).filter(Boolean).slice(1).filter(l => !/^(view|quote|details|show map|save)/i.test(l));
+    const cargo = f.freight || (afterId.length > 1 ? afterId[0] : null);
+    const title = f.title || (afterId.length > 1 ? afterId[1] : afterId[0]) || cargo || 'Load';
+    const weight = (/([\d,.]+)\s*(kg|t)\b/i.exec(f.weight || '') || [])[0];
+    const ready = lsDate(f.readyon);
+    out.push({
+      site: 'loadshift', ext_id: id, url: links[id] || `https://www.loadshift.com.au/search/loads`,
+      title: tidy(title).slice(0, 160), category: cargo,
+      from_text: lsPlace(f.pickup), to_text: lsPlace(f.dropoff), km: parseMoney(f.distance),
+      price: null, price_kind: null, offers: null, posted_at: parseAgo(f.posted || ''),
+      due_text: [weight, ready ? `ready ${ready}` : null].filter(Boolean).join(' · ') || null, status: 'open',
+    });
+  }
+  return out;
+}
