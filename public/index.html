@@ -247,6 +247,8 @@ aside::-webkit-scrollbar-thumb { background: transparent; }
 aside:hover::-webkit-scrollbar-thumb { background: var(--rule-2); background-clip: padding-box; }
 html { color-scheme: dark; }
 .lot-m .place { color: var(--ink); font-weight: 500; }
+/* kilometres at a glance: under 100k green and bold, 100k–350k yellow, over 350k red */
+.km-low { color: var(--gain); font-weight: 700; } .km-mid { color: var(--warn); font-weight: 500; } .km-high { color: var(--loss); font-weight: 500; }
 </style>
 </head>
 <body>
@@ -383,6 +385,9 @@ html { color-scheme: dark; }
 
 <script>
 const $ = s => document.querySelector(s);
+// Odometer with its colour: under 100,000 km green and bold, up to 350,000 yellow, beyond that red.
+const kmClass = km => (km < 100000 ? 'km-low' : km <= 350000 ? 'km-mid' : 'km-high');
+const kmTag = l => (l.odometer ? `<span class="num ${kmClass(l.odometer)}" title="Odometer">${l.odometer.toLocaleString('en-AU')} km</span>` : '');
 // "Dandenong South, VIC" (no "VIC VIC" when the place already names the state)
 const placeOf = l => [l.location, l.location && l.state && new RegExp(`\\b${l.state}\\b`).test(l.location) ? '' : l.state].filter(Boolean).join(' ');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -566,7 +571,7 @@ function rowHtml(l, now) {
     <td class="col-photo">${photo(l)}</td>
     <td class="c-lot">${lotLink(l)}<div class="lot-m"><span class="site">${esc(SITE_NAMES[l.site] || l.site)}</span>
       ${l.location || l.state ? `<span>${esc([l.location, l.location?.includes(l.state) ? '' : l.state].filter(Boolean).join(' '))}${l.distanceKm != null ? ` · ${distTxt(l)}` : ''}</span>` : ''}
-      ${l.odometer ? `<span class="num">${l.odometer.toLocaleString('en-AU')} km</span>` : ''}${liveTag(l)}${wovrTag(l.wovr)}${reserveTag(l.reserve)}${checkTag(l.check)}
+      ${kmTag(l)}${liveTag(l)}${wovrTag(l.wovr)}${reserveTag(l.reserve)}${checkTag(l.check)}
       ${mode === 'missed' ? `<span class="tag g">${esc(l.why)}</span>` : ''}${l.alerts?.length ? `<span class="tag r">Alert: ${esc(l.alerts.join(', '))}</span>` : ''}</div></td>
     <td class="c-clock">${clockCell(l, now)}</td>
     <td class="c-bid r"><div class="money num">${money(p)}</div><div class="sub">${sub}</div></td>
@@ -593,7 +598,7 @@ function detailHtml(l) {
   const check = l.check && l.check.verdict !== 'error' ? `<div><h4>Listing check</h4>${checkTag(l.check)} ${esc(l.check.summary || '')}${(l.check.flags || []).length ? `<ul>${l.check.flags.map(f => `<li>${esc(f)}</li>`).join('')}</ul>` : ''}<div class="sub">starts: ${esc(l.check.starts || '?')} · keys: ${esc(l.check.keys || '?')}</div></div>` : '';
   const facts = `<div><h4>Lot</h4><div class="kv"><span>Site</span><span>${esc(SITE_NAMES[l.site] || l.site)}${l.lotNo ? ' · lot ' + esc(l.lotNo) : ''}</span>${l.sale ? `<span>Sale</span><span>${esc(l.sale)}</span>` : ''}
     ${l.endAt ? `<span>Closes</span><span>${esc(fmtDay(l.endAt))} AWST</span>` : ''}${l.opensAt ? `<span>Opens</span><span>${esc(fmtDay(l.opensAt))} AWST</span>` : ''}
-    ${l.year ? `<span>Year</span><span>${l.year}</span>` : ''}${l.manualEstimate != null ? `<span>Your estimate</span><span>${money(l.manualEstimate)}</span>` : ''}<span>Last checked</span><span>${l.lastChecked ? new Date(l.lastChecked).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }) : 'not yet'}</span></div></div>`;
+    ${l.year ? `<span>Year</span><span>${l.year}</span>` : ''}${l.odometer ? `<span>Odometer</span>${kmTag(l)}` : ''}${l.manualEstimate != null ? `<span>Your estimate</span><span>${money(l.manualEstimate)}</span>` : ''}<span>Last checked</span><span>${l.lastChecked ? new Date(l.lastChecked).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }) : 'not yet'}</span></div></div>`;
   return `<tr class="detail"><td colspan="8"><div class="dgrid">${facts}${costs}${hist}${research}${check}</div>
     <div class="dacts"><a class="btn sm" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">Open on ${esc(SITE_NAMES[l.site] || l.site)}</a>
       ${closedMode() ? (l.purchaseId ? `<a class="btn sm" href="/bought#${l.purchaseId}">Open in Bought</a>` : `<button class="btn sm primary" data-won="${esc(l.key)}">Won it: add to Bought</button>`) : ''}
@@ -613,7 +618,7 @@ function renderWatch() {
       const moved = !closed && lastBid[l.key] != null && l.bid != null && l.bid > lastBid[l.key];
       return `<tr class="row ${closed ? 'sold' : ''} ${l.bidStatus || ''}" data-key="${esc(l.key)}">
         <td class="col-photo">${photo(l)}</td>
-        <td class="c-lot">${lotLink(l)}<div class="lot-m"><span class="site">${esc(SITE_NAMES[l.site] || l.site)}</span>${placeOf(l) ? `<span class="place">${esc(placeOf(l))}${l.distanceKm != null ? ` <span class="dim">· ${distTxt(l)}</span>` : ''}</span>` : ''}${liveTag(l)}${wovrTag(l.wovr)}${reserveTag(l.reserve)}${checkTag(l.check)}<span>${closed ? '' : ago(l.lastChecked)}</span></div>
+        <td class="c-lot">${lotLink(l)}<div class="lot-m"><span class="site">${esc(SITE_NAMES[l.site] || l.site)}</span>${placeOf(l) ? `<span class="place">${esc(placeOf(l))}${l.distanceKm != null ? ` <span class="dim">· ${distTxt(l)}</span>` : ''}</span>` : ''}${kmTag(l)}${liveTag(l)}${wovrTag(l.wovr)}${reserveTag(l.reserve)}${checkTag(l.check)}<span>${closed ? '' : ago(l.lastChecked)}</span></div>
           ${(l.rivals || []).length ? `<div class="rival">⚠ ${esc(l.rivals.map(r => `${r.user} has bid too (max ${money(r.myBid)})`).join(', '))}: you're bidding against each other</div>` : (l.others || []).length ? `<div class="sub">also watched by ${esc(l.others.join(', '))}</div>` : ''}</td>
         <td class="c-clock">${clockCell(l, now)}</td>
         <td class="c-bid r"><div class="money num">${money(price)}</div><div class="sub">${moved ? `<span class="loss">▲ from ${money(lastBid[l.key])}</span>` : closed ? 'final' : l.bidCount != null ? `${l.bidCount} bids` : ''}</div></td>
