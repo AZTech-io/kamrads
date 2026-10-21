@@ -143,3 +143,122 @@ test('API: jobs with fits, plan a run, alerts list', async () => {
 });
 
 test.after(() => setTimeout(() => process.exit(0), 50));
+
+// ---- heat tiers, dates, old jobs, contacting shippers ----
+const heat = await import('../src/freight/heat.js');
+const loop = await import('../src/freight/loop.js');
+const { config } = await import('../src/config.js');
+const { db } = await import('../src/db.js');
+
+test('heat tiers by age: Ultra Hot 24 h, Hot 3 days, Warm a week, Luke Warm 2 weeks, Cold older', () => {
+  const now = Date.UTC(2026, 9, 21), h = 3600000;
+  const t = age => heat.tierOf({ site: 'truckit', posted_at: now - age, first_seen: now }, now);
+  assert.equal(t(2 * h), 'ultra'); assert.equal(t(30 * h), 'hot'); assert.equal(t(5 * 24 * h), 'warm');
+  assert.equal(t(10 * 24 * h), 'luke'); assert.equal(t(29 * 24 * h), 'cold');
+  assert.equal(heat.tierOf({ site: 'loadshift', posted_at: null, first_seen: now }, now), 'unknown', 'Loadshift with no date: not mistaken for new');
+  assert.equal(heat.dateFlag({ date_by: now - 3 * 24 * h }, now), 'passed');
+  assert.equal(heat.dateFlag({ date_by: now + 24 * h, flexible: 0 }, now), null);
+  assert.equal(heat.dateFlag({ flexible: 1 }, now), 'flexible');
+});
+
+test('job dates: Truckit windows, Loadshift ready/no date, Airtasker "Before ..." and flexible', () => {
+  const rec = { status: 'active', item_label: 'Pallet', created_at: '1792526438', collection_date_view: 'Date Range', collection_date_earliest: '2026-12-01 00:00:00',
+    collection_date_latest: '2026-12-05 00:00:00', delivery_date_latest: '2026-12-11 00:00:00', suburb1: 'FYSHWICK', state1: 'ACT', postcode1: '2609', suburb2: 'PARRAMATTA', state2: 'NSW', postcode2: '2150' };
+  const j = truckitJob(rec);
+  assert.equal(new Date(j.date_by).toISOString(), '2026-12-10T14:00:00.000Z', '11 Dec, Sydney time');
+  assert.equal(j.flexible, false);
+  assert.equal(truckitJob({ ...rec, collection_date_view: 'Flexible', collection_date_earliest: null, collection_date_latest: null, delivery_date_latest: null }).flexible, true);
+  const [y, k] = loadshiftRowsFromText(['40778994', 'Machinery', '1', 'Excavator', '9000 kg', 'MacMasters Beach, NSW 2251', 'Kyogle, NSW 2474', '685 km', 'No date yet',
+    '40720315', 'Machinery', '1', 'Komatsu', '-', 'Garbutt, QLD 4814', 'Charters Towers City, QLD 4820', '137 km', '20-Oct-26'].join('\n'));
+  assert.equal(y.flexible, true); assert.equal(y.date_from, null);
+  assert.equal(new Date(k.date_from).toISOString(), '2026-10-19T14:00:00.000Z'); assert.equal(k.flexible, false);
+  const now = Date.UTC(2026, 9, 21);
+  const a = jobFromCard(card('dd1', 'Move a fridge', 90, 'Fyshwick ACT 2609', 'Lyneham ACT 2602'), { ...AT, now });
+  const b = jobFromCard({ ...card('dd2', 'Move a bed', 90, 'Fyshwick ACT 2609', 'Lyneham ACT 2602'), text: 'Move a bed\n$90\nFyshwick ACT 2609\nBefore Fri, 31 Oct\nPosted 2 days ago' }, { ...AT, now });
+  assert.equal(b.due_text, 'before 31 Oct'); assert.equal(new Date(b.date_by).toISOString(), '2026-10-30T14:00:00.000Z');
+  assert.equal(a.date_by, null);
+});
+
+test('Loadshift post dates worked out from load numbers we watched appear', () => {
+  const H = 3600000, t0 = Date.UTC(2026, 9, 20);
+  // 40 loads an hour; we watched loads 40800000.. appear over 10 hours
+  const pts = Array.from({ length: 30 }, (_, i) => ({ id: 40800000 + i * 13, t: t0 + (i * 13 / 40) * H }));
+  pts.push({ id: 40800050, t: t0 + 9 * H }); // an odd one
+  const line = heat.fitIdTime(pts);
+  assert.ok(line);
+  assert.ok(Math.abs(line.at(40800000 - 40 * 24 * 10) - (t0 - 10 * 24 * H)) < 6 * H, 'a load 9,600 numbers older is ~10 days old');
+  assert.equal(heat.fitIdTime(pts.slice(0, 3)), null, 'too few to tell');
+
+  // in the store: watched (fresh) loads anchor the line, the rest get estimated
+  const now = t0 + 12 * H;
+  for (let i = 0; i < 10; i++) upsertJob({ site: 'loadshift', ext_id: String(40800000 + i * 40), title: 'Load', status: 'open' }, t0 + i * H, { fresh: true });
+  upsertJob({ site: 'loadshift', ext_id: '40790400', title: 'Old load', status: 'open' }, now);          // seen first in a full read
+  assert.equal(fq.job.get('loadshift:40790400').posted_at, null);
+  assert.equal(fq.job.get('loadshift:40800040').age_basis, 'seen');
+  loop.datePosts(now);
+  const old = fq.job.get('loadshift:40790400');
+  assert.equal(old.age_basis, 'est');
+  assert.ok(Math.abs(old.posted_at - (t0 - 240 * H)) < 12 * H, `~10 days old (${(now - old.posted_at) / 864e5} d)`);
+  assert.equal(heat.tierOf(old, now), 'luke', '10.5 days: Luke Warm');
+  // a later scan without a date keeps the estimate
+  upsertJob({ site: 'loadshift', ext_id: '40790400', title: 'Old load', status: 'open' }, now + H);
+  assert.equal(fq.job.get('loadshift:40790400').age_basis, 'est');
+});
+
+test('old jobs: swept boards keep them while listed; a complete full read retires the missing ones', async () => {
+  const H = 3600000, now = Date.now();
+  upsertJob({ site: 'truckit', ext_id: 'old1', title: 'Old pallet', posted_at: now - 20 * 24 * H, status: 'open' }, now - 30 * H);
+  upsertJob({ site: 'airtasker', ext_id: 'x0old', title: 'Old couch', posted_at: now - 3 * 24 * H, status: 'open' }, now - 40 * H);
+  loop.expireJobs(now);
+  assert.equal(fq.job.get('truckit:old1').status, 'open', 'Truckit job seen 30 h ago stays: it is read in full nightly');
+  assert.equal(fq.job.get('airtasker:x0old').status, 'gone', 'Airtasker job off the lists 40 h: gone');
+
+  const { truckit, loadshift } = await import('../src/freight/sites.js');
+  const real = truckit.sweep, realL = loadshift.sweep;
+  truckit.sweep = async () => ({ jobs: [{ site: 'truckit', ext_id: 'keep1', title: 'Still listed', posted_at: now - 10 * 24 * H, status: 'open' }], complete: false, listed: 2000 });
+  loadshift.sweep = async () => ({ jobs: [], complete: false, listed: null });
+  try {
+    await loop.sweepFreight({ force: true });
+    assert.equal(fq.job.get('truckit:old1').status, 'open', 'an incomplete read marks nothing gone');
+    truckit.sweep = async () => ({ jobs: [{ site: 'truckit', ext_id: 'keep1', title: 'Still listed', posted_at: now - 10 * 24 * H, status: 'open' }], complete: true, listed: 1 });
+    await loop.sweepFreight({ force: true });
+    assert.equal(fq.job.get('truckit:old1').status, 'gone', 'missing from a complete read: taken');
+    assert.equal(fq.job.get('truckit:keep1').status, 'open');
+    assert.equal(loop.sweepDue('truckit'), false, 'not again until tomorrow night');
+  } finally { truckit.sweep = real; loadshift.sweep = realL; }
+});
+
+test('API: heat filter and counts; contacting a shipper (details, log, done) shared between logins', async () => {
+  const all = (await api('GET', '/api/freight/jobs')).json;
+  assert.ok(all.heat.luke >= 1 && all.heat.ultra >= 1, JSON.stringify(all.heat));
+  const keep = all.jobs.find(j => j.key === 'truckit:keep1');
+  assert.equal(keep.heat, 'luke');
+  const hot = (await api('GET', '/api/freight/jobs?heat=ultra,hot')).json;
+  assert.ok(hot.jobs.length && hot.jobs.every(j => ['ultra', 'hot'].includes(j.heat)));
+  assert.deepEqual(hot.heat, all.heat, 'counts cover every tier whatever is shown');
+
+  const k = encodeURIComponent('truckit:keep1');
+  assert.equal((await api('POST', `/api/freight/jobs/${k}/contact`, { phone: '12' })).status, 400);
+  let r = await api('POST', `/api/freight/jobs/${k}/contact`, { name: 'Sam Smith', phone: '0412 345 678' });
+  assert.equal(r.json.phone, '0412345678');
+  r = await api('POST', `/api/freight/jobs/${k}/contact`, { method: 'text', outcome: 'quoted', quote: '$450', note: 'wants Thursday' });
+  assert.equal(r.json.log[0].outcome, 'quoted'); assert.equal(r.json.log[0].quote, 450); assert.equal(r.json.log[0].by, 'Aaron');
+  const mm = await (await realFetch(base + '/api/freight/jobs', { headers: H('matthew:m') })).json();
+  const seen = mm.jobs.find(j => j.key === 'truckit:keep1');
+  assert.equal(seen.contact.by, 'Aaron', 'Matthew sees Aaron already quoted it'); assert.equal(seen.contactPhone, '0412345678');
+  r = await api('POST', `/api/freight/jobs/${k}/contact`, { method: 'call', outcome: 'already moved' });
+  assert.equal(r.json.dead, true);
+  const after = (await api('GET', '/api/freight/jobs')).json;
+  assert.ok(!after.jobs.some(j => j.key === 'truckit:keep1'), 'already moved: off the board'); assert.equal(after.dead, 1);
+  assert.ok((await api('GET', '/api/freight/jobs?dead=1')).json.jobs.some(j => j.key === 'truckit:keep1' && j.dead));
+  await api('POST', `/api/freight/jobs/${k}/contact`, { dead: false });
+  assert.ok((await api('GET', '/api/freight/jobs')).json.jobs.some(j => j.key === 'truckit:keep1'));
+
+  // message template per login
+  const m = (await api('GET', '/api/freight/message')).json;
+  assert.match(m.template, /\{booking\}/); assert.equal(m.me, 'Aaron');
+  await api('POST', '/api/freight/message', { template: 'Hi{name}, {me} here', day: 'Thursday' });
+  const m2 = (await api('GET', '/api/freight/message')).json;
+  assert.equal(m2.template, 'Hi{name}, {me} here'); assert.equal(m2.day, 'Thursday');
+  assert.equal((await (await realFetch(base + '/api/freight/message', { headers: H('matthew:m') })).json()).template, m.template, "Matthew keeps his own");
+});

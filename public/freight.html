@@ -22,7 +22,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--ink); font: 13.5px/1.45 "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; font-feature-settings: "tnum" 1; }
 a { color: inherit; }
-button, input, select { font: inherit; color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
 .num { font-variant-numeric: tabular-nums; }
 .muted { color: var(--muted); } .dim { color: var(--dim); } .gain { color: var(--gain); } .warn { color: var(--warn); }
@@ -101,19 +101,56 @@ table.grid { width: 100%; border-collapse: collapse; }
 .grid tr:hover td { background: var(--hover); }
 .grid tr.fit td:first-child { box-shadow: inset 3px 0 0 var(--info); }
 .grid tr.fresh td:first-child { box-shadow: inset 3px 0 0 var(--gain); }
-.job-t { font-weight: 600; text-decoration: none; display: block; max-width: 460px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.job-t { font-weight: 600; text-decoration: none; display: block; max-width: 330px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .job-t:hover { text-decoration: underline; }
 .job-m { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 3px 8px; margin-top: 2px; align-items: center; }
 .site { font-size: 11px; font-weight: 600; color: var(--muted); border: 1px solid var(--rule-2); border-radius: 4px; padding: 0 5px; }
 .tag { font-size: 11.5px; font-weight: 600; border-radius: 4px; padding: 0 6px; background: var(--raised); color: var(--muted); white-space: nowrap; }
 .tag.i { background: var(--info-bg); color: var(--info); } .tag.g { background: var(--gain-bg); color: var(--gain); } .tag.a { background: var(--warn-bg); color: var(--warn); }
-.route { white-space: nowrap; }
-.route .p { font-weight: 500; }
+.route { white-space: normal; }
+.route .p { font-weight: 500; white-space: nowrap; }
+.grid td.c-route { max-width: 270px; }
+.grid td.c-open { white-space: nowrap; padding-left: 4px; }
 .route .x { color: var(--dim); padding: 0 4px; }
 .sub { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
 .money { font-weight: 600; white-space: nowrap; }
 .posted .t { font-weight: 600; white-space: nowrap; } .posted.new .t { color: var(--gain); }
 .empty { color: var(--muted); text-align: center; padding: 46px 20px; }
+/* heat: how fresh a job is */
+.heat { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 4px; padding: 0 6px; white-space: nowrap; letter-spacing: .2px; }
+.h-ultra { background: rgba(255,77,94,.17); color: #ff6b78; } .h-hot { background: rgba(240,138,75,.16); color: #f39a62; }
+.h-warm { background: var(--warn-bg); color: var(--warn); } .h-luke { background: rgba(163,180,160,.14); color: #a9bba6; }
+.h-cold { background: var(--info-bg); color: var(--info); } .h-unknown { background: var(--raised); color: var(--dim); }
+.heatseg { max-width: 100%; overflow-x: auto; scrollbar-width: none; } .heatseg::-webkit-scrollbar { display: none; }
+.heatseg button { white-space: nowrap; flex: none; }
+.heatseg button .n { color: var(--dim); font-size: 11.5px; margin-left: 4px; font-weight: 400; }
+.heatseg button[aria-pressed="true"] .n { color: var(--muted); }
+.tag.d { background: rgba(132,150,171,.13); color: var(--muted); }
+.tag.done { background: var(--gain-bg); color: var(--gain); }
+.callrow { display: inline-flex; gap: 4px; align-items: center; font-size: 11.5px; }
+.acts { display: inline-flex; gap: 6px; justify-content: flex-end; }
+tr.dead td { opacity: .55; }
+/* contact panel */
+.cgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 6px; }
+.cgrid label, .cmsg label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; }
+.box input[type=text], .box input[type=tel], .box textarea, .box select { background: var(--bg); border: 1px solid var(--rule-2); border-radius: 6px; padding: 7px 10px; width: 100%; }
+.box textarea { resize: vertical; min-height: 84px; line-height: 1.45; }
+.chint { color: var(--dim); font-size: 12px; margin: 2px 0 10px; }
+.chint b { color: var(--muted); font-weight: 600; }
+.cmeta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 6px 0 10px; color: var(--muted); font-size: 12px; }
+.cmeta input { width: 140px !important; padding: 4px 8px !important; }
+.cmeta a { color: var(--info); text-decoration: none; }
+.cbtns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.btn[aria-disabled="true"] { opacity: .45; pointer-events: none; }
+.box h3 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 16px 0 6px; padding-top: 12px; border-top: 1px solid var(--rule); }
+.clog { display: grid; grid-template-columns: 1.3fr .8fr 1.6fr auto; gap: 8px; align-items: end; }
+.clog label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; }
+.chist { margin-top: 8px; }
+.chist .h { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; padding: 6px 0; border-top: 1px solid var(--rule); font-size: 12.5px; align-items: baseline; }
+.chist .h button { background: none; border: 0; color: var(--dim); cursor: pointer; }
+.chist .h button:hover { color: var(--loss); }
+.tplbox { display: none; margin: 6px 0 10px; } .tplbox.on { display: block; }
+.tplbox .muted { font-size: 12px; margin: 4px 0; }
 .empty b { color: var(--ink); }
 
 dialog.box { background: var(--panel); color: var(--ink); border: 1px solid var(--rule-2); border-radius: 10px; padding: 18px 20px; width: min(640px, calc(100vw - 24px)); }
@@ -128,7 +165,8 @@ dialog.box p.lead { color: var(--muted); margin: 0 0 10px; }
 .arow { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--rule); }
 .end { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 
-@media (max-width: 1100px) { .col-km { display: none; } .planner { grid-template-columns: 1fr auto 1fr; } .planner .arrow { display: block; } }
+@media (max-width: 1440px) { .col-km { display: none; } }
+@media (max-width: 1100px) { .planner { grid-template-columns: 1fr auto 1fr; } .planner .arrow { display: block; } }
 @media (max-width: 900px) {
   :root { --side: 0px; }
   .topbar { grid-template-columns: auto 1fr auto; }
@@ -147,10 +185,13 @@ dialog.box p.lead { color: var(--muted); margin: 0 0 10px; }
   .grid td { padding: 0; border: 0; background: none !important; box-shadow: none !important; }
   .grid tr.fit { box-shadow: inset 3px 0 0 var(--info); } .grid tr.fresh { box-shadow: inset 3px 0 0 var(--gain); }
   .grid td.c-job { grid-area: job; min-width: 0; } .grid td.c-route { grid-area: route; } .grid td.c-price { grid-area: price; text-align: right; }
-  .grid td.c-fit { grid-area: fit; } .grid td.c-posted { grid-area: posted; text-align: right; } .grid td.c-open, .grid td.col-km { display: none; }
+  .grid td.c-fit { grid-area: fit; } .grid td.c-posted { grid-area: posted; text-align: right; } .grid td.col-km { display: none; }
   .job-t, .route { white-space: normal; }
   .count { margin-left: 0; width: 100%; }
   .aform { grid-template-columns: 1fr; }
+  .cgrid, .clog { grid-template-columns: 1fr; }
+  .grid tr { grid-template-areas: "job price" "route price" "fit posted" "acts acts"; }
+  .grid td.c-open { display: block; grid-area: acts; } .acts { justify-content: flex-start; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
@@ -198,7 +239,7 @@ html { color-scheme: dark; }
     <div id="cats"></div>
     <div class="side-h">Sites</div>
     <div id="sites"></div>
-    <div class="side-foot"><div id="stored"></div><a href="#" id="scanNow">Scan now</a><br><span id="updated"></span></div>
+    <div class="side-foot"><div id="stored"></div><a href="#" id="scanNow">Scan now</a> · <a href="#" id="sweepNow" title="Truckit and Loadshift are read in full every night. This does it now (takes 10-20 minutes).">Read old jobs now</a><br><span id="updated"></span></div>
   </aside>
 
   <main>
@@ -215,9 +256,9 @@ html { color-scheme: dark; }
 
     <div class="toolbar">
       <h1 id="title">All open jobs</h1>
-      <div class="seg" id="age"><button data-h="6">6 h</button><button data-h="24">24 h</button><button data-h="72">3 days</button></div>
+      <div class="seg heatseg" id="heat" role="group" aria-label="How fresh"></div>
       <select class="sel" id="sort" aria-label="Sort">
-        <option value="new">Newest first</option><option value="fit">Best fit for my run</option><option value="price">Highest price</option>
+        <option value="new">Newest first</option><option value="old">Oldest first</option><option value="fit">Best fit for my run</option><option value="price">Highest price</option>
         <option value="perkm">Best $ per km</option><option value="near">Nearest pickup</option>
       </select>
       <input class="q" type="search" id="q" placeholder="Search: couch, pallet, Fyshwick…">
@@ -243,6 +284,42 @@ html { color-scheme: dark; }
   <div class="end"><button class="btn" type="button" id="closeAlerts">Close</button></div>
 </dialog>
 
+<dialog id="contact" class="box">
+  <h2 id="cTitle">Job</h2>
+  <p class="lead" id="cSub"></p>
+  <div class="cgrid">
+    <label>Shipper's name <input type="text" id="cName" placeholder="e.g. Sam" autocomplete="off"></label>
+    <label>Phone <input type="tel" id="cPhone" placeholder="04xx xxx xxx" autocomplete="off"></label>
+  </div>
+  <div class="chint" id="cHint"></div>
+  <div class="cmsg"><label>Message <textarea id="cMsg"></textarea></label></div>
+  <div class="cmeta">
+    <span>Truck going <input type="text" id="cDay" placeholder="this week"></span>
+    <span>From <input type="text" id="cMe"></span>
+    <a href="#" id="cTplEdit">Change my standard message</a>
+  </div>
+  <div class="tplbox" id="tplBox">
+    <textarea id="cTpl"></textarea>
+    <div class="muted">Fills in: {name} {me} {item} {from} {to} {site} {day} {booking}</div>
+    <button class="btn sm" type="button" id="cTplSave">Save</button> <button class="btn sm" type="button" id="cTplReset">Back to the default</button>
+  </div>
+  <div class="cbtns">
+    <a class="btn primary" id="cText">Text</a>
+    <a class="btn" id="cCall">Call</a>
+    <button class="btn" type="button" id="cCopy">Copy message</button>
+    <a class="btn" id="cOpen" target="_blank" rel="noopener noreferrer">Open</a>
+  </div>
+  <h3>How did it go?</h3>
+  <form class="clog" id="cLog">
+    <label>Result <select id="cOut"></select></label>
+    <label>Quote <input type="text" id="cQuote" placeholder="$"></label>
+    <label>Note <input type="text" id="cNote" placeholder="e.g. call back Friday"></label>
+    <button class="btn primary">Log it</button>
+  </form>
+  <div class="chist" id="cHist"></div>
+  <div class="end"><button class="btn" type="button" id="cDead"></button><button class="btn" type="button" id="cClose">Close</button></div>
+</dialog>
+
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -253,19 +330,26 @@ const SITE_NAMES = { airtasker: 'Airtasker', truckit: 'Truckit', loadshift: 'Loa
 const QUOTE_SITES = ['truckit', 'loadshift']; // shippers ask for quotes: no price shown
 const isBoard = u => /search-for-jobs|search\/loads/.test(u || '');
 const CAT_NAMES = { delivery: 'Delivery', removals: 'Removals', 'courier-services': 'Courier', 'man-with-a-van': 'Man with a van', 'ute-removals': 'Ute jobs' };
-const VIEWS = [['all', 'All open jobs'], ['routes', 'On my routes'], ['near', 'Near my base'], ['new', 'New in the last hour']];
+const VIEWS = [['all', 'All open jobs'], ['run', 'Call list for my run'], ['routes', 'On my routes'], ['near', 'Near my base'], ['new', 'New in the last hour'], ['contacted', 'Contacted'], ['dead', 'Done / not needed']];
+const TIERS = [['ultra', 'Ultra Hot', '24 h'], ['hot', 'Hot', '3 days'], ['warm', 'Warm', '1 week'], ['luke', 'Luke Warm', '2 weeks'], ['cold', 'Cold', 'older']];
+const TIER_I = Object.fromEntries([...TIERS.map((t, i) => [t[0], i]), ['unknown', 5]]);
+const TIER_L = { ...Object.fromEntries(TIERS.map(t => [t[0], t[1]])), unknown: 'Age unknown' };
+const OUT_CLS = { booked: 'done', quoted: 'i', 'still needed': 'g', 'already moved': 'd', 'not interested': 'd', 'wrong number': 'd' };
 
-let view = pref('view', 'all'), cat = pref('cat', ''), routeFilter = null, hours = pref('hours', 24), sortBy = pref('sort', 'new');
-let jobs = [], alerts = [], status = { sites: [], enabled: [] }, base = '', clockSkew = 0, plan = pref('plan', null), planErr = null;
+let view = pref('view', 'all'), cat = pref('cat', ''), routeFilter = null, heatSel = pref('heat', []), sortBy = pref('sort', 'new');
+let jobs = [], alerts = [], status = { sites: [], enabled: [] }, base = '', clockSkew = 0, plan = pref('plan', null), planErr = null, heatN = {}, deadN = 0;
+if (view === 'dead') view = 'all';
 $('#sort').value = sortBy;
 if (plan) { $('#pA').value = plan.a || ''; $('#pB').value = plan.b || ''; $('#pD').value = plan.d || 30; $('#pBoth').checked = plan.both !== false; }
 
 const ago = t => {
   if (!t) return '';
   const m = Math.max(0, Math.round((Date.now() + clockSkew - t) / 60000));
-  return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
+  return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : m < 60 * 24 * 60 ? `${Math.round(m / 1440)} d ago` : `${Math.round(m / 10080)} wk ago`;
 };
-const fresh = j => Date.now() + clockSkew - (j.postedAt || j.firstSeen) < 3600000;
+const fresh = j => j.postedAt != null && !j.postedApprox && Date.now() + clockSkew - j.postedAt < 3600000;
+const when = j => j.postedAt ?? 0;
+const heatChip = j => `<span class="heat h-${j.heat}" title="${j.heat === 'unknown' ? 'Loadshift shows no post date. KAMRADS works it out from the load number once it has watched new loads appear for a few hours.' : j.postedApprox ? 'Post date worked out from the load number (approximate)' : ''}">${TIER_L[j.heat] || ''}</span>`;
 const NEAR_KM = 60;
 
 function visible() {
@@ -277,11 +361,18 @@ function visible() {
     if (view === 'routes' && !j.fits.length) return false;
     if (view === 'near' && !(j.fromBase != null && j.fromBase <= NEAR_KM)) return false;
     if (view === 'new' && !fresh(j)) return false;
+    if (view === 'run' && !j.plan) return false;
+    if (view === 'contacted' && !j.contact) return false;
+    if (view === 'dead' ? !j.dead : j.dead) return false;
     return true;
   });
 }
 const SORTS = {
-  new: (a, b) => (b.postedAt || b.firstSeen) - (a.postedAt || a.firstSeen),
+  new: (a, b) => when(b) - when(a) || b.firstSeen - a.firstSeen,
+  old: (a, b) => (a.postedAt ?? Infinity) - (b.postedAt ?? Infinity),
+  // the call list: hottest first, then the smallest detour
+  run: (a, b) => TIER_I[a.heat] - TIER_I[b.heat] || (a.plan?.extra ?? a.plan?.km ?? 0) - (b.plan?.extra ?? b.plan?.km ?? 0),
+  contacted: (a, b) => (b.contact?.at || 0) - (a.contact?.at || 0),
   price: (a, b) => (b.price ?? -1) - (a.price ?? -1) || SORTS.new(a, b),
   perkm: (a, b) => (b.perKm ?? -1) - (a.perKm ?? -1) || SORTS.new(a, b),
   near: (a, b) => (a.fromBase ?? Infinity) - (b.fromBase ?? Infinity) || SORTS.new(a, b),
@@ -297,38 +388,50 @@ function fitCell(j) {
   return j.fromBase != null ? `<div class="num">${j.fromBase.toLocaleString('en-AU')} km</div><div class="sub">pickup from ${esc(base)}</div>` : '<span class="sub">place unknown</span>';
 }
 
+const LIMIT = 600;
+const contactTag = j => {
+  const c = j.contact; if (!c) return '';
+  const what = c.outcome || (c.method === 'text' ? 'texted' : c.method === 'call' ? 'called' : 'messaged');
+  return `<span class="tag ${OUT_CLS[c.outcome] || 'a'}" title="${c.n} contact${c.n === 1 ? '' : 's'} logged">${c.method === 'call' ? '📞' : '💬'} ${esc(c.by)} · ${esc(ago(c.at))} · ${esc(what)}${c.quote ? ` $${Math.round(c.quote)}` : ''}</span>`;
+};
+
 function render() {
   renderSide();
-  const rows = visible().sort(plan && !planErr && sortBy === 'new' && view !== 'new' ? (a, b) => (b.plan ? 1 : 0) - (a.plan ? 1 : 0) || SORTS.new(a, b) : SORTS[sortBy] || SORTS.new);
+  const sorter = view === 'run' && (sortBy === 'new' || sortBy === 'fit') ? SORTS.run : view === 'contacted' && sortBy === 'new' ? SORTS.contacted
+    : plan && !planErr && sortBy === 'new' && view !== 'new' ? (a, b) => (b.plan ? 1 : 0) - (a.plan ? 1 : 0) || SORTS.new(a, b) : SORTS[sortBy] || SORTS.new;
+  const rows = visible().sort(sorter);
   renderDesk();
   const rf = alerts.find(a => a.id === routeFilter);
   $('#title').textContent = rf ? rf.name : (VIEWS.find(v => v[0] === view)?.[1] || 'All open jobs') + (cat ? `: ${CAT_NAMES[cat] || cat}` : '');
-  document.querySelectorAll('#age button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.h) === hours)));
+  $('#heat').innerHTML = `<button data-heat="" aria-pressed="${!heatSel.length}">All</button>` + TIERS.map(([k, l, w]) => `<button data-heat="${k}" aria-pressed="${heatSel.includes(k)}" title="${l}: posted ${k === 'cold' ? 'more than 2 weeks ago' : `in the last ${w}`}">${l}<span class="n num">${(heatN[k] || 0).toLocaleString('en-AU')}</span></button>`).join('')
+    + (heatN.unknown ? `<button data-heat="unknown" aria-pressed="${heatSel.includes('unknown')}" title="Loadshift loads still being dated">?<span class="n num">${heatN.unknown}</span></button>` : '');
   const fitting = rows.filter(j => j.plan).length;
   $('#count').textContent = `${rows.length.toLocaleString('en-AU')} job${rows.length === 1 ? '' : 's'}${plan && !planErr ? ` · ${fitting} fit your run` : ''}`;
   $('#pHint').className = 'hint' + (planErr ? ' err' : '');
   $('#pHint').textContent = planErr || (plan ? `${fitting} job${fitting === 1 ? '' : 's'} fit ${plan.b ? `${plan.a} → ${plan.b}${plan.both !== false ? ' and back' : ''} within ${plan.d} km of detour` : `within ${plan.d} km of ${plan.a}`}. They're marked in blue and listed first.` : 'Plan a run: jobs that fit along the way show first. Leave "to" blank to see everything within that many km of one place.');
   if (!rows.length) {
-    $('#list').innerHTML = `<div class="empty">${!jobs.length ? '<b>Reading the job boards…</b><br>The first scan takes a few minutes. This page refreshes on its own.' : view === 'routes' && !alerts.length ? 'You have no saved routes yet. <a href="#" id="emptyAdd">Add one</a>, e.g. Canberra ⇄ Sydney.' : 'No jobs match.'}</div>`;
+    $('#list').innerHTML = `<div class="empty">${view === 'run' && !plan ? '<b>Plan a run above first.</b><br>Type where the truck is going (e.g. Canberra → Sydney): every job still listed along the way shows here, hottest first, ready to ring.' : view === 'contacted' ? 'Nobody contacted yet. Press <b>Contact</b> on a job to text or call the shipper and log how it went.' : !jobs.length && !heatSel.length ? '<b>Reading the job boards…</b><br>The first scan takes a few minutes. This page refreshes on its own.' : view === 'routes' && !alerts.length ? 'You have no saved routes yet. <a href="#" id="emptyAdd">Add one</a>, e.g. Canberra ⇄ Sydney.' : 'No jobs match.'}</div>`;
     return;
   }
   const th = (label, key, cls = '') => `<th class="${cls} ${key && sortBy === key ? 'sorted' : ''}" ${key ? `data-sort="${key}"` : ''}>${label}</th>`;
-  $('#list').innerHTML = `<table class="grid"><thead><tr>${th('Posted', 'new')}${th('Job', '')}${th('Route', '')}${th('Job km', '', 'r col-km')}${th('Pays', 'price', 'r')}${th(plan ? 'Fit for your run' : 'From your base', plan ? 'fit' : 'near')}<th></th></tr></thead><tbody>${rows.slice(0, 500).map(j => `
-    <tr class="${j.plan ? 'fit' : fresh(j) ? 'fresh' : ''}">
-      <td class="c-posted"><div class="posted ${fresh(j) ? 'new' : ''}"><div class="t">${esc(ago(j.postedAt || j.firstSeen))}</div></div></td>
+  $('#list').innerHTML = `<table class="grid"><thead><tr>${th('Posted', 'new')}${th('Job', '')}${th('Route', '')}${th('Job km', '', 'r col-km')}${th('Pays', 'price', 'r')}${th(plan ? 'Fit for your run' : 'From your base', plan ? 'fit' : 'near')}<th></th></tr></thead><tbody>${rows.slice(0, LIMIT).map(j => `
+    <tr class="${j.dead ? 'dead' : j.plan ? 'fit' : fresh(j) ? 'fresh' : ''}">
+      <td class="c-posted"><div class="posted ${fresh(j) ? 'new' : ''}">${heatChip(j)}<div class="t" style="margin-top:3px">${j.postedAt ? (j.postedApprox ? '~' : '') + esc(ago(j.postedAt)) : '<span class="sub">first seen ' + esc(ago(j.firstSeen)) + '</span>'}</div></div></td>
       <td class="c-job"><a class="job-t" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer" title="${esc(j.title)}">${esc(j.title || 'Job')}</a>
-        <div class="job-m"><span class="site">${esc(SITE_NAMES[j.site] || j.site)}</span>${j.category ? `<span>${esc(CAT_NAMES[j.category] || j.category)}</span>` : ''}${j.site === 'loadshift' ? `<span>#${esc(j.key.split(':')[1])}</span>` : ''}${j.offers ? `<span>${j.offers} ${j.site === 'truckit' ? 'quote' : 'offer'}${j.offers === 1 ? '' : 's'}</span>` : ''}${j.fits.map(f => `<span class="tag i">${esc(f.name)}${f.how === 'back' ? ' (return)' : ''}</span>`).join('')}</div></td>
-      <td class="c-route"><div class="route"><span class="p">${esc(j.from || '—')}</span>${j.to ? `<span class="x">→</span><span class="p">${esc(j.to)}</span>` : ''}</div>${j.due ? `<div class="sub">${esc(j.due)}</div>` : ''}${!j.located && j.from ? '<div class="sub">finding this place…</div>' : ''}</td>
+        <div class="job-m"><span class="site">${esc(SITE_NAMES[j.site] || j.site)}</span>${j.category ? `<span>${esc(CAT_NAMES[j.category] || j.category)}</span>` : ''}${j.site === 'loadshift' ? `<span>#${esc(j.key.split(':')[1])}</span>` : ''}${j.offers ? `<span>${j.offers} ${j.site === 'truckit' ? 'quote' : 'offer'}${j.offers === 1 ? '' : 's'}</span>` : ''}${j.fits.map(f => `<span class="tag i">${esc(f.name)}${f.how === 'back' ? ' (return)' : ''}</span>`).join('')}${contactTag(j)}</div></td>
+      <td class="c-route"><div class="route"><span class="p">${esc(j.from || '—')}</span>${j.to ? `<span class="x">→</span><span class="p">${esc(j.to)}</span>` : ''}</div>${j.due || j.dates ? `<div class="sub">${j.dates === 'passed' ? '<span class="tag d" title="The dates on this job have gone by. Worth a call: it may still need moving.">dates passed</span> ' : j.dates === 'flexible' ? '<span class="tag i">flexible</span> ' : ''}${esc(j.due && !(j.dates === 'flexible' && j.due === 'flexible') ? j.due : '')}</div>` : ''}${!j.located && j.from ? '<div class="sub">finding this place…</div>' : ''}</td>
       <td class="col-km r num">${j.km != null ? j.km.toLocaleString('en-AU') : ''}</td>
       <td class="c-price r"><div class="money num">${j.price != null ? money(j.price) : QUOTE_SITES.includes(j.site) ? 'Quote' : '—'}</div><div class="sub">${j.price == null ? (j.site === 'truckit' ? 'no quotes yet' : j.site === 'loadshift' ? 'quote to win' : '') : [j.priceKind && j.priceKind !== 'budget' ? esc(j.priceKind) : '', j.perKm != null && j.km >= 5 ? `$${j.perKm.toFixed(2)}/km` : ''].filter(Boolean).join(' · ') || 'budget'}</div></td>
       <td class="c-fit">${fitCell(j)}</td>
-      <td class="c-open r"><a class="btn sm" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer" title="${isBoard(j.url) ? `${SITE_NAMES[j.site]} board: log in there to see the job and quote` : `Open on ${SITE_NAMES[j.site]}`}">${isBoard(j.url) ? 'Board' : 'Open'}</a></td>
-    </tr>`).join('')}</tbody></table>`;
+      <td class="c-open r"><span class="acts"><button class="btn sm" data-contact="${esc(j.key)}">Contact</button><a class="btn sm" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer" title="${isBoard(j.url) ? `${SITE_NAMES[j.site]} board: log in there to see the job and quote` : `Open on ${SITE_NAMES[j.site]}`}">${isBoard(j.url) ? 'Board' : 'Open'}</a></span></td>
+    </tr>`).join('')}</tbody></table>${rows.length > LIMIT ? `<div class="empty" style="padding:16px">Showing the first ${LIMIT} of ${rows.length.toLocaleString('en-AU')}. Pick a heat, a work type or search to narrow it down.</div>` : ''}`;
 }
 
 function renderSide() {
-  const counts = { all: jobs.length, routes: jobs.filter(j => j.fits.length).length, near: jobs.filter(j => j.fromBase != null && j.fromBase <= NEAR_KM).length, new: jobs.filter(fresh).length };
-  $('#views').innerHTML = VIEWS.map(([k, l]) => `<button class="nav" data-view="${k}" aria-pressed="${view === k && routeFilter == null}"><span class="t">${k === 'near' && base ? `Near ${esc(base.split(' ')[0])}` : l}</span><span class="c num">${counts[k] || ''}</span></button>`).join('');
+  const live = jobs.filter(j => !j.dead);
+  const counts = { all: live.length, run: live.filter(j => j.plan).length, routes: live.filter(j => j.fits.length).length, near: live.filter(j => j.fromBase != null && j.fromBase <= NEAR_KM).length,
+    new: live.filter(fresh).length, contacted: live.filter(j => j.contact).length, dead: view === 'dead' ? jobs.filter(j => j.dead).length : deadN };
+  $('#views').innerHTML = VIEWS.filter(([k]) => k !== 'dead' || counts.dead || view === 'dead').map(([k, l]) => `<button class="nav" data-view="${k}" aria-pressed="${view === k && routeFilter == null}"><span class="t">${k === 'near' && base ? `Near ${esc(base.split(' ')[0])}` : l}</span><span class="c num">${counts[k] || ''}</span></button>`).join('');
   $('#routes').innerHTML = alerts.length ? alerts.map(a => `<button class="nav" data-route="${a.id}" aria-pressed="${routeFilter === a.id}"><span class="t">${esc(a.name)}</span><span class="c num">${jobs.filter(j => j.fits.some(f => f.id === a.id)).length || ''}</span></button>`).join('')
     : '<div class="site-row dim" style="font-size:12.5px">None yet. Add your regular runs.</div>';
   const cc = {}; for (const j of jobs) if (j.category) cc[j.category] = (cc[j.category] || 0) + 1;
@@ -341,7 +444,8 @@ function renderSide() {
     const age = x.last_ok ? (Date.now() - x.last_ok) / 60000 : Infinity;
     const err = x.last_error_at && (!x.last_ok || x.last_error_at > x.last_ok);
     const cls = !s.on ? '' : err ? 'bad' : age < 30 ? 'ok' : 'warn';
-    const tip = !s.on ? 'Turned off' : err ? x.last_error : x.last_ok ? `Last scan ${Math.round(age)} min ago` : 'Waiting for its first scan';
+    const sw = x.last_sweep ? ` · full read ${ago(x.last_sweep)}: ${Number(x.last_sweep_n || 0).toLocaleString('en-AU')} jobs${x.last_sweep_complete ? '' : ' (incomplete)'}` : '';
+    const tip = (!s.on ? 'Turned off' : err ? x.last_error : x.last_ok ? `Last scan ${Math.round(age)} min ago` : 'Waiting for its first scan') + sw;
     return `<div class="site-row" title="${esc(tip)}"><span class="dot ${cls}"></span>${esc(s.label)}<span class="c num">${sc[s.site] || ''}</span></div>`;
   }).join('');
 }
@@ -350,18 +454,23 @@ function renderDesk() {
   const vals = jobs.map(j => j.perKm).filter(v => v != null && v > 0).sort((a, b) => a - b);
   const med = vals.length ? vals[vals.length >> 1] : null;
   const k = (v, l, cls = '') => `<div class="kpi"><div class="v num ${cls}">${v}</div><div class="l">${l}</div></div>`;
-  $('#desk').innerHTML = k(jobs.length.toLocaleString('en-AU'), 'Open jobs') + k(jobs.filter(fresh).length, 'Posted in the last hour', 'gain')
-    + k(jobs.filter(j => j.fits.length).length, 'On your saved routes', 'warn') + k(jobs.filter(j => j.fromBase != null && j.fromBase <= NEAR_KM).length, `Pickup within ${NEAR_KM} km of ${esc(base || 'base')}`)
-    + k(med != null ? `$${med.toFixed(2)}` : '—', 'Typical $ per km');
+  const total = Object.values(heatN).reduce((a, b) => a + b, 0);
+  const old = (heatN.warm || 0) + (heatN.luke || 0) + (heatN.cold || 0);
+  const week = Date.now() + clockSkew - 7 * 864e5;
+  $('#desk').innerHTML = k(total.toLocaleString('en-AU'), 'Open jobs, all boards') + k((heatN.ultra || 0).toLocaleString('en-AU'), 'Ultra Hot: posted in 24 h', 'gain')
+    + k(old.toLocaleString('en-AU'), 'Older, still listed: worth a call', 'warn') + k(jobs.filter(j => j.fits.length && !j.dead).length, 'On your saved routes')
+    + k(jobs.filter(j => j.contact && j.contact.at > week).length, 'Contacted this week');
 }
 
 async function load() {
   try {
-    const p = new URLSearchParams({ hours });
+    const p = new URLSearchParams();
+    if (heatSel.length) p.set('heat', heatSel.join(','));
+    if (view === 'dead') p.set('dead', '1');
     if (plan) { p.set('a', plan.a); if (plan.b) p.set('b', plan.b); p.set('d', plan.d); if (plan.b && plan.both !== false) p.set('both', '1'); }
     const [r, s, a] = await Promise.all([fetch('/api/freight/jobs?' + p), fetch('/api/freight/status'), fetch('/api/freight/alerts')]);
     const data = await r.json(); status = await s.json(); alerts = await a.json();
-    jobs = data.jobs; base = data.base || ''; planErr = data.planErr; clockSkew = data.now - Date.now();
+    jobs = data.jobs; base = data.base || ''; planErr = data.planErr; clockSkew = data.now - Date.now(); heatN = data.heat || {}; deadN = data.dead || 0;
     $('#alertsN').hidden = !alerts.length; $('#alertsN').textContent = alerts.length;
     $('#stored').textContent = `${Number(status.stats?.jobs || 0).toLocaleString('en-AU')} jobs seen so far`;
     $('#updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
@@ -371,10 +480,12 @@ async function load() {
 
 document.addEventListener('click', async e => {
   const t = e.target;
-  const v = t.closest('[data-view]'); if (v) { view = v.dataset.view; routeFilter = null; save('view', view); $('#side').classList.remove('open'); return render(); }
+  const v = t.closest('[data-view]'); if (v) { const was = view; view = v.dataset.view; routeFilter = null; save('view', view); $('#side').classList.remove('open'); return was === 'dead' || view === 'dead' ? load() : render(); }
+  const hb = t.closest('[data-heat]');
+  if (hb) { const k = hb.dataset.heat; heatSel = !k ? [] : heatSel.includes(k) ? heatSel.filter(x => x !== k) : [...heatSel, k]; save('heat', heatSel); return load(); }
+  const ct = t.closest('[data-contact]'); if (ct) return openContact(ct.dataset.contact);
   const r = t.closest('[data-route]'); if (r) { routeFilter = Number(r.dataset.route); $('#side').classList.remove('open'); return render(); }
   const c = t.closest('[data-cat]'); if (c) { cat = c.dataset.cat; save('cat', cat); return render(); }
-  const h = t.closest('#age button'); if (h) { hours = Number(h.dataset.h); save('hours', hours); return load(); }
   const th = t.closest('th[data-sort]'); if (th) { sortBy = th.dataset.sort; $('#sort').value = sortBy; save('sort', sortBy); return render(); }
   if (t.id === 'emptyAdd' || t.id === 'addRoute') { e.preventDefault(); openAlerts(); }
   const del = t.closest('[data-del]');
@@ -392,12 +503,14 @@ $('#planner').addEventListener('submit', e => {
   plan = a ? { a, b: $('#pB').value.trim(), d: Number($('#pD').value) || 30, both: $('#pBoth').checked } : null;
   save('plan', plan);
   if (plan && sortBy === 'new') { sortBy = 'fit'; $('#sort').value = 'fit'; }
+  if (plan && plan.b && view === 'all') { view = 'run'; save('view', view); }
   load();
 });
 $('#saveRoute').addEventListener('click', () => {
   openAlerts();
   $('#aA').value = $('#pA').value; $('#aB').value = $('#pB').value; $('#aR').value = $('#pD').value; $('#aBoth').checked = $('#pBoth').checked;
 });
+$('#sweepNow').addEventListener('click', async e => { e.preventDefault(); await fetch('/api/freight/sweep', { method: 'POST' }); $('#updated').textContent = 'Reading every job on Truckit and Loadshift… about 15 minutes'; });
 $('#scanNow').addEventListener('click', async e => { e.preventDefault(); await fetch('/api/freight/scan', { method: 'POST' }); $('#updated').textContent = 'Scanning… results in a few minutes'; });
 
 async function loadAlerts() {
@@ -423,9 +536,107 @@ $('#aForm').addEventListener('submit', async e => {
   await loadAlerts(); load();
 });
 
+
+// ---- Contact a shipper: their details, a message written for this job and your run, and a shared log ----
+let cJob = null, cData = null, msgCfg = null, lastMethod = null;
+const town = t => String(t || '').replace(/\s+(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b.*$/i, '').trim() || t || '';
+const shortItem = t => { let x = String(t || 'freight').split(/\s+-\s+|\(/)[0].trim(); if (x.length > 48) x = x.slice(0, 46).replace(/\s+\S*$/, '') + '…'; return x; };
+const BOOKING = { loadshift: ' Happy to book it through Loadshift.', truckit: ' Happy to quote it through Truckit.', airtasker: '' };
+const HINTS = {
+  loadshift: '<b>Loadshift Premium</b> shows the shipper\'s number on the load: open it, copy the number here, then text or call. Book the job through Loadshift.',
+  truckit: '<b>Truckit</b>: log in on the board to see the customer and quote. Copy the message to send it there.',
+  airtasker: '<b>Airtasker</b> keeps contact on Airtasker: copy the message and send it as a question or offer on the task.',
+};
+function fillMsg() {
+  if (!cJob || !msgCfg) return '';
+  const first = String($('#cName').value || '').trim().split(/\s+/)[0];
+  const vals = { name: first ? ' ' + first : '', me: $('#cMe').value.trim() || msgCfg.me, item: shortItem(cJob.title), from: town(cJob.from) || 'pickup', to: town(cJob.to) || 'drop-off',
+    site: SITE_NAMES[cJob.site] || cJob.site, day: $('#cDay').value.trim() || 'this week', booking: BOOKING[cJob.site] ?? '' };
+  return msgCfg.template.replace(/\{(\w+)\}/g, (m, k) => (k in vals ? vals[k] : m));
+}
+function syncContactBtns() {
+  const phone = String($('#cPhone').value || '').replace(/[^\d+]/g, '');
+  const ok = phone.length >= 8;
+  $('#cText').href = ok ? `sms:${phone}?&body=${encodeURIComponent($('#cMsg').value)}` : '#';
+  $('#cCall').href = ok ? `tel:${phone}` : '#';
+  $('#cText').setAttribute('aria-disabled', String(!ok)); $('#cCall').setAttribute('aria-disabled', String(!ok));
+  $('#cText').title = ok ? 'Opens Messages with this text ready: you press send' : 'Add their phone number first';
+}
+function renderContact() {
+  const d = cData;
+  $('#cOut').innerHTML = '<option value="">Choose…</option>' + d.outcomes.map(o => `<option>${esc(o)}</option>`).join('');
+  $('#cHist').innerHTML = d.log.length ? d.log.map(c => `<div class="h"><span class="dim num">${esc(new Date(c.at).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}</span>
+    <span><b>${esc(c.by)}</b> ${c.method ? esc(c.method === 'call' ? 'called' : c.method === 'text' ? 'texted' : 'messaged') : ''}${c.outcome ? ` · <span class="tag ${OUT_CLS[c.outcome] || 'a'}">${esc(c.outcome)}</span>` : ''}${c.quote ? ` · $${Math.round(c.quote).toLocaleString('en-AU')}` : ''}${c.note ? ` · ${esc(c.note)}` : ''}</span>
+    <button type="button" data-cdel="${c.id}" title="Remove">✕</button></div>`).join('') : '<div class="dim" style="font-size:12.5px">Nobody has contacted this shipper yet.</div>';
+  $('#cDead').textContent = d.dead ? 'Put back on the board' : 'Done / not needed';
+}
+async function openContact(key) {
+  cJob = jobs.find(j => j.key === key); if (!cJob) return;
+  lastMethod = null;
+  const [d, m] = await Promise.all([fetch(`/api/freight/jobs/${encodeURIComponent(key)}/contact`).then(r => r.json()), msgCfg ? msgCfg : fetch('/api/freight/message').then(r => r.json())]);
+  cData = d; msgCfg = m;
+  $('#cTitle').textContent = cJob.title || 'Job';
+  $('#cSub').innerHTML = `${heatChip(cJob)} ${esc(cJob.from || '?')} → ${esc(cJob.to || '?')} · ${esc(SITE_NAMES[cJob.site])}${cJob.site === 'loadshift' ? ` #${esc(key.split(':')[1])}` : ''}${cJob.due ? ` · ${esc(cJob.due)}` : ''}${cJob.dates === 'passed' ? ' · <span class="tag d">dates passed</span>' : ''}`;
+  $('#cName').value = d.name || ''; $('#cPhone').value = d.phone || '';
+  $('#cDay').value = m.day || ''; $('#cMe').value = m.me || '';
+  $('#cHint').innerHTML = HINTS[cJob.site] || '';
+  $('#cOpen').href = cJob.url; $('#cOpen').textContent = `Open on ${SITE_NAMES[cJob.site]}`;
+  $('#tplBox').classList.remove('on');
+  $('#cMsg').value = fillMsg(); syncContactBtns();
+  $('#cQuote').value = ''; $('#cNote').value = '';
+  renderContact();
+  $('#contact').showModal();
+}
+const saveDetails = async () => {
+  if (!cJob) return;
+  const r = await fetch(`/api/freight/jobs/${encodeURIComponent(cJob.key)}/contact`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: $('#cName').value, phone: $('#cPhone').value }) });
+  const d = await r.json();
+  if (!r.ok) { $('#cHint').innerHTML = `<span class="warn">${esc(d.error)}</span>`; return; }
+  cData = { ...cData, ...d }; Object.assign(cJob, { contactName: d.name, contactPhone: d.phone });
+};
+$('#cName').addEventListener('input', () => { $('#cMsg').value = fillMsg(); syncContactBtns(); });
+$('#cName').addEventListener('change', saveDetails);
+$('#cPhone').addEventListener('input', syncContactBtns);
+$('#cPhone').addEventListener('change', saveDetails);
+$('#cMsg').addEventListener('input', syncContactBtns);
+for (const id of ['#cDay', '#cMe']) {
+  $(id).addEventListener('input', () => { $('#cMsg').value = fillMsg(); syncContactBtns(); });
+  $(id).addEventListener('change', () => { msgCfg.day = $('#cDay').value; msgCfg.me = $('#cMe').value; fetch('/api/freight/message', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ day: $('#cDay').value, me: $('#cMe').value }) }); });
+}
+$('#cTplEdit').addEventListener('click', e => { e.preventDefault(); $('#cTpl').value = msgCfg.template; $('#tplBox').classList.toggle('on'); });
+$('#cTplSave').addEventListener('click', async () => { msgCfg.template = $('#cTpl').value; await fetch('/api/freight/message', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ template: msgCfg.template }) }); $('#tplBox').classList.remove('on'); $('#cMsg').value = fillMsg(); syncContactBtns(); });
+$('#cTplReset').addEventListener('click', () => { $('#cTpl').value = msgCfg.def; });
+$('#cText').addEventListener('click', () => { lastMethod = 'text'; });
+$('#cCall').addEventListener('click', () => { lastMethod = 'call'; });
+$('#cCopy').addEventListener('click', async () => {
+  lastMethod = lastMethod || 'message';
+  try { await navigator.clipboard.writeText($('#cMsg').value); $('#cCopy').textContent = 'Copied'; } catch { $('#cMsg').select(); document.execCommand('copy'); $('#cCopy').textContent = 'Copied'; }
+  setTimeout(() => { $('#cCopy').textContent = 'Copy message'; }, 1500);
+});
+$('#cLog').addEventListener('submit', async e => {
+  e.preventDefault();
+  const body = { outcome: $('#cOut').value, quote: $('#cQuote').value, note: $('#cNote').value, method: lastMethod || (cData.phone ? 'call' : 'message') };
+  if (!body.outcome && !body.note) { $('#cOut').focus(); return; }
+  const r = await fetch(`/api/freight/jobs/${encodeURIComponent(cJob.key)}/contact`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  cData = { ...cData, ...(await r.json()) };
+  $('#cOut').value = ''; $('#cQuote').value = ''; $('#cNote').value = '';
+  renderContact(); load();
+});
+$('#cHist').addEventListener('click', async e => {
+  const b = e.target.closest('[data-cdel]'); if (!b) return;
+  const r = await fetch(`/api/freight/jobs/${encodeURIComponent(cJob.key)}/contact/${b.dataset.cdel}`, { method: 'DELETE' });
+  cData = { ...cData, ...(await r.json()) }; renderContact(); load();
+});
+$('#cDead').addEventListener('click', async () => {
+  const r = await fetch(`/api/freight/jobs/${encodeURIComponent(cJob.key)}/contact`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ dead: !cData.dead }) });
+  cData = { ...cData, ...(await r.json()) }; renderContact(); $('#contact').close(); load();
+});
+$('#cClose').addEventListener('click', () => $('#contact').close());
+$('#contact').addEventListener('close', () => { if (cData && cJob) load(); });
+
 fetch('/api/me').then(r => r.json()).then(x => { $('#who').textContent = x.user; }).catch(() => {});
 load();
-setInterval(load, 30000);
+setInterval(() => { if (!$('#contact').open) load(); }, 60000);
 </script>
 </body>
 </html>

@@ -109,7 +109,16 @@ export const config = {
   // Freight board (/freight): Airtasker + Truckit job lists
   freight: {
     everyMin: num('FREIGHT_EVERY_MIN', 10),
-    keepHours: num('FREIGHT_KEEP_HOURS', 36),   // a job that drops off the lists this long is treated as taken
+    keepHours: num('FREIGHT_KEEP_HOURS', 36),   // a job that drops off the lists this long is treated as taken (Airtasker)
+    // Overnight full read of Truckit and Loadshift: old jobs still listed stay on the board (to ring
+    // when a truck is going that way); jobs missing from a full read have been taken.
+    sweep: {
+      enabled: bool('FREIGHT_SWEEP', true),
+      hour: num('FREIGHT_SWEEP_HOUR', 2),             // local time (DIGEST_TZ), runs once a day from this hour
+      maxPages: num('FREIGHT_SWEEP_MAX_PAGES', 400),
+      delayMs: num('FREIGHT_SWEEP_DELAY_MS', 2500),   // gentle: a page every few seconds
+      keepDays: num('FREIGHT_SWEEP_KEEP_DAYS', 3),    // still listed but not seen this long (sweeps failing): drop it
+    },
     airtasker: {
       enabled: bool('AIRTASKER_ENABLED', true),
       categories: list('AIRTASKER_CATEGORIES', ['delivery', 'removals', 'courier-services', 'man-with-a-van', 'ute-removals']),

@@ -58,74 +58,103 @@ export const airtasker = {
   },
 };
 
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 export const truckit = {
   site: 'truckit', label: 'Truckit',
   // The job board page loads its jobs from /api/frontend/search/jobs (public, no login needed).
-  async discover() {
+  // Regular scans read the newest few pages; the overnight sweep reads every page, slowly.
+  async read({ maxPages = config.freight.truckit.maxPages, delayMs = 0 } = {}) {
     const all = new Map();
     const add = body => { let n = 0; for (const rec of body?.data || []) { const j = truckitJob(rec); if (j && !all.has(j.ext_id)) { all.set(j.ext_id, j); n++; } } return n; };
     const board = config.freight.truckit.pages[0];
     const r = await withPage('truckit', board, null, { scrolls: 1, waitMs: 2500 });
     if (looksBlocked(r)) throw new Error(`blocked by Truckit (HTTP ${r.status})`);
     const feed = r.json.find(j => /\/api\/frontend\/search\/jobs/.test(j.url));
-    if (!feed) { log.warn('truckit', `job feed not seen on ${board} (${r.json.length} data responses) - the site may have changed`); return []; }
+    if (!feed) { log.warn('truckit', `job feed not seen on ${board} (${r.json.length} data responses) - the site may have changed`); return { jobs: [], complete: false, listed: null }; }
     add(feed.body);
-    // More pages, as long as each brings new jobs
-    const pages = Math.min(Number(feed.body.page_count) || 1, config.freight.truckit.maxPages);
-    for (let p = 2; p <= pages; p++) {
+    const pageCount = Number(feed.body.page_count) || 1;
+    const listed = Number(feed.body.record_count) || null;
+    const pages = Math.min(pageCount, maxPages);
+    let p = 2, ok = true;
+    for (; p <= pages; p++) {
+      if (delayMs) await sleep(delayMs);
       try {
         const u = new URL(feed.url); u.searchParams.delete('initial'); u.searchParams.set('page', String(p)); u.searchParams.set('_', String(Date.now()));
         const res = await browserFetch('truckit', u.toString());
-        if (res.status !== 200) break;
-        if (!add(JSON.parse(res.text))) break;
-      } catch (e) { log.warn('truckit', `page ${p}: ${e.message}`); break; }
+        if (res.status !== 200) { ok = false; break; }
+        const body = JSON.parse(res.text);
+        if (!(body?.data || []).length) break;     // ran out early: the list got shorter while we read it
+        add(body);
+      } catch (e) { log.warn('truckit', `page ${p}: ${e.message}`); ok = false; break; }
     }
-    log.info('truckit', `job board: ${all.size} jobs (${feed.body.record_count ?? '?'} listed, ${pages} page${pages === 1 ? '' : 's'} read)`);
-    return [...all.values()];
+    const readPages = Math.min(p - 1, pages);
+    // a full read we can trust to say which jobs are gone
+    const complete = ok && pages >= pageCount && (!listed || all.size >= listed * 0.9);
+    log.info('truckit', `job board: ${all.size} jobs (${listed ?? '?'} listed, ${readPages} page${readPages === 1 ? '' : 's'} read${complete ? ', complete' : ''})`);
+    return { jobs: [...all.values()], complete, listed };
   },
+  async discover() { return (await this.read()).jobs; },
+  sweep() { return this.read({ maxPages: config.freight.sweep.maxPages, delayMs: config.freight.sweep.delayMs }); },
 };
 
 export const loadshift = {
   site: 'loadshift', label: 'Loadshift',
   // Public load board: a table of the latest 100 loads (id, freight, qty, title, weight, pickup,
-  // dropoff, distance, ready date), each row linking to /projects/<type>/<slug>.
-  async discover() {
-    const all = new Map();
-    const { pages, maxPages } = config.freight.loadshift;
-    for (let p = 1; p <= maxPages; p++) {
-      const url = new URL(pages[0]); if (p > 1) url.searchParams.set('page', String(p));
-      const r = await withPage('loadshift', url.toString(), page => page.evaluate(() => {
-        const rows = [];
-        const seen = new Set();
-        for (const a of document.querySelectorAll('a[href*="/projects/"]')) {
-          let box = a;
-          for (let i = 0; i < 8 && box.parentElement; i++) {
-            box = box.parentElement;
-            const t = box.innerText || '';
-            if (/^\s*\d{7,9}\s*$/m.test(t) && /\d\s*km/i.test(t)) break;
-          }
-          const text = (box.innerText || '').trim();
-          const id = (/^\s*(\d{7,9})\s*$/m.exec(text) || [])[1];
-          if (!id || seen.has(id)) continue;
-          // the box must hold just this one load
-          if ((text.match(/^\s*\d{7,9}\s*$/gm) || []).length > 1) continue;
-          seen.add(id);
-          rows.push({ href: a.href.split('#')[0], text });
+  // dropoff, distance, ready date), each row linking to /projects/<type>/<slug>. Sorted latest first.
+  async page(p) {
+    const url = new URL(config.freight.loadshift.pages[0]); if (p > 1) url.searchParams.set('page', String(p));
+    const r = await withPage('loadshift', url.toString(), page => page.evaluate(() => {
+      const rows = [];
+      const seen = new Set();
+      for (const a of document.querySelectorAll('a[href*="/projects/"]')) {
+        let box = a;
+        for (let i = 0; i < 8 && box.parentElement; i++) {
+          box = box.parentElement;
+          const t = box.innerText || '';
+          if (/^\s*\d{7,9}\s*$/m.test(t) && /\d\s*km/i.test(t)) break;
         }
-        return rows;
-      }), { scrolls: 2, waitMs: 2500 });
-      if (looksBlocked(r)) throw new Error(`blocked by Loadshift (HTTP ${r.status})`);
-      let jobs = (r.result || []).map(x => loadshiftRow(x.text.split('\n'), x.href)).filter(Boolean);
-      if (!jobs.length) jobs = loadshiftRowsFromText(r.text);                 // rows not separable: read the page text
-      if (!jobs.length) jobs = loadshiftJobsFromText(r.text);                 // older labelled layout
+        const text = (box.innerText || '').trim();
+        const id = (/^\s*(\d{7,9})\s*$/m.exec(text) || [])[1];
+        if (!id || seen.has(id)) continue;
+        // the box must hold just this one load
+        if ((text.match(/^\s*\d{7,9}\s*$/gm) || []).length > 1) continue;
+        seen.add(id);
+        rows.push({ href: a.href.split('#')[0], text });
+      }
+      return rows;
+    }), { scrolls: 2, waitMs: 2500 });
+    if (looksBlocked(r)) throw new Error(`blocked by Loadshift (HTTP ${r.status})`);
+    let jobs = (r.result || []).map(x => loadshiftRow(x.text.split('\n'), x.href)).filter(Boolean);
+    if (!jobs.length) jobs = loadshiftRowsFromText(r.text);                 // rows not separable: read the page text
+    if (!jobs.length) jobs = loadshiftJobsFromText(r.text);                 // older labelled layout
+    // "Showing 1-100 of 1797"
+    const m = /showing\s+[\d,]+\s*[-–]\s*[\d,]+\s+of\s+([\d,]+)/i.exec(r.text || '') || /\bloads\s+([\d,]{3,})/i.exec(r.text || '');
+    return { url, jobs: jobs.map(j => ({ ...j, _page: p })), listed: m ? Number(m[1].replace(/,/g, '')) : null, rows: (r.result || []).length };
+  },
+  async read({ maxPages = config.freight.loadshift.maxPages, delayMs = 0 } = {}) {
+    const all = new Map();
+    let listed = null, ended = false, ok = true, perPage = 0, p = 1;
+    for (; p <= maxPages; p++) {
+      if (p > 1 && delayMs) await sleep(delayMs);
+      let got;
+      try { got = await this.page(p); } catch (e) { if (/blocked/.test(e.message)) throw e; log.warn('loadshift', `page ${p}: ${e.message}`); ok = false; break; }
+      listed = got.listed ?? listed;
+      perPage = Math.max(perPage, got.jobs.length);
       let fresh = 0;
-      for (const j of jobs) if (!all.has(j.ext_id)) { all.set(j.ext_id, j); fresh++; }
-      log.info('loadshift', `${url.pathname}${url.search}: ${fresh} new loads (${(r.result || []).length} linked rows)`);
-      if (!fresh) break;
+      for (const j of got.jobs) if (!all.has(j.ext_id)) { all.set(j.ext_id, j); fresh++; }
+      log.info('loadshift', `${got.url.pathname}${got.url.search}: ${fresh} new loads (${got.rows} linked rows)`);
+      if (!fresh) break;                                         // paging repeats itself or ran dry
+      if (got.jobs.length < perPage * 0.9) { ended = true; break; } // a short page: the last one
+      if (listed && all.size >= listed) { ended = true; break; }
     }
     if (!all.size) log.warn('loadshift', 'no loads recognised - run: npm run probe-freight -- https://www.loadshift.com.au/search/loads');
-    return [...all.values()];
+    // only a read that reached the end (and holds about as many as the board says) can say what's gone
+    const complete = ok && ended && (!listed || all.size >= listed * 0.9);
+    return { jobs: [...all.values()], complete, listed };
   },
+  async discover() { return (await this.read()).jobs; },
+  sweep() { return this.read({ maxPages: config.freight.sweep.maxPages, delayMs: config.freight.sweep.delayMs }); },
 };
 
 export const freightSites = { airtasker, truckit, loadshift };

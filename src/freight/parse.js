@@ -56,12 +56,26 @@ export function jobFromCard(card, { site, idFromUrl, now = Date.now() }) {
   // Truckit's "Winning Quote" = already awarded (kept as price history, not shown as open work)
   const status = /\b(assigned|completed|closed|booked|awarded)\b/i.test(lines.slice(-4).join(' ')) || /winning\s+quote/i.test(text) ? 'taken' : 'open';
   const priceKind = /winning\s+quote/i.test(text) ? 'won quote' : /budget|\$/i.test(text) ? 'budget' : null;
+  // "On Sat, 25 Oct" / "Before Fri, 31 Oct" / "Flexible"
+  const due = /\b(on|before)\s+(?:[A-Za-z]{3},?\s+)?(\d{1,2})\s+([A-Za-z]{3})/i.exec(text);
+  const dueAt = due ? dayAhead(+due[2], due[3], now) : null;
   return {
     site, ext_id, url: card.href.split('#')[0], title: title ? title.slice(0, 160) : null,
     price: price ? parseMoney(price[1]) : null, price_kind: priceKind,
     from_text: from, to_text: to, km: km ? parseMoney(km[1]) : null,
     posted_at: posted, offers: offers ? +offers[1] : null, status, category: card.category || null,
+    due_text: due ? `${due[1].toLowerCase()} ${+due[2]} ${due[3]}` : /\bflexible\b/i.test(text) ? 'flexible' : null,
+    date_by: dueAt, flexible: !due && /\bflexible\b/i.test(text),
   };
+}
+
+/** "25 Oct" -> that day this year (or last year, if that's closer to now) */
+function dayAhead(d, mon, now) {
+  const mo = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 }[mon.toLowerCase()];
+  if (mo == null) return null;
+  const y = new Date(now).getUTCFullYear();
+  const c = [y - 1, y, y + 1].map(yy => Date.UTC(yy, mo, d) - 10 * 3600000);
+  return c.reduce((a, b) => (Math.abs(b - now) < Math.abs(a - now) ? b : a));
 }
 
 // ---- jobs inside captured JSON (Truckit's board loads by script) ----
@@ -124,6 +138,8 @@ const span = (a, b) => {
   return mx === my ? `${dx}–${dy} ${my}` : `${x}–${y}`; // "1–5 Dec", "30 Oct–2 Nov"
 };
 
+const sydTime = s => { if (!s) return null; const t = Date.parse(String(s).replace(' ', 'T') + '+10:00'); return Number.isFinite(t) ? t : null; };
+
 export function truckitJob(r) {
   if (!r || !r.suburb1) return null;
   const created = Number(r.created_at) ? Number(r.created_at) * 1000 : null;
@@ -141,6 +157,10 @@ export function truckitJob(r) {
     price_kind: offer != null ? (r.book_now_value ? 'book now' : 'customer max') : min != null ? (max && max !== min ? `quotes $${Math.round(min)}–$${Math.round(max)}` : 'lowest quote') : null,
     offers: quotes || (min != null ? 1 : 0),
     due_text: [collect ? `collect ${collect}` : null, deliver ? `deliver ${deliver}` : null].filter(Boolean).join(' · ') || null,
+    date_from: sydTime(r.collection_date_earliest),
+    // the last day it can be done: delivery window, else the collection window
+    date_by: sydTime(r.delivery_date_latest) ?? sydTime(r.collection_date_latest),
+    flexible: /flexib/i.test(`${r.collection_date_view || ''} ${stripHtml(r.date_flexibility)}`) || (!r.collection_date_earliest && !r.delivery_date_latest && r.collection_date_view !== 'Ready Now'),
     status: !r.status || r.status === 'active' ? 'open' : 'taken',
   };
 }
@@ -151,6 +171,9 @@ export function truckitJob(r) {
 const LS_FIELD = /(Load ID|Freight|Title|Weight|Pick ?up|Drop ?off|Ready On|Distance|Truck type|Posted)\s*:?\s*/gi;
 const lsPlace = s => { const m = /([A-Za-z][A-Za-z' .-]+?),?\s+(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b\s*(\d{4})?/.exec(s || ''); return m ? tidy(`${titleCase(tidy(m[1].split(',').pop()))} ${m[2]} ${m[3] || ''}`) : null; };
 const lsDate = s => { const m = /(\d{1,2})-([A-Za-z]{3})-(\d{2})/.exec(s || ''); return m ? `${+m[1]} ${m[2]}` : null; };
+const MON = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+/** "27-Oct-26" -> start of that day, Sydney time */
+export const lsTime = s => { const m = /(\d{1,2})-([A-Za-z]{3})-(\d{2})/.exec(s || ''); const mo = m && MON[m[2].toLowerCase()]; return mo == null ? null : Date.UTC(2000 + +m[3], mo, +m[1]) - 10 * 3600000; };
 
 export function loadshiftJobsFromText(text, links = {}) {
   const out = [];
@@ -176,6 +199,7 @@ export function loadshiftJobsFromText(text, links = {}) {
       from_text: lsPlace(f.pickup), to_text: lsPlace(f.dropoff), km: parseMoney(f.distance),
       price: null, price_kind: null, offers: null, posted_at: parseAgo(f.posted || ''),
       due_text: [weight, ready ? `ready ${ready}` : null].filter(Boolean).join(' · ') || null, status: 'open',
+      date_from: lsTime(f.readyon), flexible: !f.readyon || /no date/i.test(f.readyon),
     });
   }
   return out;
@@ -212,6 +236,7 @@ export function loadshiftRow(lines, href = null) {
     km: k > 0 ? parseMoney(L[k]) : null, price: null, price_kind: null,
     offers: null, posted_at: null,
     due_text: [weight ? weight.replace(/\s+/g, ' ') : null, hasQty && +L[2] > 1 ? `qty ${L[2]}` : null, readyTxt].filter(Boolean).join(' · ') || null,
+    date_from: lsTime(ready), flexible: !ready || /no date/i.test(ready),
     status: 'open',
   };
 }
