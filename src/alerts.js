@@ -3,7 +3,7 @@ import { q } from './db.js';
 import { push } from './notify.js';
 import { isVehicle } from './extract.js';
 import { finalMinutes } from './users.js';
-import { historyEstimate } from './history.js';
+import { historyEstimate, typeEstimate } from './history.js';
 import { allIn } from './costs.js';
 import { sectorOf } from './categories.js';
 import { isLiveSale } from './live.js';
@@ -12,9 +12,9 @@ const FRESH_MS = 3 * 60000;
 const money = n => (n == null ? '?' : '$' + Math.round(n).toLocaleString('en-AU'));
 
 /** The estimate the alert rules use: yours, then the AI's low resale figure, then what similar lots sold for here. */
-export const estimateOf = lot => lot.manual_estimate ?? lot.est_low ?? historyEstimate(lot) ?? null;
-/** Where an estimate came from, for the dashboard. */
-export const estimateSource = lot => (lot.manual_estimate != null ? 'yours' : lot.est_low != null ? 'research' : historyEstimate(lot) != null ? 'history' : null);
+export const estimateOf = lot => lot.manual_estimate ?? lot.est_low ?? historyEstimate(lot) ?? typeEstimate(lot) ?? null;
+/** Where an estimate came from, for the dashboard. 'type' = rough, from sold vehicles of the same type. */
+export const estimateSource = lot => (lot.manual_estimate != null ? 'yours' : lot.est_low != null ? 'research' : historyEstimate(lot) != null ? 'history' : typeEstimate(lot) != null ? 'type' : null);
 
 /** Which alert (if any) this lot deserves right now. Pure function: easy to test. */
 export function classify(lot, now = Date.now()) {

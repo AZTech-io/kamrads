@@ -6,7 +6,7 @@ import { q } from './db.js';
 import { estimateOf, estimateSource } from './alerts.js';
 import { allIn, maxBidFor } from './costs.js';
 import { baseByName, bases } from './geo.js';
-import { soldLike } from './history.js';
+import { soldLike, typeLike } from './history.js';
 import { checkListing } from './inspect.js';
 import { buildDigest } from './digest.js';
 import { sectorOf, SECTORS } from './categories.js';
@@ -15,6 +15,7 @@ import { isLiveSale } from './live.js';
 import * as purchases from './purchases.js';
 import { freightRoutes } from './freight/routes.js';
 import { apiRoutes } from './freight/api.js';
+import { sendPage, savePref } from './pages.js';
 import { isVehicle } from './extract.js';
 import { push } from './notify.js';
 import { watchUrl } from './scheduler.js';
@@ -54,7 +55,7 @@ const shape = (l, alertKinds, view = null) => {
   const est = estimateOf(l);
   const price = l.bid ?? l.start_price;
   const cost = allIn(l, view?.base ?? null, price, { transport: !!view?.transport });
-  const hist = soldLike(l);
+  const hist = soldLike(l) || typeLike(l);
   return {
     key: l.key, site: l.site, url: l.url, title: l.title, photo: l.image ? `/photo/${encodeURIComponent(l.key)}` : null, category: l.category,
     sector: sectorOf(l),
@@ -68,7 +69,7 @@ const shape = (l, alertKinds, view = null) => {
     ratio: est && cost ? cost.landed / est : null,
     profit: est && cost ? Math.round(est - cost.total) : null,
     cost, distanceKm: cost?.km ?? null, distanceApprox: cost?.kmApprox ?? null,
-    history: hist ? { n: hist.n, median: hist.median, low: hist.low, high: hist.high, label: hist.label } : null,
+    history: hist ? { n: hist.n, median: hist.median, low: hist.low, high: hist.high, label: hist.label, rough: !!hist.rough } : null,
     check: l.check_verdict ? { verdict: l.check_verdict, ...(json(l.check_note) || {}), at: l.check_at } : null,
     vehicle: isVehicle(l), alerts: alertKinds.get(l.key) || [],
     marketAvg: l.est_avg ?? null, estMethod: l.est_method ?? null,
@@ -85,9 +86,19 @@ export function startServer() {
   app.get('/healthz', (_req, res) => res.send('ok'));
   apiRoutes(app);   // Katara Freight's key-based API: before the logins
   app.use(basicAuth);
+  // Pages carry the person's saved view settings; changes come back here
+  app.get(['/', '/index.html'], (req, res) => sendPage(res, 'index.html', req.user));
+  app.post('/api/prefs', (req, res) => {
+    const b = req.body || {};
+    try {
+      if (b.all && typeof b.all === 'object') for (const [k, v] of Object.entries(b.all).slice(0, 60)) savePref(req.user, k, v);
+      else savePref(req.user, b.key, b.value);
+      res.json({ ok: true });
+    } catch (e) { res.status(400).json({ error: e.message }); }
+  });
   freightRoutes(app);
   // ---- Bought: items we've won, every cost logged, what each one owes us ----
-  app.get('/bought', (_req, res) => res.sendFile(path.join(here, '..', 'public', 'bought.html')));
+  app.get('/bought', (req, res) => sendPage(res, 'bought.html', req.user));
   app.get('/api/purchases', (_req, res) => res.json(purchases.list()));
   const ok = fn => (req, res) => { try { res.json({ ok: true, ...(fn(req) || {}) }); } catch (e) { res.status(400).json({ error: e.message }); } };
   app.post('/api/purchases', ok(req => ({ id: req.body?.lotKey ? purchases.addFromLot(req.body.lotKey, req.user, req.body) : purchases.addManual(req.user, req.body || {}) })));
@@ -239,7 +250,7 @@ export function startServer() {
   app.get('/api/lots/:key/history', (req, res) => {
     const lot = q.lot.get(req.params.key);
     if (!lot) return res.status(404).json({ error: 'Lot not found' });
-    res.json(soldLike(lot) || { n: 0, examples: [] });
+    res.json(soldLike(lot) || typeLike(lot) || { n: 0, examples: [] });
   });
   app.post('/api/lots/:key/check', async (req, res) => {
     const lot = q.lot.get(req.params.key);

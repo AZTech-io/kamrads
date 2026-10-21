@@ -10,6 +10,7 @@ import { freightSites } from './sites.js';
 import { scanFreight, sweepFreight } from './loop.js';
 import { TIERS, tierOf, postedOf, dateFlag } from './heat.js';
 import zlib from 'node:zlib';
+import { sendPage } from '../pages.js';
 import { fromContact, addQuote, update as updateQuote, listQuotes, quoteOut, quotesForJob, OPEN_QUOTES, jobChanged } from './quotes.js';
 import { outboxInfo, queueAll, flushQuotes, katUrl } from './push.js';
 import { newApiKey, revokeApiKey, apiKeyInfo } from './api.js';
@@ -71,7 +72,7 @@ export function jobFromLink(link) {
 }
 
 export function freightRoutes(app) {
-  app.get('/freight', (_req, res) => res.sendFile(path.join(here, '..', '..', 'public', 'freight.html')));
+  app.get('/freight', (req, res) => sendPage(res, 'freight.html', req.user));
 
   app.get('/api/freight/jobs', async (req, res) => {
     const now = Date.now();

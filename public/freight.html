@@ -195,7 +195,7 @@ dialog.box p.lead { color: var(--muted); margin: 0 0 10px; }
   .desk { grid-template-columns: repeat(3, minmax(0, 1fr)); } .kpi:nth-child(n+4) { display: none; }
   .kpi { padding: 7px 12px; } .kpi .v { font-size: 16px; }
   .frame { grid-template-columns: 1fr; }
-  aside { position: fixed; top: 0; left: 0; bottom: 0; width: 272px; max-height: none; z-index: 40; transform: translateX(-100%); transition: transform .18s ease; }
+  aside { position: fixed; top: 0; left: 0; bottom: 0; width: 272px; height: 100vh; height: 100dvh; max-height: none; align-self: auto; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; z-index: 40; transform: translateX(-100%); transition: transform .18s ease; }
   aside.open { transform: none; box-shadow: 0 0 0 100vmax rgba(3,8,14,.55); }
   main { padding: 12px 10px 60px; }
   .planner { grid-template-columns: 1fr 1fr; } .planner .arrow { display: none; }
@@ -222,6 +222,7 @@ dialog.box p.lead { color: var(--muted); margin: 0 0 10px; }
 ::-webkit-scrollbar-corner { background: transparent; }
 aside { scrollbar-color: transparent transparent; }
 aside:hover { scrollbar-color: var(--rule-2) transparent; }
+@media (hover: none) { aside { scrollbar-color: var(--rule-2) transparent; } }
 aside::-webkit-scrollbar-thumb { background: transparent; }
 aside:hover::-webkit-scrollbar-thumb { background: var(--rule-2); background-clip: padding-box; }
 html { color-scheme: dark; }
@@ -351,8 +352,22 @@ html { color-scheme: dark; }
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = n => n == null ? '—' : '$' + Math.round(n).toLocaleString('en-AU');
-const pref = (k, d) => { try { return JSON.parse(localStorage.getItem('kf_' + k)) ?? d; } catch { return d; } };
-const save = (k, v) => { try { localStorage.setItem('kf_' + k, JSON.stringify(v)); } catch {} };
+// View settings: kept with your login (sent in with the page), and in this browser as a fallback.
+const SAVED = window.__PREFS || {};
+const pref = (k, d) => { if (('kf_' + k) in SAVED) return SAVED['kf_' + k] ?? d; try { return JSON.parse(localStorage.getItem('kf_' + k)) ?? d; } catch { return d; } };
+const prefTimers = {};
+const save = (k, v) => {
+  try { localStorage.setItem('kf_' + k, JSON.stringify(v)); } catch {}
+  SAVED['kf_' + k] = v;
+  clearTimeout(prefTimers[k]);
+  prefTimers[k] = setTimeout(() => fetch('/api/prefs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: 'kf_' + k, value: v ?? null }) }).catch(() => {}), 600);
+};
+// First time on this login: bring over what this browser already had
+if (window.__PREFS && !Object.keys(window.__PREFS).some(k => k.startsWith('kf_'))) {
+  const all = {};
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (/^kf_[A-Za-z]{1,24}$/.test(k)) all[k] = JSON.parse(localStorage.getItem(k)); } } catch {}
+  if (Object.keys(all).length) fetch('/api/prefs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ all }) }).catch(() => {});
+}
 const SITE_NAMES = { airtasker: 'Airtasker', truckit: 'Truckit', loadshift: 'Loadshift' };
 const QUOTE_SITES = ['truckit', 'loadshift']; // shippers ask for quotes: no price shown
 const isBoard = u => /search-for-jobs|search\/loads/.test(u || '');
