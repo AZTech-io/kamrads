@@ -133,7 +133,8 @@ table.grid { width: 100%; border-collapse: collapse; }
 .lot-m { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 3px 10px; margin-top: 2px; align-items: center; }
 .site { font-size: 11px; font-weight: 600; color: var(--muted); border: 1px solid var(--rule-2); border-radius: 4px; padding: 0 5px; }
 .tag { font-size: 11.5px; font-weight: 600; border-radius: 4px; padding: 0 6px; background: var(--raised); color: var(--muted); white-space: nowrap; }
-.tag.g { background: var(--gain-bg); color: var(--gain); } .tag.r { background: var(--loss-bg); color: var(--loss); } .tag.a { background: var(--warn-bg); color: var(--warn); }
+.tag.g { background: var(--gain-bg); color: var(--gain); }
+.tag.live { background: rgba(95,164,238,.16); color: var(--info); } .tag.r { background: var(--loss-bg); color: var(--loss); } .tag.a { background: var(--warn-bg); color: var(--warn); }
 .clock .t { font-weight: 600; white-space: nowrap; }
 .clock .d { color: var(--dim); font-size: 11.5px; white-space: nowrap; }
 .clock.soon .t { color: var(--warn); } .clock.now .t { color: var(--loss); }
@@ -303,6 +304,7 @@ dialog.box a { color: var(--info); }
       <label>Max km <input id="fKm" inputmode="numeric" placeholder="e.g. 150000"></label>
       <label>Max distance <input id="fDist" inputmode="numeric" placeholder="km from base"></label>
       <label>Write-off status <select id="fWovr"><option value="">Any</option><option value="clean">Clean only</option><option value="repairable">Repairable</option><option value="statutory">Statutory (parts)</option></select></label>
+      <label>Sale type <select id="fSale"><option value="">All</option><option value="online">Online (timed) only</option><option value="live">Live auctions only</option></select></label>
       <label>Reserve <select id="fRes"><option value="">Any</option><option value="none">No reserve</option><option value="met">Reserve met</option><option value="not met">Reserve not met</option></select></label>
       <label>Bids <select id="fBids"><option value="">Any</option><option value="none">No bids yet</option><option value="some">Has bids</option><option value="hot">5+ bids</option></select></label>
       <label>Ends <select id="fEnds"><option value="">Any time</option><option value="60">Within 1 hour</option><option value="today">Today</option><option value="tomorrow">Tomorrow</option></select></label>
@@ -405,7 +407,7 @@ function strength(l) {
 const isDeal = l => { const s = strength(l); return s != null && s <= SLEEPER; };
 const priceOf = l => (closedMode() ? l.finalBid : l.bid ?? l.startPrice);
 const SORTS = {
-  ending: (a, b) => (a.endAt ?? Infinity) - (b.endAt ?? Infinity),
+  ending: (a, b) => (a.liveSale ? 1 : 0) - (b.liveSale ? 1 : 0) || (a.endAt ?? Infinity) - (b.endAt ?? Infinity),
   price: (a, b) => (priceOf(a) ?? Infinity) - (priceOf(b) ?? Infinity) || SORTS.ending(a, b),
   profit: (a, b) => (b.profit ?? -Infinity) - (a.profit ?? -Infinity) || SORTS.ending(a, b),
   near: (a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity) || SORTS.ending(a, b),
@@ -429,7 +431,7 @@ function matcher(terms) {
 }
 
 const n0 = v => { const x = Number(String(v ?? '').replace(/[$,\s]/g, '')); return v === '' || v == null || !Number.isFinite(x) ? null : x; };
-const moreActive = () => ['min', 'max', 'year', 'km', 'dist', 'wovr', 'res', 'bids', 'ends'].filter(k => more[k] != null && more[k] !== '').length + ((more.states || []).length ? 1 : 0);
+const moreActive = () => ['min', 'max', 'year', 'km', 'dist', 'wovr', 'res', 'bids', 'ends', 'sale'].filter(k => more[k] != null && more[k] !== '').length + ((more.states || []).length ? 1 : 0);
 function passMore(l, now) {
   const p = closedMode() ? l.finalBid : l.bid ?? l.startPrice;
   if (n0(more.min) != null && (p == null || p < n0(more.min))) return false;
@@ -442,6 +444,8 @@ function passMore(l, now) {
   if (more.wovr === 'repairable' && !/repairable/i.test(w)) return false;
   if (more.wovr === 'statutory' && !/statutory/i.test(w)) return false;
   if (more.res && l.reserve !== more.res) return false;
+  if (more.sale === 'online' && l.liveSale) return false;
+  if (more.sale === 'live' && !l.liveSale) return false;
   if (more.bids === 'none' && !(l.bidCount === 0 || (l.bid == null && l.bidCount == null))) return false;
   if (more.bids === 'some' && !(l.bidCount > 0 || (l.bid != null && l.bidCount == null))) return false;
   if (more.bids === 'hot' && !(l.bidCount >= 5)) return false;
@@ -484,6 +488,7 @@ function wovrTag(w) {
   if (/repairable/i.test(w)) return '<span class="tag a">Repairable W/O</span>';
   return `<span class="tag">${esc(w)}</span>`;
 }
+const liveTag = l => l.liveSale ? `<span class="tag live" title="Sold by an auctioneer in a live lane on the day: no timed close, no countdown">Live auction${l.sale ? ' · ' + esc(l.sale) : ''}</span>` : '';
 const reserveTag = r => r === 'none' ? '<span class="tag g">No reserve</span>' : r === 'not met' ? '<span class="tag a">Reserve not met</span>' : r === 'met' ? '<span class="tag g">Reserve met</span>' : '';
 const checkTag = c => !c || c.verdict === 'error' ? '' : `<span class="tag ${c.verdict === 'good' ? 'g' : c.verdict === 'avoid' ? 'r' : 'a'}" title="${esc(c.summary || '')}">${{ good: 'Listing OK', caution: 'Check listing', avoid: 'Red flags' }[c.verdict] || ''}</span>`;
 const slugName = u => { const w = String(u || '').split(/[?#]/)[0].replace(/\/$/, '').split('/').pop().replace(/-?\d{5,}$/, '').split('-').filter(Boolean); return w.length > 1 ? w.map(x => x[0].toUpperCase() + x.slice(1)).join(' ') : ''; };
@@ -527,7 +532,7 @@ function rowHtml(l, now) {
     <td class="col-photo">${photo(l)}</td>
     <td class="c-lot">${lotLink(l)}<div class="lot-m"><span class="site">${esc(SITE_NAMES[l.site] || l.site)}</span>
       ${l.location || l.state ? `<span>${esc([l.location, l.location?.includes(l.state) ? '' : l.state].filter(Boolean).join(' '))}${l.distanceKm != null ? ` · ${distTxt(l)}` : ''}</span>` : ''}
-      ${l.odometer ? `<span class="num">${l.odometer.toLocaleString('en-AU')} km</span>` : ''}${wovrTag(l.wovr)}${reserveTag(l.reserve)}${checkTag(l.check)}
+      ${l.odometer ? `<span class="num">${l.odometer.toLocaleString('en-AU')} km</span>` : ''}${liveTag(l)}${wovrTag(l.wovr)}${reserveTag(l.reserve)}${checkTag(l.check)}
       ${mode === 'missed' ? `<span class="tag g">${esc(l.why)}</span>` : ''}${l.alerts?.length ? `<span class="tag r">Alert: ${esc(l.alerts.join(', '))}</span>` : ''}</div></td>
     <td class="c-clock">${clockCell(l, now)}</td>
     <td class="c-bid r"><div class="money num">${money(p)}</div><div class="sub">${sub}</div></td>
@@ -573,7 +578,7 @@ function renderWatch() {
       const moved = !closed && lastBid[l.key] != null && l.bid != null && l.bid > lastBid[l.key];
       return `<tr class="row ${closed ? 'sold' : ''} ${l.bidStatus || ''}" data-key="${esc(l.key)}">
         <td class="col-photo">${photo(l)}</td>
-        <td class="c-lot">${lotLink(l)}<div class="lot-m"><span class="site">${esc(SITE_NAMES[l.site] || l.site)}</span><span>${esc([l.location, l.state].filter(Boolean).join(' '))}${l.distanceKm != null ? ' · ' + distTxt(l) : ''}</span>${wovrTag(l.wovr)}${reserveTag(l.reserve)}${checkTag(l.check)}<span>${closed ? '' : ago(l.lastChecked)}</span></div>
+        <td class="c-lot">${lotLink(l)}<div class="lot-m"><span class="site">${esc(SITE_NAMES[l.site] || l.site)}</span><span>${esc([l.location, l.state].filter(Boolean).join(' '))}${l.distanceKm != null ? ' · ' + distTxt(l) : ''}</span>${liveTag(l)}${wovrTag(l.wovr)}${reserveTag(l.reserve)}${checkTag(l.check)}<span>${closed ? '' : ago(l.lastChecked)}</span></div>
           ${(l.rivals || []).length ? `<div class="rival">⚠ ${esc(l.rivals.map(r => `${r.user} has bid too (max ${money(r.myBid)})`).join(', '))}: you're bidding against each other</div>` : (l.others || []).length ? `<div class="sub">also watched by ${esc(l.others.join(', '))}</div>` : ''}</td>
         <td class="c-clock">${clockCell(l, now)}</td>
         <td class="c-bid r"><div class="money num">${money(price)}</div><div class="sub">${moved ? `<span class="loss">▲ from ${money(lastBid[l.key])}</span>` : closed ? 'final' : l.bidCount != null ? `${l.bidCount} bids` : ''}</div></td>
@@ -774,13 +779,13 @@ $('#watchAdd').addEventListener('submit', async e => {
 // filters
 function syncMore() {
   const set = (id, k) => { $(id).value = more[k] ?? ''; };
-  set('#fMin', 'min'); set('#fMax', 'max'); set('#fYear', 'year'); set('#fKm', 'km'); set('#fDist', 'dist'); set('#fWovr', 'wovr'); set('#fRes', 'res'); set('#fBids', 'bids'); set('#fEnds', 'ends');
+  set('#fMin', 'min'); set('#fMax', 'max'); set('#fYear', 'year'); set('#fKm', 'km'); set('#fDist', 'dist'); set('#fWovr', 'wovr'); set('#fRes', 'res'); set('#fSale', 'sale'); set('#fBids', 'bids'); set('#fEnds', 'ends');
   document.querySelectorAll('[data-state]').forEach(x => x.setAttribute('aria-pressed', String((more.states || []).includes(x.dataset.state))));
   const n = moreActive(); $('#moreN').textContent = n ? `(${n})` : '';
 }
 const readMore = () => {
   const g = id => $(id).value.trim();
-  more = { ...more, min: g('#fMin'), max: g('#fMax'), year: g('#fYear'), km: g('#fKm'), dist: g('#fDist'), wovr: g('#fWovr'), res: g('#fRes'), bids: g('#fBids'), ends: g('#fEnds') };
+  more = { ...more, min: g('#fMin'), max: g('#fMax'), year: g('#fYear'), km: g('#fKm'), dist: g('#fDist'), wovr: g('#fWovr'), res: g('#fRes'), sale: g('#fSale'), bids: g('#fBids'), ends: g('#fEnds') };
   save('more', more); syncMore(); render();
 };
 $('#more').addEventListener('input', readMore); $('#more').addEventListener('change', readMore);
