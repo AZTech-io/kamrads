@@ -20,6 +20,7 @@ export function identify(lot) {
 /** Pickles' detail-page titles: "CP: 01/2014, Hino, 300 Series 616, Cab Chassis" -> "2014 Hino 300 Series 616 Cab Chassis" */
 export function tidyTitle(t) {
   if (!t) return t;
+  t = String(t).replace(/\s*[-–|]\s*(?:image|photo|picture)\s*\d+\s*$/i, '');   // a photo's caption ("... - Image 1")
   const m = /^\s*CP\s*:\s*(?:\d{1,2}\/)?(\d{4})\s*,\s*(.+)$/i.exec(t);
   if (m) return `${m[1]} ${m[2].split(',').map(x => x.trim()).filter(Boolean).join(' ')}`.replace(/\s+/g, ' ').trim();
   return t.replace(/^\s*CP\s*:\s*/i, '').trim();

@@ -90,7 +90,7 @@ export function upsertLot(lot, { checked = false } = {}) {
   const now = Date.now();
   const key = `${lot.site}:${lot.ext_id}`;
   const prev = getBidStmt.get(key);
-  if (lot.title && /^\s*CP\s*:/i.test(lot.title)) lot = { ...lot, title: tidyTitle(lot.title) };
+  if (lot.title && (/^\s*CP\s*:/i.test(lot.title) || /(?:image|photo|picture)\s*\d+\s*$/i.test(lot.title))) lot = { ...lot, title: tidyTitle(lot.title) };
   // Store what the vehicle is as clean columns (make / model / year), so our own results group properly.
   if (lot.title && (!lot.make || !lot.year)) {
     const id = identify(lot);

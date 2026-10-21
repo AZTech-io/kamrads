@@ -62,7 +62,7 @@ export function soldLike(lot, { minN = 2, k = 9 } = {}) {
   const kms = near.map(r => r.km).filter(Boolean);
   return {
     n: near.length, of: rows.length, median: Math.round(med), low: Math.min(...near.map(r => r.price)), high: Math.max(...near.map(r => r.price)),
-    label: `${id.make} ${id.model}${id.year ? ` ${id.year - 2}–${id.year + 2}` : ''}${kms.length ? `, ${Math.round(Math.min(...kms) / 1000)}–${Math.round(Math.max(...kms) / 1000)}k km` : ''}`,
+    label: `${cap(id.make)} ${cap(id.model)}${id.year ? ` ${id.year - 2}–${id.year + 2}` : ''}${kms.length ? `, ${Math.round(Math.min(...kms) / 1000)}–${Math.round(Math.max(...kms) / 1000)}k km` : ''}`,
     examples: near.sort((a, b) => a.d - b.d).slice(0, 6),
   };
 }
@@ -74,13 +74,14 @@ export function historyEstimate(lot) {
 }
 
 export { marketOf };
+const cap = s => String(s || '').replace(/(^|[\s-])([a-z])/g, (m, a, b) => a + b.toUpperCase());
 const TYPE_NAME = { cars: 'cars', vans: 'vans', trucks: 'trucks', trailers: 'trailers', bikes: 'motorbikes', marine: 'boats' };
 /**
  * A rough value when we haven't seen enough of this model sell: sold vehicles of the same type (vans, utes,
  * trucks...) and write-off class, of a similar age and kilometres; the same make counts closer.
  * Needs the year. { n, median, low, high, label, rough: true, examples } or null.
  */
-export function typeLike(lot, { minN = 8, k = 15 } = {}) {
+export function typeLike(lot, { minN = 5, k = 12 } = {}) {
   if (Date.now() - builtAt > MAX_AGE_MS) build();
   if (!isVehicle(lot)) return null;
   if (memo.has(lot.key)) return memo.get(lot.key);
@@ -89,10 +90,11 @@ export function typeLike(lot, { minN = 8, k = 15 } = {}) {
   if (id?.year) {
     const type = sectorOf(lot);
     const km = lot.odometer || null;
-    let rows = (byType.get(`${type}|${wclass(lot)}`) || []).filter(r => r.key !== lot.key && r.year && Math.abs(r.year - id.year) <= 3);
+    // same make only: a 2023 D-MAX against other Isuzus, not every car of that age
+    let rows = (byType.get(`${type}|${wclass(lot)}`) || []).filter(r => r.key !== lot.key && r.make === id.make && r.year && Math.abs(r.year - id.year) <= 3);
     if (km) rows = rows.filter(r => !r.km || Math.abs(r.km - km) <= 120000);
     if (rows.length >= minN) {
-      const dist = r => Math.abs(r.year - id.year) / 2 + (km && r.km ? Math.abs(r.km - km) / 50000 : 0.75) + (r.make === id.make ? 0 : 0.6);
+      const dist = r => Math.abs(r.year - id.year) / 2 + (km && r.km ? Math.abs(r.km - km) / 50000 : 0.75);
       const near = rows.map(r => ({ ...r, d: dist(r) })).sort((a, b) => a.d - b.d).slice(0, k);
       const w = near.map(r => ({ p: r.price, w: 1 / (1 + r.d) })).sort((a, b) => a.p - b.p);
       const half = w.reduce((t, x) => t + x.w, 0) / 2;
@@ -103,7 +105,7 @@ export function typeLike(lot, { minN = 8, k = 15 } = {}) {
         n: near.length, of: rows.length, median: Math.round(med), rough: true,
         // middle of the spread, not the extremes (one wreck or one show car shouldn't set the range)
         low: sorted[Math.floor(sorted.length * 0.25)], high: sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.75))],
-        label: `rough: ${near.length} ${TYPE_NAME[type] || type} ${id.year - 3}–${id.year + 3}${km ? `, ${Math.round(Math.max(0, km - 120000) / 1000)}–${Math.round((km + 120000) / 1000)}k km` : ''}`,
+        label: `rough: ${near.length} ${cap(id.make)} ${TYPE_NAME[type] || type} ${id.year - 3}–${id.year + 3}${km ? `, ${Math.round(Math.max(0, km - 120000) / 1000)}–${Math.round((km + 120000) / 1000)}k km` : ''}`,
         examples: near.slice(0, 6),
       };
     }

@@ -39,9 +39,9 @@ test('view settings are kept with the login and come back in the page', async ()
 test('rough value: not enough Caddys sold, so similar vans of the same age and km', () => {
   const now = Date.now();
   const sold = (id, title, price, km) => upsertLot({ site: 'manheim', ext_id: id, title, category: 'vans', odometer: km, bid: price, url: 'https://x/' + id, end_at: now - 3600000 });
-  const vans = [['V1', '2009 Volkswagen Caddy Van', 5200, 300000], ['V2', '2011 Toyota HiAce Van', 9000, 350000], ['V3', '2010 Ford Transit Van', 4800, 310000], ['V4', '2012 Renault Kangoo Van', 4500, 280000],
-    ['V5', '2010 Hyundai iLoad Van', 7600, 330000], ['V6', '2009 Mitsubishi Express Van', 3900, 360000], ['V7', '2011 Volkswagen Transporter Van', 8800, 300000], ['V8', '2010 Peugeot Partner Van', 3500, 260000],
-    ['V9', '2008 Toyota HiAce Van', 7900, 400000]];
+  const vans = [['V1', '2009 Volkswagen Caddy Van', 5200, 300000], ['V2', '2011 Volkswagen Transporter Van', 9000, 350000], ['V3', '2010 Volkswagen Transporter Van', 7800, 310000],
+    ['V4', '2012 Volkswagen Crafter Van', 8500, 280000], ['V5', '2010 Volkswagen Crafter Van', 7600, 330000], ['V6', '2009 Volkswagen Transporter Van', 6900, 360000],
+    ['V7', '2011 Toyota HiAce Van', 15000, 300000], ['V8', '2010 Peugeot Partner Van', 1500, 260000]];
   for (const v of vans) sold(...v);
   // as if read right at the close
   db.exec(`UPDATE lots SET status = 'closed', final_bid = bid, final_seen_at = end_at WHERE site = 'manheim' AND ext_id LIKE 'V%'`);
@@ -51,9 +51,10 @@ test('rough value: not enough Caddys sold, so similar vans of the same age and k
   const caddy = q.lot.get('grays:0022-23502706');
   const sl = history.soldLike(caddy, { minN: 3 }); assert.equal(sl, null, 'only one Caddy sold: ' + JSON.stringify(sl && { label: sl.label, ex: sl.examples.map(e => e.title) }));
   const t = history.typeLike(caddy);
-  assert.ok(t && t.rough && t.n >= 8, JSON.stringify(t));
+  assert.ok(t && t.rough && t.n >= 5, JSON.stringify(t));
+  assert.ok(t.examples.every(e => /Volkswagen/.test(e.title)), 'same make only');
   assert.ok(t.median >= 4500 && t.median <= 8000, `${t.median}`);
-  assert.match(t.label, /^rough: \d+ vans 2007–2013/);
+  assert.match(t.label, /^rough: \d+ Volkswagen vans 2007–2013/);
   assert.equal(estimateSource(caddy), 'type'); assert.equal(estimateOf(caddy), t.median);
   // a car with no year gets nothing rather than a guess
   assert.equal(history.typeLike({ ...caddy, key: 'x:1', title: 'Volkswagen Caddy', year: null }), null);
@@ -96,4 +97,11 @@ test('odometer: Grays "Indicated Odometer Reading" (no unit), "Kms:", "85,000 km
   assert.equal(factsFromText('Kms: 120,500').odometer, 120500);
   assert.equal(factsFromText('2015 Hilux SR 98,000 km').odometer, 98000);
   assert.equal(factsFromText('Odometer reading 0').odometer, undefined);
+});
+
+test('titles: a photo caption ("- Image 1") is not part of the title', async () => {
+  const { tidyTitle } = await import('../src/vehicle.js');
+  assert.equal(tidyTitle('2023 Isuzu D-MAX 4x4 X-RIDER Dual Cab T/Diesel (Auto) - Image 1'), '2023 Isuzu D-MAX 4x4 X-RIDER Dual Cab T/Diesel (Auto)');
+  upsertLot({ site: 'slattery', ext_id: '140852', title: '2023 Isuzu D-MAX X-RIDER - Image 1', url: 'https://slatteryauctions.com.au/assets/140852' });
+  assert.equal(q.lot.get('slattery:140852').title, '2023 Isuzu D-MAX X-RIDER');
 });
