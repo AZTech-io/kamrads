@@ -194,3 +194,29 @@ test('board: lots without a close time only show in the 7-day view', () => {
   assert.ok(!keys(0).includes('grays:0016-23502700'));
   assert.ok(keys(1).includes('grays:0016-23502700'));
 });
+
+test('own history uses kilometres: a low-km van is valued against low-km results', () => {
+  const t = Date.now();
+  const sold = (id, title, price, year, km) => {
+    upsertLot({ site: 'pickles', ext_id: id, title, bid: price, year, odometer: km, category: 'vans', end_at: t - 86400000, url: `https://www.pickles.com.au/used/details/vans/x/${id}` });
+    db.prepare('UPDATE lots SET last_checked = end_at - 30000 WHERE key = ?').run(`pickles:${id}`);
+  };
+  // high-km fleet HiAces go cheap, low-km ones don't
+  sold('83000001', '2018 Toyota HiAce LWB Van', 18000, 2018, 320000);
+  sold('83000002', '2018 Toyota HiAce LWB Van', 17500, 2018, 350000);
+  sold('83000003', '2019 Toyota HiAce LWB Van', 19000, 2019, 300000);
+  sold('83000004', '2018 Toyota HiAce LWB Van', 31000, 2018, 85000);
+  sold('83000005', '2019 Toyota HiAce LWB Van', 33000, 2019, 70000);
+  sold('83000006', '2018 Toyota HiAce LWB Van', 30500, 2018, 95000);
+  q.closeDue.all(t, t);
+  history.rebuild();
+  const low = history.soldLike({ key: 'x:1', site: 'allbids', title: '2018 Toyota HiAce Van', category: 'vans', odometer: 90000 }, { k: 3 });
+  const high = history.soldLike({ key: 'x:2', site: 'allbids', title: '2018 Toyota HiAce Van', category: 'vans', odometer: 330000 }, { k: 3 });
+  assert.ok(low.median >= 30000, `low km ~$31k, got ${low.median}`);
+  assert.ok(high.median <= 19000, `high km ~$18k, got ${high.median}`);
+  assert.match(low.label, /toyota hiace 2016–2020, 70–95k km/);
+  // stored as clean columns
+  const row = q.lot.get('pickles:83000004');
+  assert.equal(row.make, 'toyota'); assert.equal(row.model, 'hiace'); assert.equal(row.year, 2018);
+});
+

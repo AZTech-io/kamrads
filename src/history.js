@@ -4,22 +4,9 @@
 import { q } from './db.js';
 import { isVehicle } from './extract.js';
 
-const MAKES = ['toyota', 'ford', 'holden', 'nissan', 'mazda', 'mitsubishi', 'hyundai', 'kia', 'isuzu', 'hino', 'volvo', 'scania', 'kenworth',
-  'mack', 'iveco', 'fuso', 'mercedes-benz', 'mercedes', 'renault', 'volkswagen', 'subaru', 'suzuki', 'honda', 'bmw', 'audi', 'jeep',
-  'land rover', 'range rover', 'ldv', 'great wall', 'gwm', 'haval', 'mg', 'peugeot', 'citroen', 'skoda', 'tesla', 'chrysler', 'dodge',
-  'ram', 'chevrolet', 'lexus', 'porsche', 'jaguar', 'yamaha', 'kawasaki', 'harley-davidson', 'harley', 'ducati', 'ktm', 'triumph',
-  'daihatsu', 'ssangyong', 'foton', 'freightliner', 'western star', 'international', 'daf', 'man', 'byd', 'cupra', 'alfa romeo', 'fiat', 'mini'];
-const MAKE_RE = new RegExp(`\\b(${MAKES.map(m => m.replace(/[-\s]/g, '[- ]?')).join('|')})\\b\\s+([a-z0-9][a-z0-9-]*)`, 'i');
-const canon = m => m.toLowerCase().replace(/[- ]/g, '').replace(/^mercedesbenz$/, 'mercedes').replace(/^harleydavidson$/, 'harley').replace(/^rangerover$/, 'landrover');
+import { identify } from './vehicle.js';
+export { identify };
 
-/** "2016 Mercedes-Benz Sprinter 316 CDI" -> { make: 'mercedes', model: 'sprinter', year: 2016 } */
-export function identify(lot) {
-  const t = String(lot.title || '');
-  const m = MAKE_RE.exec(t);
-  if (!m) return null;
-  const year = lot.year || Number((/\b(19[5-9]\d|20[0-3]\d)\b/.exec(t) || [])[1]) || null;
-  return { make: canon(m[1]), model: m[2].toLowerCase(), year };
-}
 const wclass = l => (/statutory/i.test(l.wovr || '') ? 'stat' : /repairable/i.test(l.wovr || '') ? 'rep' : 'clean');
 const keyOf = (id, l) => `${id.make}|${id.model}|${wclass(l)}`;
 
@@ -42,23 +29,31 @@ export const rebuild = () => build();
 
 const median = a => { const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 
-/** Similar sold lots: { n, median, low, high, examples[] } or null when we have fewer than 2. */
-export function soldLike(lot, { minN = 2 } = {}) {
+/**
+ * Similar sold lots: { n, median, low, high, label, examples[] } or null when we have fewer than minN.
+ * The closest matches by year and kilometres count most (a 90,000 km van is valued against other low-km ones).
+ */
+export function soldLike(lot, { minN = 2, k = 9 } = {}) {
   if (Date.now() - builtAt > MAX_AGE_MS) build();
   if (!isVehicle(lot)) return null;
   const id = identify(lot);
   if (!id) return null;
   let rows = (index.get(keyOf(id, lot)) || []).filter(r => r.key !== lot.key);
-  if (id.year) {
-    const near = rows.filter(r => r.year && Math.abs(r.year - id.year) <= 2);
-    rows = near.length >= minN ? near : rows.filter(r => r.year && Math.abs(r.year - id.year) <= 4);
-  }
+  if (id.year) rows = rows.filter(r => !r.year || Math.abs(r.year - id.year) <= 4);
   if (rows.length < minN) return null;
-  const prices = rows.map(r => r.price);
+  const km = lot.odometer || null;
+  const dist = r => (id.year && r.year ? Math.abs(r.year - id.year) / 2 : 0.75) + (km && r.km ? Math.abs(r.km - km) / 40000 : 0.75);
+  const near = rows.map(r => ({ ...r, d: dist(r) })).sort((a, b) => a.d - b.d).slice(0, k);
+  // weighted median: closer results weigh more
+  const w = near.map(r => ({ p: r.price, w: 1 / (1 + r.d) })).sort((a, b) => a.p - b.p);
+  const half = w.reduce((t, x) => t + x.w, 0) / 2;
+  let acc = 0, med = w[w.length - 1].p;
+  for (const x of w) { acc += x.w; if (acc >= half) { med = x.p; break; } }
+  const kms = near.map(r => r.km).filter(Boolean);
   return {
-    n: rows.length, median: Math.round(median(prices)), low: Math.min(...prices), high: Math.max(...prices),
-    label: `${id.make} ${id.model}${id.year ? ` ${id.year - 2}–${id.year + 2}` : ''}`,
-    examples: rows.sort((a, b) => b.at - a.at).slice(0, 5),
+    n: near.length, of: rows.length, median: Math.round(med), low: Math.min(...near.map(r => r.price)), high: Math.max(...near.map(r => r.price)),
+    label: `${id.make} ${id.model}${id.year ? ` ${id.year - 2}–${id.year + 2}` : ''}${kms.length ? `, ${Math.round(Math.min(...kms) / 1000)}–${Math.round(Math.max(...kms) / 1000)}k km` : ''}`,
+    examples: near.sort((a, b) => a.d - b.d).slice(0, 6),
   };
 }
 

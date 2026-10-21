@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
 import { config } from './config.js';
+import { identify } from './vehicle.js';
 
 fs.mkdirSync(config.dataDir, { recursive: true });
 export const db = new DatabaseSync(path.join(config.dataDir, 'auctions.db'));
@@ -50,6 +51,18 @@ if (ver < 13) {
   db.exec('PRAGMA user_version = 13');
 }
 
+// v1.4: fill make / model / year for everything stored so far
+if (db.prepare('PRAGMA user_version').get().user_version < 14) {
+  const set = db.prepare('UPDATE lots SET make = COALESCE(make, ?), model = COALESCE(model, ?), year = COALESCE(year, ?) WHERE key = ?');
+  db.exec('BEGIN');
+  for (const r of db.prepare('SELECT key, title, year FROM lots WHERE title IS NOT NULL AND (make IS NULL OR year IS NULL)').all()) {
+    const id = identify(r);
+    if (id) set.run(id.make, id.model, id.year, r.key);
+  }
+  db.exec('COMMIT');
+  db.exec('PRAGMA user_version = 14');
+}
+
 const FIELDS = ['url', 'title', 'category', 'year', 'make', 'model', 'odometer', 'wovr', 'location', 'state', 'image',
   'buy_method', 'sale_name', 'lot_no', 'bid', 'bid_count', 'buy_now', 'start_price', 'end_at', 'buyer_premium', 'gst_extra', 'opens_at', 'reserve'];
 
@@ -70,6 +83,11 @@ export function upsertLot(lot, { checked = false } = {}) {
   const now = Date.now();
   const key = `${lot.site}:${lot.ext_id}`;
   const prev = getBidStmt.get(key);
+  // Store what the vehicle is as clean columns (make / model / year), so our own results group properly.
+  if (lot.title && (!lot.make || !lot.year)) {
+    const id = identify(lot);
+    if (id) lot = { ...lot, make: lot.make || id.make, model: lot.model || id.model, year: lot.year || id.year };
+  }
   const row = { key, site: lot.site, ext_id: String(lot.ext_id), now, checked: checked ? now : null };
   // blank strings count as "don't know", so they never overwrite a real value
   for (const f of FIELDS) row[f] = typeof lot[f] === 'string' && !lot[f].trim() ? null : lot[f] ?? null;

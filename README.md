@@ -2,7 +2,7 @@
 
 Watches Pickles, Manheim, ALLBIDS (incl. CARBIDS), Lloyds, Grays, Slattery and The Auction Barn, lists every lot by what ends soonest, and pushes an alert to your phone when something is still cheap in its final 10 minutes.
 
-**Market research:** add your Claude API key under **Settings** (bottom of the dashboard — it's stored on the server only). Claude then searches carsales, Gumtree, Drive, RedBook and others for comparable listings, gives a market average and a realistic resale range for each lot, and flags great prices. Press **Research** on any lot to run it on demand. Automatic lookups have a daily cap (default 60, about 5–10c each).
+**Market research:** add your Claude API key under **Settings** (bottom of the dashboard — it's stored on the server only). Claude then searches carsales, Gumtree, Drive, RedBook and others for comparable listings, gives a market average and a realistic resale range for each lot, and flags great prices. Press **Research** on any lot to run it on demand (about 10–20c each). Automatic lookups are off unless you turn them on in Settings.
 
 **Logins:** everyone gets their own login (`DASH_USER`/`DASH_PASS` plus `DASH_USERS=matthew:password` in `.env`), and with it their own watchlist, bids, alerts and phone link.
 
@@ -22,7 +22,7 @@ Watches Pickles, Manheim, ALLBIDS (incl. CARBIDS), Lloyds, Grays, Slattery and T
 
 **Distance:** 📍 km from your home base (Karnup or Canberra, set in Settings), a **Max distance** filter and **Nearest first** sort. Suburbs are looked up once on OpenStreetMap and cached.
 
-**Sold here:** for vehicles, what similar lots (same make/model, similar year, same write-off class) actually went for in our own results. With 3+ results it becomes the estimate, and paid research is skipped when there are 5+.
+**Sold here:** for vehicles, what similar lots (same make/model, same write-off class, closest year and kilometres) actually went for in our own results — free, and it gets better every day. Every lot is stored with clean make / model / year columns for this (and for the CSV export). With 3+ results it becomes the estimate, and paid research is skipped when there are 5+.
 
 **Check listing:** Claude reads the description and photos for deal-breakers (won't start, no keys, flood, hail, missing parts) and gives OK / check / red flags. It runs by itself once for any lot someone has bid on.
 

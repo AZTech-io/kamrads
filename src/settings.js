@@ -11,7 +11,7 @@ const DEFAULTS = () => ({
   anthropicKey: config.anthropicKey,
   ntfyUrl: config.ntfyUrl,
   researchPerDay: config.researchPerDay,
-  researchEnabled: true,
+  researchEnabled: false, // paid lookups only when you press Research, unless you turn this on
 });
 
 export function get(k) {
