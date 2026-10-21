@@ -250,7 +250,8 @@ dialog.box a { color: var(--info); }
       <input type="search" id="q" placeholder="Search lots: hilux, forklift, Perth…" autocomplete="off">
     </div>
     <div class="top-actions">
-      <a class="tbtn" href="/freight" title="Airtasker and Truckit freight jobs">🚚<span class="lbl"> Freight</span></a>
+      <a class="tbtn" href="/freight" title="Freight jobs: Airtasker, Truckit, Loadshift">🚚<span class="lbl"> Freight</span></a>
+      <a class="tbtn" href="/bought" title="What we've bought and what each item owes us">📦<span class="lbl"> Bought</span></a>
       <button class="tbtn" id="alertsBtn" title="Saved searches that alert your phone">🔔<span class="lbl"> Alerts</span> <span class="badge" id="alertsN" hidden></span></button>
       <button class="tbtn" id="openSettings" title="Settings">⚙<span class="lbl"> Settings</span></button>
       <span class="who" id="who"></span>
@@ -562,6 +563,7 @@ function detailHtml(l) {
     ${l.year ? `<span>Year</span><span>${l.year}</span>` : ''}${l.manualEstimate != null ? `<span>Your estimate</span><span>${money(l.manualEstimate)}</span>` : ''}<span>Last checked</span><span>${l.lastChecked ? new Date(l.lastChecked).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }) : 'not yet'}</span></div></div>`;
   return `<tr class="detail"><td colspan="8"><div class="dgrid">${facts}${costs}${hist}${research}${check}</div>
     <div class="dacts"><a class="btn sm" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">Open on ${esc(SITE_NAMES[l.site] || l.site)}</a>
+      ${closedMode() ? (l.purchaseId ? `<a class="btn sm" href="/bought#${l.purchaseId}">Open in Bought</a>` : `<button class="btn sm primary" data-won="${esc(l.key)}">Won it: add to Bought</button>`) : ''}
       ${closedMode() ? '' : `<button class="btn sm primary" data-mybid="${esc(l.key)}">${l.myBid != null ? 'Change my bid' : "I'm bidding on this"}</button>`}
       <button class="btn sm" data-est="${esc(l.key)}">Set my estimate</button>
       ${closedMode() && l.status !== 'open' ? '' : `<button class="btn sm" data-research="${esc(l.key)}">${l.estMethod === 'web' ? 'Research again' : 'Research market price'}</button><button class="btn sm" data-check="${esc(l.key)}">Check listing</button>`}</div></td></tr>`;
@@ -585,7 +587,7 @@ function renderWatch() {
         <td class="c-mymax r num">${l.myBid != null ? money(l.myBid) : '<span class="dim">—</span>'}</td>
         <td class="c-pos">${l.bidStatus ? `<span class="status ${l.bidStatus}">${BS[l.bidStatus]}</span>${l.myBid != null ? `<span class="sub pos-max"> max ${money(l.myBid)}</span>` : ''}` : '<span class="dim">watching</span>'}</td>
         <td class="col-allin r">${!closed && l.cost ? `<span class="money num">${money(l.cost.total)}</span>` : ''}</td>
-        <td class="c-acts"><div class="acts">${closed ? '' : `<button class="ibtn" data-mybid="${esc(l.key)}">${l.myBid != null ? 'Change bid' : "I'm bidding"}</button>`}<button class="ibtn on" data-unwatch="${esc(l.key)}" title="Stop watching">★</button></div></td>
+        <td class="c-acts"><div class="acts">${closed ? (l.purchaseId ? `<a class="ibtn" href="/bought#${l.purchaseId}">In Bought</a>` : `<button class="ibtn" data-won="${esc(l.key)}" title="We won this: start its cost record">Won it</button>`) : ''}${closed ? '' : `<button class="ibtn" data-mybid="${esc(l.key)}">${l.myBid != null ? 'Change bid' : "I'm bidding"}</button>`}<button class="ibtn on" data-unwatch="${esc(l.key)}" title="Stop watching">★</button></div></td>
       </tr>${openKey === l.key ? detailHtml(l) : ''}`;
     }).join('')}</tbody></table>`;
   const win = watch.filter(l => l.bidStatus === 'winning' || l.bidStatus === 'atmax').length, out = watch.filter(l => l.bidStatus === 'outbid').length;
@@ -738,6 +740,16 @@ document.addEventListener('click', async e => {
   if (star) { const l = lots.find(x => x.key === star.dataset.star); l.starred = !l.starred; await post(`/api/lots/${encodeURIComponent(l.key)}/star`, { starred: l.starred }); load(); return; }
   const un = t.closest('[data-unwatch]');
   if (un) { if (!confirm('Stop watching this lot?')) return; await post(`/api/lots/${encodeURIComponent(un.dataset.unwatch)}/star`, { starred: false }); load(); return; }
+  const won = t.closest('[data-won]');
+  if (won) {
+    const l = watch.find(x => x.key === won.dataset.won) || lots.find(x => x.key === won.dataset.won) || {};
+    const price = prompt(`What did we pay for:\n${l.title || 'this lot'}\n\nHammer price (before fees). Fees are added automatically as an estimate - replace them with the invoice later.`, l.finalBid ?? l.myBid ?? l.bid ?? '');
+    if (price === null) return;
+    const r = await post('/api/purchases', { lotKey: won.dataset.won, price: price.replace(/[$,\s]/g, '') });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return alert(j.error || 'Could not add it.');
+    location.href = `/bought#${j.id}`; return;
+  }
   const mb = t.closest('[data-mybid]');
   if (mb) { openBid(mb.dataset.mybid); return; }
   const est = t.closest('[data-est]');

@@ -134,7 +134,7 @@ dialog.box p.lead { color: var(--muted); margin: 0 0 10px; }
   .topbar { grid-template-columns: auto 1fr auto; }
   .brand { border-right: 0; } .brand > div span { display: none; }
   .menu-btn { display: inline-flex; } .who, .lbl { display: none; }
-  .switch { padding: 0 4px; }
+  .switch { padding: 0; } .switch a { padding: 6px 7px; font-size: 13px; } .brand > div { display: none; } .brand { padding: 0 8px 0 12px; }
   .desk { grid-template-columns: repeat(3, minmax(0, 1fr)); } .kpi:nth-child(n+4) { display: none; }
   .kpi { padding: 7px 12px; } .kpi .v { font-size: 16px; }
   .frame { grid-template-columns: 1fr; }
@@ -166,7 +166,7 @@ dialog.box p.lead { color: var(--muted); margin: 0 0 10px; }
       </svg>
       <div><b>KAMRADS</b><span>Freight board</span></div>
     </a>
-    <div class="switch"><button class="tbtn menu-btn" id="menuBtn" aria-label="Menu">☰</button><a href="/">Auctions</a><a href="/freight" class="on">Freight</a></div>
+    <div class="switch"><button class="tbtn menu-btn" id="menuBtn" aria-label="Menu">☰</button><a href="/">Auctions</a><a href="/freight" class="on">Freight</a><a href="/bought">Bought</a></div>
     <div class="top-actions">
       <button class="tbtn" id="alertsBtn">🔔<span class="lbl"> Routes &amp; alerts</span> <span class="badge" id="alertsN" hidden></span></button>
       <span class="who" id="who"></span>

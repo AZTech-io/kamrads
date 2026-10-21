@@ -30,6 +30,14 @@ Watches Pickles, Manheim, ALLBIDS (incl. CARBIDS), Lloyds, Grays, Slattery and T
 
 **Morning digest:** one push at 7am (change hour, time zone or turn it off in Settings): your alert matches closing today, the best deals, your watchlist, yesterday's missed deals.
 
+## Bought (`/bought`)
+
+What we've bought and what each item owes us. Press **Won it** on a lot you won (watchlist or Sold results) and it's added with the hammer price, the auction house's fees and GST filled in as estimates (swap them for the invoice). Or add anything with **+ Add item**.
+
+- Log every cost as it happens: transport, repairs & parts, rego & inspection, fuel, storage, cleaning, selling costs. Each line records who added it.
+- Each item shows **it owes us** (total cost), break-even and +20% prices, our own value guide, asking price, and **profit / margin / days held** once sold.
+- Filter by status (bought, in transit, repairing, for sale, sold, keeping) and by the company that bought it. **Download all (CSV)** for the accountant.
+
 ## Freight board (`/freight`)
 
 Same login, at **kamrads.katara.com.au/freight** (or the 🚚 Freight button). It reads Loadshift's public load board, Airtasker's public delivery, removals, courier, man-with-a-van and ute job lists (nationally plus Canberra and Sydney) and the Truckit job board, every 10 minutes.

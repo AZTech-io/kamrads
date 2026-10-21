@@ -12,6 +12,7 @@ import { buildDigest } from './digest.js';
 import { sectorOf, SECTORS } from './categories.js';
 import { photo } from './photos.js';
 import { isLiveSale } from './live.js';
+import * as purchases from './purchases.js';
 import { freightRoutes } from './freight/routes.js';
 import { isVehicle } from './extract.js';
 import { push } from './notify.js';
@@ -83,6 +84,16 @@ export function startServer() {
   app.get('/healthz', (_req, res) => res.send('ok'));
   app.use(basicAuth);
   freightRoutes(app);
+  // ---- Bought: items we've won, every cost logged, what each one owes us ----
+  app.get('/bought', (_req, res) => res.sendFile(path.join(here, '..', 'public', 'bought.html')));
+  app.get('/api/purchases', (_req, res) => res.json(purchases.list()));
+  const ok = fn => (req, res) => { try { res.json({ ok: true, ...(fn(req) || {}) }); } catch (e) { res.status(400).json({ error: e.message }); } };
+  app.post('/api/purchases', ok(req => ({ id: req.body?.lotKey ? purchases.addFromLot(req.body.lotKey, req.user, req.body) : purchases.addManual(req.user, req.body || {}) })));
+  app.patch('/api/purchases/:id', ok(req => { purchases.update(Number(req.params.id), req.body || {}); }));
+  app.delete('/api/purchases/:id', ok(req => { purchases.remove(Number(req.params.id)); }));
+  app.post('/api/purchases/:id/costs', ok(req => ({ costId: purchases.addCost(Number(req.params.id), req.user, req.body || {}) })));
+  app.delete('/api/purchases/:id/costs/:costId', ok(req => { purchases.delCost(Number(req.params.id), Number(req.params.costId)); }));
+  app.get('/api/export/bought.csv', (_req, res) => sendCsv(res, `kamrads-bought-${new Date().toISOString().slice(0, 10)}.csv`, purchases.exportRows()));
   app.use(express.static(path.join(here, '..', 'public')));
 
   app.get('/api/lots', (req, res) => {
@@ -164,6 +175,7 @@ export function startServer() {
       out.finalBid = l.final_bid;
       out.closedAt = l.closed_at;
       out.endedEarly = !!l.ended_early;
+      out.purchaseId = purchases.purchaseForLot(l.key)?.id ?? null;
       // How close to the end our last look was: 0-1 min = the real hammer price, more = it may have gone higher.
       out.seenMinsBeforeClose = l.final_seen_at && l.end_at ? Math.max(0, Math.round((l.end_at - l.final_seen_at) / 60000)) : null;
       return out;
@@ -178,7 +190,7 @@ export function startServer() {
       rivals: q.rivals.all(l.key, req.user).map(r => ({ user: r.user, myBid: r.my_bid })),
       status: l.status, finalBid: l.final_bid, closedAt: l.closed_at,
       seenMinsBeforeClose: l.final_seen_at && l.end_at ? Math.max(0, Math.round((l.end_at - l.final_seen_at) / 60000)) : null,
-      starred: true, myBid: l.my_bid, bidStatus: bidStatus(l, l.my_bid),
+      starred: true, myBid: l.my_bid, bidStatus: bidStatus(l, l.my_bid), purchaseId: purchases.purchaseForLot(l.key)?.id ?? null,
       others: q.watchersOf.all(l.key).filter(w => w.user !== req.user).map(w => w.user),
     })) });
   });
