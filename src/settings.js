@@ -12,6 +12,9 @@ const DEFAULTS = () => ({
   ntfyUrl: config.ntfyUrl,
   researchPerDay: config.researchPerDay,
   researchEnabled: false, // paid lookups only when you press Research, unless you turn this on
+  // Katara Freight link: one shared key. We sign what we send with it, and they use it to tell us a quote became a job.
+  freightApiKey: '', freightApiKeyHash: '', freightApiKeyAt: null, freightApiKeyBy: null, freightApiKeyTail: '', freightApiLastUsed: null,
+  katFreightUrl: '', katFreightLastSent: null,
 });
 
 export function get(k) {

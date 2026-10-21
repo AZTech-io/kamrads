@@ -220,3 +220,18 @@ test('own history uses kilometres: a low-km van is valued against low-km results
   assert.equal(row.make, 'toyota'); assert.equal(row.model, 'hiace'); assert.equal(row.year, 2018);
 });
 
+
+test('Grays: the lot page gives the place and its own buyer premium; accessories are goods, not vehicles', async () => {
+  const { grays } = await import('../src/sites/extra.js');
+  const { isVehicle } = await import('../src/extract.js');
+  const text = 'Truck Tool Box\nCurrent Bid\n$9\n0 bids\nReserve met\nCloses: (22 October 20:00 AEDT)\nLocation\n140 National Drive Dandenong South VIC 3125\nBuyers premium\nVariable\nFinal Bid Price\nBuyers Premium\nANY\n20%\nAn Administration fee is payable on this lot';
+  const f = grays.pageFacts(text);
+  assert.equal(f.location, 'Dandenong South, VIC'); assert.equal(f.state, 'VIC'); assert.equal(f.buyer_premium, 20);
+  assert.equal(grays.pageFacts('Location: Unit 3/12 Smith St, Fyshwick ACT 2609').location, 'Fyshwick, ACT');
+  const box = { site: 'grays', title: 'Truck Tool Box', category: null, url: 'https://www.grays.com/lot/0036-23502559/auto-accessories/truck-tool-box' };
+  assert.equal(isVehicle(box), false, 'a tool box is not a truck');
+  assert.equal(isVehicle({ site: 'grays', title: '2016 Isuzu NPR 400 Truck', url: 'https://www.grays.com/lot/1-2/trucks/2016-isuzu-npr-400' }), true);
+  const c = allIn({ ...box, buyer_premium: 20 }, null, 9);
+  assert.equal(c.fee, 0, 'no $495 vehicle fee'); assert.equal(c.landed, 11);
+  assert.ok(allIn(box, null, 9).landed < 15, 'goods premium even before its page is read');
+});

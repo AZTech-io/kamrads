@@ -339,7 +339,10 @@ export function jsonBlobsFromHtml(html) {
   return blobs;
 }
 
+// Parts and accessories listed under vehicles ("Truck Tool Box", "Ute canopy") are goods, not vehicles
+const ACCESSORY = /accessor|\bspares?\b|\bparts\b|tool[\s-]?box|toolbox|\btyres?\b|\bwheels?\b|\brims?\b|canopy|tonneau|bull[\s-]?bar|roof[\s-]?racks?|tow[\s-]?bar|\bseats?\b|headlights?|tail[\s-]?lights?|mud[\s-]?flaps?|ladder[\s-]?racks?|\bjack\b|jerry[\s-]?can/i;
 export function isVehicle(lot) {
+  if (!lot.odometer && ACCESSORY.test(`${lot.title || ''} ${lot.category || ''} ${(lot.url || '').replace(/^https?:\/\/[^/]+/, '')}`)) return false;
   const s = `${lot.category || ''} ${lot.url || ''}`.toLowerCase();
   if (/\/(cars|trucks|motorcycles|vans|utes)\//.test(s) || /\b(cars?|trucks?|vehicles?|motorcycles?|utes?|vans?)\b/.test(s)) return true;
   if (lot.odometer || (lot.year && lot.make)) return true;

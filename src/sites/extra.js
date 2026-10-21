@@ -21,6 +21,16 @@ export const grays = makeSite({
     if (closes) out.end_at = parseDayMonthTime(closes[1]);
     const opens = /opens:?\s*\(?\s*(\d{1,2}\s+[A-Za-z]+\.?\s+(?:\d{4}\s+)?\d{1,2}[:.]\d{2}\s*(?:am|pm)?\s*(?:AEDT|AEST|ACDT|ACST|AWST)?)/i.exec(t);
     if (opens) out.opens_at = parseDayMonthTime(opens[1]);
+    // "Location 140 National Drive Dandenong South VIC 3125" -> Dandenong South, VIC
+    const loc = /\blocation:?\s+(.{2,120}?)\s+(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b/i.exec(t);
+    if (loc) {
+      const sub = loc[1].replace(/^.*\b(?:drive|dr|road|rd|street|st|avenue|ave|highway|hwy|court|ct|crescent|cres|place|pl|parade|pde|way|lane|ln|close|circuit|cct|boulevard|blvd|terrace|tce|grove|gr)\b\.?,?\s*/i, '')
+        .replace(/^[\d/ -]+/, '').replace(/,\s*$/, '').trim();
+      if (sub && sub.length <= 40) { out.location = `${sub}, ${loc[2].toUpperCase()}`; out.state = loc[2].toUpperCase(); }
+    }
+    // Buyer's premium table: "Final Bid Price Buyers Premium ANY 20%" (or tiers; the first rate is used)
+    const bp = /buyers?'?\s*premium[\s\S]{0,120}?\b(?:any|\$?0\b[^%]{0,20}?)\s*(\d{1,2}(?:\.\d{1,2})?)\s*%/i.exec(t);
+    if (bp && +bp[1] <= 30) out.buyer_premium = +bp[1];
     for (const k of Object.keys(out)) if (out[k] == null) delete out[k];
     return out;
   },

@@ -49,6 +49,7 @@ export function upsertJob(j, now = Date.now(), { fresh = false } = {}) {
 
 export const fq = {
   job: db.prepare('SELECT * FROM jobs WHERE key = ?'),
+  byUrl: db.prepare('SELECT key FROM jobs WHERE url IN (?, ?) ORDER BY last_seen DESC LIMIT 1'),
   // Jobs still listed recently (lists only show open jobs; one that drops off has been taken or expired)
   live: db.prepare(`SELECT * FROM jobs WHERE status = 'open' AND last_seen > ? ORDER BY COALESCE(posted_at, first_seen) DESC LIMIT 3000`),
   // Everything still listed (boards we read in full keep old jobs for weeks)

@@ -183,6 +183,9 @@ export const q = {
   checksToday: db.prepare(`SELECT count(*) AS n FROM lots WHERE check_at > ?`),
   rivals: db.prepare('SELECT user, my_bid FROM watches WHERE key = ? AND user != ? AND my_bid IS NOT NULL'),
   missingTimes: db.prepare(`SELECT * FROM lots WHERE site = ? AND status = 'open' AND end_at IS NULL AND last_checked IS NULL AND url IS NOT NULL ORDER BY first_seen DESC LIMIT ?`),
+  // lots closing in the next few days we don't know the place of yet (read their page once every 12 h)
+  missingPlace: db.prepare(`SELECT * FROM lots WHERE site = ? AND status = 'open' AND location IS NULL AND state IS NULL AND url IS NOT NULL
+    AND end_at BETWEEN ? AND ? AND (last_checked IS NULL OR last_checked < ?) ORDER BY end_at LIMIT ?`),
   closingToday: db.prepare(`SELECT * FROM lots WHERE status = 'open' AND end_at BETWEEN ? AND ? ORDER BY end_at`),
   bidExport: db.prepare(`SELECT l.site, l.ext_id, l.title, b.at AS seen_at, b.bid FROM bids b JOIN lots l ON l.key = b.key WHERE b.at > ? ORDER BY b.key, b.at`),
 };

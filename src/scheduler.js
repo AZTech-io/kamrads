@@ -19,6 +19,7 @@ import { digestTick } from './digest.js';
 import { checkPending } from './inspect.js';
 import { prunePhotos } from './photos.js';
 import { freightLoop } from './freight/loop.js';
+import { pushLoop } from './freight/push.js';
 
 export const adapters = { pickles, manheim, allbids, lloyds, grays, slattery, auctionbarn };
 // Sites where a re-read is cheap (learned JSON feed, or plain-HTML lot pages)
@@ -58,7 +59,10 @@ async function discoverSite(a) {
 }
 
 async function fillTimes(a) {
-  const todo = q.missingTimes.all(a.site, config.fillTimesPerScan);
+  const now = Date.now();
+  const seen = new Set();
+  const todo = [...q.missingTimes.all(a.site, config.fillTimesPerScan),
+    ...q.missingPlace.all(a.site, now, now + 3 * 864e5, now - 12 * 3600000, Math.ceil(config.fillTimesPerScan / 2))].filter(l => !seen.has(l.key) && seen.add(l.key));
   let got = 0;
   for (const lot of todo) {
     if (stopping) break;
@@ -243,4 +247,5 @@ export async function startScheduler() {
   backupLoop();
   choresLoop();
   freightLoop();
+  pushLoop();
 }

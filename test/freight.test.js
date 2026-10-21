@@ -175,7 +175,7 @@ test('job dates: Truckit windows, Loadshift ready/no date, Airtasker "Before ...
   const now = Date.UTC(2026, 9, 21);
   const a = jobFromCard(card('dd1', 'Move a fridge', 90, 'Fyshwick ACT 2609', 'Lyneham ACT 2602'), { ...AT, now });
   const b = jobFromCard({ ...card('dd2', 'Move a bed', 90, 'Fyshwick ACT 2609', 'Lyneham ACT 2602'), text: 'Move a bed\n$90\nFyshwick ACT 2609\nBefore Fri, 31 Oct\nPosted 2 days ago' }, { ...AT, now });
-  assert.equal(b.due_text, 'before 31 Oct'); assert.equal(new Date(b.date_by).toISOString(), '2026-10-30T14:00:00.000Z');
+  assert.equal(b.due_text, 'to be done before 31 Oct'); assert.equal(new Date(b.date_by).toISOString(), '2026-10-30T14:00:00.000Z');
   assert.equal(a.date_by, null);
 });
 
@@ -261,4 +261,99 @@ test('API: heat filter and counts; contacting a shipper (details, log, done) sha
   const m2 = (await api('GET', '/api/freight/message')).json;
   assert.equal(m2.template, 'Hi{name}, {me} here'); assert.equal(m2.day, 'Thursday');
   assert.equal((await (await realFetch(base + '/api/freight/message', { headers: H('matthew:m') })).json()).template, m.template, "Matthew keeps his own");
+});
+
+// ---- quotes, the Katara Freight link (push out, convert back) ----
+const quotes = await import('../src/freight/quotes.js');
+const push = await import('../src/freight/push.js');
+
+test('quotes: logged from the contact panel, won on "booked", fee by platform; the board shows them', async () => {
+  upsertJob({ site: 'loadshift', ext_id: '40779001', title: 'Yanmar Excavator - 6m L (9T)', from_text: 'Fyshwick ACT 2609', to_text: 'Parramatta NSW 2150', km: 290,
+    due_text: '9000 kg · qty 2 · ready 25 Oct', status: 'open' });
+  const k = encodeURIComponent('loadshift:40779001');
+  await api('POST', `/api/freight/jobs/${k}/contact`, { name: 'Sam', phone: '0412 345 678' });
+  await api('POST', `/api/freight/jobs/${k}/contact`, { method: 'call', outcome: 'quoted' });          // no amount: nothing to track
+  assert.equal((await api('GET', '/api/freight/quotes')).json.quotes.filter(q => q.jobKey === 'loadshift:40779001').length, 0);
+  await api('POST', `/api/freight/jobs/${k}/contact`, { method: 'call', outcome: 'quoted', quote: '$1,500' });
+  let list = (await api('GET', '/api/freight/quotes')).json;
+  let q = list.quotes.find(x => x.jobKey === 'loadshift:40779001');
+  assert.equal(q.status, 'quoted'); assert.equal(q.amount, 1500); assert.equal(q.feePct, 10); assert.equal(q.fee, 150); assert.equal(q.net, 1350);
+  assert.equal(q.load.weight, '9000 kg'); assert.equal(q.load.qty, 2); assert.equal(q.source.ref, '40779001'); assert.equal(q.customer.phone, '0412345678');
+  assert.deepEqual([q.pickup.suburb, q.pickup.state, q.pickup.postcode], ['Fyshwick', 'ACT', '2609']);
+  assert.equal(list.summary.open, 2, 'this one and the Truckit job quoted earlier');
+  const board = (await api('GET', '/api/freight/jobs')).json.jobs.find(j => j.key === 'loadshift:40779001');
+  assert.deepEqual([board.quote.status, board.quote.amount, board.quote.by], ['quoted', 1500, 'Aaron']);
+  // re-quoting updates the same quote; "booked" wins it
+  await api('POST', `/api/freight/jobs/${k}/contact`, { method: 'call', outcome: 'quoted', quote: '1400' });
+  await api('POST', `/api/freight/jobs/${k}/contact`, { method: 'call', outcome: 'booked' });
+  list = (await api('GET', '/api/freight/quotes')).json;
+  q = list.quotes.filter(x => x.jobKey === 'loadshift:40779001');
+  assert.equal(q.length, 1); assert.equal(q[0].status, 'won'); assert.equal(q[0].amount, 1400); assert.ok(q[0].wonAt);
+  assert.equal((await api('PATCH', `/api/freight/quotes/${q[0].id}`, { pickup_date: '2026-10-25' })).json.quote.pickupDate, '2026-10-25');
+  assert.equal((await api('PATCH', `/api/freight/quotes/${q[0].id}`, { status: 'converted' })).status, 400, 'only Katara Freight converts');
+});
+
+test('API v1: key only, quotes out, convert back (safe to repeat, other job refused)', async () => {
+  const noKey = await realFetch(base + '/api/v1/quotes');
+  assert.equal(noKey.status, 503, 'no key made yet');
+  const made = (await api('POST', '/api/freight/apikey')).json;
+  assert.match(made.key, /^kmr_/);
+  assert.equal((await api('GET', '/api/freight/apikey')).json.key, undefined, 'shown once');
+  const K = { authorization: 'Bearer ' + made.key, 'content-type': 'application/json' };
+  assert.equal((await realFetch(base + '/api/v1/quotes', { headers: { authorization: 'Bearer kmr_wrong' } })).status, 401);
+  assert.equal((await realFetch(base + '/api/v1/quotes', { headers: H('aaron:a') })).status, 401, 'dashboard logins do not open the API');
+  const out = await (await realFetch(base + '/api/v1/quotes?status=won', { headers: K })).json();
+  assert.equal(out.quotes.length, 1);
+  const q = out.quotes[0];
+  assert.equal(q.links.convert, `${base}/api/v1/quotes/${q.id}/convert`);
+  const conv = (body) => realFetch(`${base}/api/v1/quotes/${q.id}/convert`, { method: 'POST', headers: K, body: JSON.stringify(body) });
+  assert.equal((await conv({})).status, 400);
+  let r = await (await conv({ jobId: 7, jobNo: 'KF-261025-01', url: 'https://katarafreight.com.au/tools/jobs#edit=7' })).json();
+  assert.equal(r.quote.status, 'converted'); assert.deepEqual([r.quote.job.id, r.quote.job.no], ['7', 'KF-261025-01']);
+  r = await (await conv({ jobId: 7 })).json();
+  assert.equal(r.already, true);
+  assert.equal((await conv({ jobId: 8 })).status, 409);
+  // unlink (job deleted over there) puts it back to won
+  const back = (await api('PATCH', `/api/freight/quotes/${q.id}`, { status: 'won' })).json.quote;
+  assert.equal(back.status, 'won'); assert.equal(back.job, null);
+});
+
+test('push: quotes go to Katara Freight with the key; retried with a growing wait when it fails', async () => {
+  const sent = [];
+  let fail = true;
+  push._setFetch(async (url, init) => {
+    sent.push({ url, auth: init.headers.authorization, body: JSON.parse(init.body) });
+    return fail ? new Response('down', { status: 502 }) : new Response(JSON.stringify({ ok: true }), { status: 200 });
+  });
+  push.queueAll();
+  const now = Date.now() + 5;   // everything queued so far is due
+  assert.equal(await push.flushQuotes(now), 0);
+  assert.equal(sent[0].url, 'https://katarafreight.com.au/api/imports/quotes');
+  assert.match(sent[0].auth, /^Bearer kmr_/);
+  assert.ok(sent[0].body.quotes.length >= 2 && sent[0].body.source === 'kamrads', JSON.stringify(sent[0].body).slice(0, 300));
+  assert.match(push.outboxInfo().lastError, /HTTP 502/);
+  assert.equal(await push.flushQuotes(now + 30000), 0, 'waits before trying again');
+  assert.equal(sent.length, 1);
+  fail = false;
+  assert.ok(await push.flushQuotes(now + 61000) >= 2);
+  assert.equal(push.outboxInfo().queued, 0);
+  // a change re-queues just that quote
+  const one = quotes.listQuotes().find(x => x.status === 'won');
+  quotes.update(one.id, { notes: 'pallet jack needed' });
+  await push.flushQuotes(Date.now() + 1000);
+  const last = sent.at(-1).body.quotes;
+  assert.equal(last.length, 1); assert.equal(last[0].notes, 'pallet jack needed');
+});
+
+test('a quote from a pasted link: Airtasker task we never listed, or a Loadshift number', async () => {
+  const link = 'https://www.airtasker.com/tasks/help-me-move-home-x01m5ecj2g3gyhsc43rcvgd5hq9/';
+  const r = await api('POST', '/api/freight/quotes', { link, amount: '$480' });
+  assert.equal(r.status, 200); assert.equal(r.json.jobKey, 'airtasker:x01m5ecj2g3gyhsc43rcvgd5hq9');
+  const q = (await api('GET', '/api/freight/quotes')).json.quotes.find(x => x.jobKey === r.json.jobKey);
+  assert.equal(q.load.title, 'Help me move home'); assert.equal(q.feePct, 22); assert.equal(q.amount, 480);
+  assert.equal((await api('POST', '/api/freight/quotes', { link: link.replace('www.', ''), amount: 500 })).json.jobKey, r.json.jobKey, 'same task: same job, quote updated');
+  assert.equal((await api('POST', '/api/freight/quotes', { link: '40779001', amount: 1450 })).json.jobKey, 'loadshift:40779001');
+  assert.equal((await api('POST', '/api/freight/quotes', { link: '99999999', amount: 10 })).status, 400);
+  assert.equal((await api('POST', '/api/freight/quotes', { link: 'https://example.com/x', amount: 10 })).status, 400);
+  assert.equal((await api('POST', '/api/freight/quotes', { link, amount: '' })).status, 400, 'needs a price');
 });

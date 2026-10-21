@@ -14,6 +14,7 @@ import { photo } from './photos.js';
 import { isLiveSale } from './live.js';
 import * as purchases from './purchases.js';
 import { freightRoutes } from './freight/routes.js';
+import { apiRoutes } from './freight/api.js';
 import { isVehicle } from './extract.js';
 import { push } from './notify.js';
 import { watchUrl } from './scheduler.js';
@@ -82,6 +83,7 @@ export function startServer() {
   app.use((_req, res, next) => { res.set({ 'Referrer-Policy': 'no-referrer', 'X-Robots-Tag': 'noindex, nofollow', 'X-Frame-Options': 'DENY' }); next(); });
   app.get('/robots.txt', (_req, res) => res.type('text/plain').send('User-agent: *\nDisallow: /\n'));
   app.get('/healthz', (_req, res) => res.send('ok'));
+  apiRoutes(app);   // Katara Freight's key-based API: before the logins
   app.use(basicAuth);
   freightRoutes(app);
   // ---- Bought: items we've won, every cost logged, what each one owes us ----

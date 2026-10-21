@@ -134,6 +134,13 @@ export const config = {
       pages: list('LOADSHIFT_PAGES', ['https://www.loadshift.com.au/search/loads']),
       maxPages: num('LOADSHIFT_MAX_PAGES', 5),
     },
+    // Platform fee on a quote, % of the price inc GST (same rates as Katara Freight's job register)
+    quoteFees: Object.fromEntries((env.FREIGHT_QUOTE_FEES || 'loadshift:10,truckit:16,airtasker:22').split(',')
+      .map(x => x.split(':').map(s => s.trim())).filter(([k, v]) => k && v !== undefined && Number.isFinite(Number(v))).map(([k, v]) => [k, Number(v)])),
+    // Katara Freight reads quotes through /api/v1 with this key (or one made on the Freight screen)
+    apiKey: env.FREIGHT_API_KEY || '',
+    // Where quotes are sent (Katara Freight's Admin Tools "Quoted" list)
+    katFreightUrl: env.KATARA_FREIGHT_URL || 'https://katarafreight.com.au',
   },
 
   sites: {

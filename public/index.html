@@ -245,6 +245,7 @@ aside:hover { scrollbar-color: var(--rule-2) transparent; }
 aside::-webkit-scrollbar-thumb { background: transparent; }
 aside:hover::-webkit-scrollbar-thumb { background: var(--rule-2); background-clip: padding-box; }
 html { color-scheme: dark; }
+.lot-m .place { color: var(--ink); font-weight: 500; }
 </style>
 </head>
 <body>
@@ -381,6 +382,8 @@ html { color-scheme: dark; }
 
 <script>
 const $ = s => document.querySelector(s);
+// "Dandenong South, VIC" (no "VIC VIC" when the place already names the state)
+const placeOf = l => [l.location, l.location && l.state && new RegExp(`\\b${l.state}\\b`).test(l.location) ? '' : l.state].filter(Boolean).join(' ');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = n => n == null ? '—' : (n < 0 ? '-$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-AU');
 const kmoney = n => n == null ? '—' : Math.abs(n) >= 100000 ? (n < 0 ? '-$' : '$') + Math.round(Math.abs(n) / 1000).toLocaleString('en-AU') + 'k' : money(n);
@@ -593,7 +596,7 @@ function renderWatch() {
       const moved = !closed && lastBid[l.key] != null && l.bid != null && l.bid > lastBid[l.key];
       return `<tr class="row ${closed ? 'sold' : ''} ${l.bidStatus || ''}" data-key="${esc(l.key)}">
         <td class="col-photo">${photo(l)}</td>
-        <td class="c-lot">${lotLink(l)}<div class="lot-m"><span class="site">${esc(SITE_NAMES[l.site] || l.site)}</span><span>${esc([l.location, l.state].filter(Boolean).join(' '))}${l.distanceKm != null ? ' · ' + distTxt(l) : ''}</span>${liveTag(l)}${wovrTag(l.wovr)}${reserveTag(l.reserve)}${checkTag(l.check)}<span>${closed ? '' : ago(l.lastChecked)}</span></div>
+        <td class="c-lot">${lotLink(l)}<div class="lot-m"><span class="site">${esc(SITE_NAMES[l.site] || l.site)}</span>${placeOf(l) ? `<span class="place">${esc(placeOf(l))}${l.distanceKm != null ? ` <span class="dim">· ${distTxt(l)}</span>` : ''}</span>` : ''}${liveTag(l)}${wovrTag(l.wovr)}${reserveTag(l.reserve)}${checkTag(l.check)}<span>${closed ? '' : ago(l.lastChecked)}</span></div>
           ${(l.rivals || []).length ? `<div class="rival">⚠ ${esc(l.rivals.map(r => `${r.user} has bid too (max ${money(r.myBid)})`).join(', '))}: you're bidding against each other</div>` : (l.others || []).length ? `<div class="sub">also watched by ${esc(l.others.join(', '))}</div>` : ''}</td>
         <td class="c-clock">${clockCell(l, now)}</td>
         <td class="c-bid r"><div class="money num">${money(price)}</div><div class="sub">${moved ? `<span class="loss">▲ from ${money(lastBid[l.key])}</span>` : closed ? 'final' : l.bidCount != null ? `${l.bidCount} bids` : ''}</div></td>

@@ -56,17 +56,40 @@ export function jobFromCard(card, { site, idFromUrl, now = Date.now() }) {
   // Truckit's "Winning Quote" = already awarded (kept as price history, not shown as open work)
   const status = /\b(assigned|completed|closed|booked|awarded)\b/i.test(lines.slice(-4).join(' ')) || /winning\s+quote/i.test(text) ? 'taken' : 'open';
   const priceKind = /winning\s+quote/i.test(text) ? 'won quote' : /budget|\$/i.test(text) ? 'budget' : null;
-  // "On Sat, 25 Oct" / "Before Fri, 31 Oct" / "Flexible"
-  const due = /\b(on|before)\s+(?:[A-Za-z]{3},?\s+)?(\d{1,2})\s+([A-Za-z]{3})/i.exec(text);
-  const dueAt = due ? dayAhead(+due[2], due[3], now) : null;
+  const when = airtaskerWhen(text, now);
   return {
     site, ext_id, url: card.href.split('#')[0], title: title ? title.slice(0, 160) : null,
     price: price ? parseMoney(price[1]) : null, price_kind: priceKind,
     from_text: from, to_text: to, km: km ? parseMoney(km[1]) : null,
     posted_at: posted, offers: offers ? +offers[1] : null, status, category: card.category || null,
-    due_text: due ? `${due[1].toLowerCase()} ${+due[2]} ${due[3]}` : /\bflexible\b/i.test(text) ? 'flexible' : null,
-    date_by: dueAt, flexible: !due && /\bflexible\b/i.test(text),
+    due_text: when.text, date_by: when.at, flexible: when.flexible,
   };
+}
+
+// Airtasker's "To be done on": "On Sat, 25 Oct", "Before Friday, 31st October", "To be done on\nSat, 25 Oct",
+// a bare "Thu, 23 Oct", "Today", "Tomorrow", or "Flexible" / "Anytime".
+const DAY = '(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*\\.?,?\\s*';
+const WHEN_RE = new RegExp(`(?:to be done\\s*(?:on|by)?\\s*:?\\s*)?\\b(on|before|by)?\\s*:?\\s*(?:${DAY})?(\\d{1,2})(?:st|nd|rd|th)?\\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\b`, 'i');
+export function airtaskerWhen(text, now = Date.now()) {
+  const t = String(text || '');
+  // only a date that reads like a due date: after "to be done", "on"/"before", or a weekday
+  const m = WHEN_RE.exec(t);
+  const dated = m && (m[1] || new RegExp(`${DAY}\\d`, 'i').test(m[0]) || /to be done/i.test(m[0]));
+  if (dated) {
+    const kind = (m[1] || 'on').toLowerCase() === 'on' ? 'on' : 'before';
+    const at = dayAhead(+m[2], m[3], now);
+    const mon = m[3][0].toUpperCase() + m[3].slice(1, 3).toLowerCase();
+    return { text: `to be done ${kind} ${+m[2]} ${mon}`, at, flexible: false };
+  }
+  const rel = /to be done[^\n]*?\b(today|tomorrow)\b|\b(?:on|before)\s+(today|tomorrow)\b/i.exec(t);
+  if (rel) {
+    const w = (rel[1] || rel[2]).toLowerCase();
+    const d = new Date(now + (w === 'tomorrow' ? 864e5 : 0));
+    const at = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - 10 * 3600000;
+    return { text: `to be done ${w}`, at, flexible: false };
+  }
+  if (/\b(flexible|anytime|any time)\b/i.test(t)) return { text: 'to be done: flexible', at: null, flexible: true };
+  return { text: null, at: null, flexible: false };
 }
 
 /** "25 Oct" -> that day this year (or last year, if that's closer to now) */

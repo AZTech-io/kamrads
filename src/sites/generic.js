@@ -99,5 +99,5 @@ export function makeSite(def) {
     return merged;
   }
 
-  return { site, label: def.label, owns, idFromUrl, loginUrl: null, discover, refresh, timesFromLotPage: !!def.timesFromLotPage };
+  return { site, label: def.label, owns, idFromUrl, loginUrl: null, discover, refresh, timesFromLotPage: !!def.timesFromLotPage, pageFacts: def.pageFacts || null };
 }

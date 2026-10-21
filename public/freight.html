@@ -101,7 +101,7 @@ table.grid { width: 100%; border-collapse: collapse; }
 .grid tr:hover td { background: var(--hover); }
 .grid tr.fit td:first-child { box-shadow: inset 3px 0 0 var(--info); }
 .grid tr.fresh td:first-child { box-shadow: inset 3px 0 0 var(--gain); }
-.job-t { font-weight: 600; text-decoration: none; display: block; max-width: 330px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.job-t { font-weight: 600; text-decoration: none; display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .job-t:hover { text-decoration: underline; }
 .job-m { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 3px 8px; margin-top: 2px; align-items: center; }
 .site { font-size: 11px; font-weight: 600; color: var(--muted); border: 1px solid var(--rule-2); border-radius: 4px; padding: 0 5px; }
@@ -109,7 +109,10 @@ table.grid { width: 100%; border-collapse: collapse; }
 .tag.i { background: var(--info-bg); color: var(--info); } .tag.g { background: var(--gain-bg); color: var(--gain); } .tag.a { background: var(--warn-bg); color: var(--warn); }
 .route { white-space: normal; }
 .route .p { font-weight: 500; white-space: nowrap; }
-.grid td.c-route { max-width: 270px; }
+.grid td.c-route { max-width: 260px; min-width: 160px; }
+.grid td.c-job { max-width: 300px; min-width: 150px; }
+.sub b.num { color: var(--ink); font-weight: 500; }
+.panel { overflow-x: auto; }   /* never clip a column: scroll instead */
 .grid td.c-open { white-space: nowrap; padding-left: 4px; }
 .route .x { color: var(--dim); padding: 0 4px; }
 .sub { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
@@ -128,7 +131,9 @@ table.grid { width: 100%; border-collapse: collapse; }
 .tag.d { background: rgba(132,150,171,.13); color: var(--muted); }
 .tag.done { background: var(--gain-bg); color: var(--gain); }
 .callrow { display: inline-flex; gap: 4px; align-items: center; font-size: 11.5px; }
-.acts { display: inline-flex; gap: 6px; justify-content: flex-end; }
+.acts { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.grid td.c-price .sub { white-space: normal; max-width: 170px; margin-left: auto; }
+.grid td.c-fit { min-width: 120px; }
 tr.dead td { opacity: .55; }
 /* contact panel */
 .cgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 6px; }
@@ -149,6 +154,21 @@ tr.dead td { opacity: .55; }
 .chist .h { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; padding: 6px 0; border-top: 1px solid var(--rule); font-size: 12.5px; align-items: baseline; }
 .chist .h button { background: none; border: 0; color: var(--dim); cursor: pointer; }
 .chist .h button:hover { color: var(--loss); }
+.qsum { display: flex; gap: 18px; flex-wrap: wrap; color: var(--muted); font-size: 12.5px; margin: -2px 0 10px; }
+.qsum b { color: var(--ink); font-weight: 600; }
+.qadd { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0 0 10px; }
+.qadd input { background: var(--bg); border: 1px solid var(--rule-2); border-radius: 6px; padding: 5px 9px; }
+.qadd #qLink { flex: 1 1 320px; min-width: 0; } .qadd #qAmt { width: 110px; }
+.qamt { width: 92px !important; padding: 3px 7px !important; text-align: right; background: var(--bg); border: 1px solid var(--rule-2); border-radius: 5px; font-weight: 600; }
+.qdate { padding: 3px 6px; background: var(--bg); border: 1px solid var(--rule-2); border-radius: 5px; font-size: 12.5px; }
+.st { font-size: 11.5px; font-weight: 700; border-radius: 4px; padding: 1px 7px; white-space: nowrap; }
+.st-quoted { background: var(--info-bg); color: var(--info); } .st-won { background: var(--warn-bg); color: var(--warn); }
+.st-converted { background: var(--gain-bg); color: var(--gain); } .st-lost, .st-withdrawn { background: var(--raised); color: var(--dim); }
+.keybox { font-family: ui-monospace, Menlo, Consolas, monospace; background: var(--bg); border: 1px dashed var(--warn); border-radius: 6px; padding: 9px 11px; word-break: break-all; margin: 8px 0; color: var(--warn); }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 12.5px; margin: 8px 0; }
+.kv span:nth-child(odd) { color: var(--dim); }
+.kv code, .steps code { background: var(--bg); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+.steps { color: var(--muted); font-size: 12.5px; padding-left: 18px; margin: 6px 0; } .steps li { margin: 3px 0; }
 .tplbox { display: none; margin: 6px 0 10px; } .tplbox.on { display: block; }
 .tplbox .muted { font-size: 12px; margin: 4px 0; }
 .empty b { color: var(--ink); }
@@ -165,7 +185,6 @@ dialog.box p.lead { color: var(--muted); margin: 0 0 10px; }
 .arow { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--rule); }
 .end { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 
-@media (max-width: 1440px) { .col-km { display: none; } }
 @media (max-width: 1100px) { .planner { grid-template-columns: 1fr auto 1fr; } .planner .arrow { display: block; } }
 @media (max-width: 900px) {
   :root { --side: 0px; }
@@ -185,13 +204,12 @@ dialog.box p.lead { color: var(--muted); margin: 0 0 10px; }
   .grid td { padding: 0; border: 0; background: none !important; box-shadow: none !important; }
   .grid tr.fit { box-shadow: inset 3px 0 0 var(--info); } .grid tr.fresh { box-shadow: inset 3px 0 0 var(--gain); }
   .grid td.c-job { grid-area: job; min-width: 0; } .grid td.c-route { grid-area: route; } .grid td.c-price { grid-area: price; text-align: right; }
-  .grid td.c-fit { grid-area: fit; } .grid td.c-posted { grid-area: posted; text-align: right; } .grid td.col-km { display: none; }
+  .grid td.c-fit { grid-area: fit; } .grid td.c-posted { grid-area: posted; text-align: right; }
   .job-t, .route { white-space: normal; }
   .count { margin-left: 0; width: 100%; }
   .aform { grid-template-columns: 1fr; }
   .cgrid, .clog { grid-template-columns: 1fr; }
-  .grid tr { grid-template-areas: "job price" "route price" "fit posted" "acts acts"; }
-  .grid td.c-open { display: block; grid-area: acts; } .acts { justify-content: flex-start; }
+  .grid td.c-price .sub { max-width: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
@@ -239,7 +257,7 @@ html { color-scheme: dark; }
     <div id="cats"></div>
     <div class="side-h">Sites</div>
     <div id="sites"></div>
-    <div class="side-foot"><div id="stored"></div><a href="#" id="scanNow">Scan now</a> · <a href="#" id="sweepNow" title="Truckit and Loadshift are read in full every night. This does it now (takes 10-20 minutes).">Read old jobs now</a><br><span id="updated"></span></div>
+    <div class="side-foot"><div id="stored"></div><a href="#" id="scanNow">Scan now</a> · <a href="#" id="linkOpen">Katara Freight link</a><br><a href="#" id="sweepNow" title="Truckit and Loadshift are read in full every night. This does it now (takes 10-20 minutes).">Read old jobs now</a><br><span id="updated"></span></div>
   </aside>
 
   <main>
@@ -284,6 +302,13 @@ html { color-scheme: dark; }
   <div class="end"><button class="btn" type="button" id="closeAlerts">Close</button></div>
 </dialog>
 
+<dialog id="linkDlg" class="box">
+  <h2>Katara Freight link</h2>
+  <p class="lead">Every quote you log here is sent to Katara Freight Admin Tools → <b>Quoted</b>, where a won one becomes a booked job (on the Run sheet, with the platform fee filled in) in one click. One shared key, separate from your logins: it can only send quotes and report back that a job was made.</p>
+  <div id="linkBody"></div>
+  <div class="end"><button class="btn" type="button" id="linkClose">Close</button></div>
+</dialog>
+
 <dialog id="contact" class="box">
   <h2 id="cTitle">Job</h2>
   <p class="lead" id="cSub"></p>
@@ -312,10 +337,12 @@ html { color-scheme: dark; }
   <h3>How did it go?</h3>
   <form class="clog" id="cLog">
     <label>Result <select id="cOut"></select></label>
-    <label>Quote <input type="text" id="cQuote" placeholder="$"></label>
+    <label>Quote inc GST <input type="text" id="cQuote" placeholder="$"></label>
     <label>Note <input type="text" id="cNote" placeholder="e.g. call back Friday"></label>
     <button class="btn primary">Log it</button>
   </form>
+  <div class="chint" style="margin:6px 0 0">"quoted" with an amount goes into <b>Quoted</b>. "booked" marks it won, ready for Katara Freight to make the job.</div>
+  <div class="chint" id="cQuotes" style="margin:4px 0 0"></div>
   <div class="chist" id="cHist"></div>
   <div class="end"><button class="btn" type="button" id="cDead"></button><button class="btn" type="button" id="cClose">Close</button></div>
 </dialog>
@@ -330,13 +357,14 @@ const SITE_NAMES = { airtasker: 'Airtasker', truckit: 'Truckit', loadshift: 'Loa
 const QUOTE_SITES = ['truckit', 'loadshift']; // shippers ask for quotes: no price shown
 const isBoard = u => /search-for-jobs|search\/loads/.test(u || '');
 const CAT_NAMES = { delivery: 'Delivery', removals: 'Removals', 'courier-services': 'Courier', 'man-with-a-van': 'Man with a van', 'ute-removals': 'Ute jobs' };
-const VIEWS = [['all', 'All open jobs'], ['run', 'Call list for my run'], ['routes', 'On my routes'], ['near', 'Near my base'], ['new', 'New in the last hour'], ['contacted', 'Contacted'], ['dead', 'Done / not needed']];
+const VIEWS = [['all', 'All open jobs'], ['run', 'Call list for my run'], ['routes', 'On my routes'], ['near', 'Near my base'], ['new', 'New in the last hour'], ['contacted', 'Contacted'], ['quotes', 'Quoted'], ['dead', 'Done / not needed']];
 const TIERS = [['ultra', 'Ultra Hot', '24 h'], ['hot', 'Hot', '3 days'], ['warm', 'Warm', '1 week'], ['luke', 'Luke Warm', '2 weeks'], ['cold', 'Cold', 'older']];
 const TIER_I = Object.fromEntries([...TIERS.map((t, i) => [t[0], i]), ['unknown', 5]]);
 const TIER_L = { ...Object.fromEntries(TIERS.map(t => [t[0], t[1]])), unknown: 'Age unknown' };
 const OUT_CLS = { booked: 'done', quoted: 'i', 'still needed': 'g', 'already moved': 'd', 'not interested': 'd', 'wrong number': 'd' };
 
 let view = pref('view', 'all'), cat = pref('cat', ''), routeFilter = null, heatSel = pref('heat', []), sortBy = pref('sort', 'new');
+let quotes = [], qsum = {}, qapi = {}, qFilter = pref('qfilter', 'open'), quotedN = 0;
 let jobs = [], alerts = [], status = { sites: [], enabled: [] }, base = '', clockSkew = 0, plan = pref('plan', null), planErr = null, heatN = {}, deadN = 0;
 if (view === 'dead') view = 'all';
 $('#sort').value = sortBy;
@@ -397,6 +425,8 @@ const contactTag = j => {
 
 function render() {
   renderSide();
+  if (view === 'quotes') { renderDesk(); return renderQuotes(); }
+  $('#heat').style.display = ''; $('#sort').style.display = '';
   const sorter = view === 'run' && (sortBy === 'new' || sortBy === 'fit') ? SORTS.run : view === 'contacted' && sortBy === 'new' ? SORTS.contacted
     : plan && !planErr && sortBy === 'new' && view !== 'new' ? (a, b) => (b.plan ? 1 : 0) - (a.plan ? 1 : 0) || SORTS.new(a, b) : SORTS[sortBy] || SORTS.new;
   const rows = visible().sort(sorter);
@@ -414,23 +444,21 @@ function render() {
     return;
   }
   const th = (label, key, cls = '') => `<th class="${cls} ${key && sortBy === key ? 'sorted' : ''}" ${key ? `data-sort="${key}"` : ''}>${label}</th>`;
-  $('#list').innerHTML = `<table class="grid"><thead><tr>${th('Posted', 'new')}${th('Job', '')}${th('Route', '')}${th('Job km', '', 'r col-km')}${th('Pays', 'price', 'r')}${th(plan ? 'Fit for your run' : 'From your base', plan ? 'fit' : 'near')}<th></th></tr></thead><tbody>${rows.slice(0, LIMIT).map(j => `
+  $('#list').innerHTML = `<table class="grid"><thead><tr>${th('Posted', 'new')}${th('Job', '')}${th('Route', '')}${th('Pays', 'price', 'r')}${th(plan ? 'Fit for your run' : 'From your base', plan ? 'fit' : 'near')}</tr></thead><tbody>${rows.slice(0, LIMIT).map(j => `
     <tr class="${j.dead ? 'dead' : j.plan ? 'fit' : fresh(j) ? 'fresh' : ''}">
       <td class="c-posted"><div class="posted ${fresh(j) ? 'new' : ''}">${heatChip(j)}<div class="t" style="margin-top:3px">${j.postedAt ? (j.postedApprox ? '~' : '') + esc(ago(j.postedAt)) : '<span class="sub">first seen ' + esc(ago(j.firstSeen)) + '</span>'}</div></div></td>
-      <td class="c-job"><a class="job-t" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer" title="${esc(j.title)}">${esc(j.title || 'Job')}</a>
-        <div class="job-m"><span class="site">${esc(SITE_NAMES[j.site] || j.site)}</span>${j.category ? `<span>${esc(CAT_NAMES[j.category] || j.category)}</span>` : ''}${j.site === 'loadshift' ? `<span>#${esc(j.key.split(':')[1])}</span>` : ''}${j.offers ? `<span>${j.offers} ${j.site === 'truckit' ? 'quote' : 'offer'}${j.offers === 1 ? '' : 's'}</span>` : ''}${j.fits.map(f => `<span class="tag i">${esc(f.name)}${f.how === 'back' ? ' (return)' : ''}</span>`).join('')}${contactTag(j)}</div></td>
-      <td class="c-route"><div class="route"><span class="p">${esc(j.from || '—')}</span>${j.to ? `<span class="x">→</span><span class="p">${esc(j.to)}</span>` : ''}</div>${j.due || j.dates ? `<div class="sub">${j.dates === 'passed' ? '<span class="tag d" title="The dates on this job have gone by. Worth a call: it may still need moving.">dates passed</span> ' : j.dates === 'flexible' ? '<span class="tag i">flexible</span> ' : ''}${esc(j.due && !(j.dates === 'flexible' && j.due === 'flexible') ? j.due : '')}</div>` : ''}${!j.located && j.from ? '<div class="sub">finding this place…</div>' : ''}</td>
-      <td class="col-km r num">${j.km != null ? j.km.toLocaleString('en-AU') : ''}</td>
+      <td class="c-job"><a class="job-t" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer" title="${esc(j.title)} (${isBoard(j.url) ? `${SITE_NAMES[j.site]} board: log in there to see it` : `open on ${SITE_NAMES[j.site]}`})">${esc(j.title || 'Job')}</a>
+        <div class="job-m"><span class="site">${esc(SITE_NAMES[j.site] || j.site)}</span>${j.category ? `<span>${esc(CAT_NAMES[j.category] || j.category)}</span>` : ''}${j.site === 'loadshift' ? `<span>#${esc(j.key.split(':')[1])}</span>` : ''}${j.offers ? `<span>${j.offers} ${j.site === 'truckit' ? 'quote' : 'offer'}${j.offers === 1 ? '' : 's'}</span>` : ''}${j.fits.map(f => `<span class="tag i">${esc(f.name)}${f.how === 'back' ? ' (return)' : ''}</span>`).join('')}${j.quote ? `<span class="st st-${j.quote.status}">${j.quote.status === 'won' ? 'Won' : 'Quoted'}${j.quote.amount != null ? ' ' + money(j.quote.amount) : ''} · ${esc(j.quote.by)}</span>` : ''}${contactTag(j)}</div></td>
+      <td class="c-route"><div class="route"><span class="p">${esc(j.from || '—')}</span>${j.to ? `<span class="x">→</span> <span class="p">${esc(j.to)}</span>` : ''}</div>${j.due || j.dates || j.km != null ? `<div class="sub">${j.km != null ? `<b class="num">${j.km.toLocaleString('en-AU')} km</b>${j.due || j.dates ? ' · ' : ''}` : ''}${j.dates === 'passed' ? '<span class="tag d" title="The dates on this job have gone by. Worth a call: it may still need moving.">dates passed</span> ' : j.dates === 'flexible' ? '<span class="tag i">flexible</span> ' : ''}${esc(j.due && !(j.dates === 'flexible' && j.due === 'flexible') ? j.due : '')}</div>` : ''}${!j.located && j.from ? '<div class="sub">finding this place…</div>' : ''}</td>
       <td class="c-price r"><div class="money num">${j.price != null ? money(j.price) : QUOTE_SITES.includes(j.site) ? 'Quote' : '—'}</div><div class="sub">${j.price == null ? (j.site === 'truckit' ? 'no quotes yet' : j.site === 'loadshift' ? 'quote to win' : '') : [j.priceKind && j.priceKind !== 'budget' ? esc(j.priceKind) : '', j.perKm != null && j.km >= 5 ? `$${j.perKm.toFixed(2)}/km` : ''].filter(Boolean).join(' · ') || 'budget'}</div></td>
-      <td class="c-fit">${fitCell(j)}</td>
-      <td class="c-open r"><span class="acts"><button class="btn sm" data-contact="${esc(j.key)}">Contact</button><a class="btn sm" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer" title="${isBoard(j.url) ? `${SITE_NAMES[j.site]} board: log in there to see the job and quote` : `Open on ${SITE_NAMES[j.site]}`}">${isBoard(j.url) ? 'Board' : 'Open'}</a></span></td>
+      <td class="c-fit">${fitCell(j)}<div class="acts"><button class="btn sm" data-contact="${esc(j.key)}">Contact</button></div></td>
     </tr>`).join('')}</tbody></table>${rows.length > LIMIT ? `<div class="empty" style="padding:16px">Showing the first ${LIMIT} of ${rows.length.toLocaleString('en-AU')}. Pick a heat, a work type or search to narrow it down.</div>` : ''}`;
 }
 
 function renderSide() {
   const live = jobs.filter(j => !j.dead);
   const counts = { all: live.length, run: live.filter(j => j.plan).length, routes: live.filter(j => j.fits.length).length, near: live.filter(j => j.fromBase != null && j.fromBase <= NEAR_KM).length,
-    new: live.filter(fresh).length, contacted: live.filter(j => j.contact).length, dead: view === 'dead' ? jobs.filter(j => j.dead).length : deadN };
+    new: live.filter(fresh).length, contacted: live.filter(j => j.contact).length, quotes: quotedN, dead: view === 'dead' ? jobs.filter(j => j.dead).length : deadN };
   $('#views').innerHTML = VIEWS.filter(([k]) => k !== 'dead' || counts.dead || view === 'dead').map(([k, l]) => `<button class="nav" data-view="${k}" aria-pressed="${view === k && routeFilter == null}"><span class="t">${k === 'near' && base ? `Near ${esc(base.split(' ')[0])}` : l}</span><span class="c num">${counts[k] || ''}</span></button>`).join('');
   $('#routes').innerHTML = alerts.length ? alerts.map(a => `<button class="nav" data-route="${a.id}" aria-pressed="${routeFilter === a.id}"><span class="t">${esc(a.name)}</span><span class="c num">${jobs.filter(j => j.fits.some(f => f.id === a.id)).length || ''}</span></button>`).join('')
     : '<div class="site-row dim" style="font-size:12.5px">None yet. Add your regular runs.</div>';
@@ -470,6 +498,8 @@ async function load() {
     if (plan) { p.set('a', plan.a); if (plan.b) p.set('b', plan.b); p.set('d', plan.d); if (plan.b && plan.both !== false) p.set('both', '1'); }
     const [r, s, a] = await Promise.all([fetch('/api/freight/jobs?' + p), fetch('/api/freight/status'), fetch('/api/freight/alerts')]);
     const data = await r.json(); status = await s.json(); alerts = await a.json();
+    quotedN = data.quoted || 0;
+    if (view === 'quotes') { const qd = await (await fetch('/api/freight/quotes')).json(); quotes = qd.quotes; qsum = qd.summary; qapi = qd.api; }
     jobs = data.jobs; base = data.base || ''; planErr = data.planErr; clockSkew = data.now - Date.now(); heatN = data.heat || {}; deadN = data.dead || 0;
     $('#alertsN').hidden = !alerts.length; $('#alertsN').textContent = alerts.length;
     $('#stored').textContent = `${Number(status.stats?.jobs || 0).toLocaleString('en-AU')} jobs seen so far`;
@@ -480,7 +510,7 @@ async function load() {
 
 document.addEventListener('click', async e => {
   const t = e.target;
-  const v = t.closest('[data-view]'); if (v) { const was = view; view = v.dataset.view; routeFilter = null; save('view', view); $('#side').classList.remove('open'); return was === 'dead' || view === 'dead' ? load() : render(); }
+  const v = t.closest('[data-view]'); if (v) { const was = view; view = v.dataset.view; routeFilter = null; save('view', view); $('#side').classList.remove('open'); return was === 'dead' || view === 'dead' || view === 'quotes' ? load() : render(); }
   const hb = t.closest('[data-heat]');
   if (hb) { const k = hb.dataset.heat; heatSel = !k ? [] : heatSel.includes(k) ? heatSel.filter(x => x !== k) : [...heatSel, k]; save('heat', heatSel); return load(); }
   const ct = t.closest('[data-contact]'); if (ct) return openContact(ct.dataset.contact);
@@ -569,6 +599,7 @@ function renderContact() {
     <span><b>${esc(c.by)}</b> ${c.method ? esc(c.method === 'call' ? 'called' : c.method === 'text' ? 'texted' : 'messaged') : ''}${c.outcome ? ` · <span class="tag ${OUT_CLS[c.outcome] || 'a'}">${esc(c.outcome)}</span>` : ''}${c.quote ? ` · $${Math.round(c.quote).toLocaleString('en-AU')}` : ''}${c.note ? ` · ${esc(c.note)}` : ''}</span>
     <button type="button" data-cdel="${c.id}" title="Remove">✕</button></div>`).join('') : '<div class="dim" style="font-size:12.5px">Nobody has contacted this shipper yet.</div>';
   $('#cDead').textContent = d.dead ? 'Put back on the board' : 'Done / not needed';
+  $('#cQuotes').innerHTML = (d.quotes || []).length ? 'Quotes on this job: ' + d.quotes.map(q => `<span class="st st-${q.status}">${esc(Q_LABEL[q.status])}${q.amount != null ? ' ' + money(q.amount) : ''}</span> ${esc(q.by)}${q.jobNo ? ` → ${esc(q.jobNo)}` : ''}`).join(' · ') : '';
 }
 async function openContact(key) {
   cJob = jobs.find(j => j.key === key); if (!cJob) return;
@@ -633,6 +664,99 @@ $('#cDead').addEventListener('click', async () => {
 });
 $('#cClose').addEventListener('click', () => $('#contact').close());
 $('#contact').addEventListener('close', () => { if (cData && cJob) load(); });
+
+// ---- Quoted: loads we've quoted, won ones waiting for Katara Freight, and the jobs they became ----
+const Q_LABEL = { quoted: 'Quoted', won: 'Won', converted: 'In Katara Freight', lost: 'Lost', withdrawn: 'Withdrawn' };
+const Q_FILTERS = [['open', 'Open quotes', ['quoted']], ['won', 'Won: make the job', ['won']], ['converted', 'In Katara Freight', ['converted']], ['closed', 'Lost / withdrawn', ['lost', 'withdrawn']], ['all', 'All', null]];
+const pct = x => x == null ? '—' : Math.round(x * 100) + '%';
+function renderQuotes() {
+  $('#heat').style.display = 'none'; $('#sort').style.display = 'none';
+  $('#title').textContent = 'Quoted';
+  const f = Q_FILTERS.find(x => x[0] === qFilter) || Q_FILTERS[0];
+  const q = $('#q').value.trim().toLowerCase();
+  const rows = quotes.filter(x => (!f[2] || f[2].includes(x.status)) && (!q || `${x.load.title} ${x.pickup.text} ${x.dropoff.text} ${x.customer.name || ''} ${x.source.ref || ''}`.toLowerCase().includes(q)));
+  $('#count').textContent = `${rows.length} quote${rows.length === 1 ? '' : 's'}`;
+  const cnt = k => quotes.filter(x => !Q_FILTERS.find(y => y[0] === k)[2] || Q_FILTERS.find(y => y[0] === k)[2].includes(x.status)).length;
+  const seg = `<div style="padding:12px 12px 0"><div class="seg" style="margin-bottom:10px">${Q_FILTERS.map(([k, l]) => `<button data-qf="${k}" aria-pressed="${qFilter === k}">${l} <span class="dim num">${cnt(k)}</span></button>`).join('')}</div>`;
+  const addForm = `<form class="qadd" id="qAdd"><input type="text" id="qLink" placeholder="Quoted somewhere else? Paste the job link or Loadshift number" aria-label="Job link"><input type="text" id="qAmt" placeholder="$ inc GST" aria-label="Quote"><button class="btn sm primary">Add quote</button><span class="muted" id="qAddMsg"></span></form>`;
+  const sum = addForm + `<div class="qsum"><span><b class="num">${qsum.open || 0}</b> open, worth <b class="num">${money(qsum.openValue || 0)}</b></span><span><b class="num">${qsum.won || 0}</b> won, <b class="num">${money(qsum.wonValue || 0)}</b></span><span>win rate <b>${pct(qsum.winRate)}</b></span>
+    <span>${qapi.set ? `<a href="#" data-link="1">Katara Freight link on</a>${qapi.push?.lastSent ? `, last sent ${esc(ago(qapi.push.lastSent))}` : ', nothing sent yet'}${qapi.push?.queued ? ` · <span class="warn">${qapi.push.queued} waiting</span>` : ''}` : '<a href="#" data-link="1" style="color:var(--warn)">Set up the Katara Freight link</a>'}</span></div></div>`;
+  if (!rows.length) {
+    $('#list').innerHTML = seg + sum + `<div class="empty">${!quotes.length ? 'No quotes yet. Press <b>Contact</b> on a job, then log the result as <b>quoted</b> with your price.' : 'Nothing here.'}</div>`;
+    return;
+  }
+  $('#list').innerHTML = seg + sum + `<table class="grid"><thead><tr><th>Quoted</th><th>Job</th><th>Route</th><th class="r">Quote inc GST</th><th>Status</th></tr></thead><tbody>${rows.map(x => {
+    const editable = ['quoted', 'won'].includes(x.status);
+    const gone = !x.source.listed && x.status === 'quoted';
+    return `<tr data-q="${x.id}">
+      <td class="c-posted"><div class="t" style="font-weight:600">${esc(x.quotedBy || '')}</div><div class="sub">${esc(ago(Date.parse(x.quotedAt)))}</div></td>
+      <td class="c-job"><span class="job-t" title="${esc(x.load.title)}">${esc(x.load.title || 'Job')}</span>
+        <div class="job-m"><span class="site">${esc(x.source.label)}</span>${x.source.ref && x.source.site === 'loadshift' ? `<span>#${esc(x.source.ref)}</span>` : ''}${x.load.weight ? `<span>${esc(x.load.weight)}</span>` : ''}${x.customer.name || x.customer.phone ? `<span>${esc([x.customer.name, x.customer.phone].filter(Boolean).join(' · '))}</span>` : ''}${x.heat ? heatChip({ heat: x.heat }) : ''}</div></td>
+      <td class="c-route"><div class="route"><span class="p">${esc(x.pickup.text || '—')}</span>${x.dropoff.text ? `<span class="x">→</span> <span class="p">${esc(x.dropoff.text)}</span>` : ''}</div>${x.load.due || x.load.km != null ? `<div class="sub">${[x.load.km != null ? `<b class="num">${Number(x.load.km).toLocaleString('en-AU')} km</b>` : '', esc(x.load.due || '')].filter(Boolean).join(' · ')}</div>` : ''}</td>
+      <td class="c-price r">${editable ? `<input class="qamt num" data-qamt="${x.id}" value="${x.amount ?? ''}" placeholder="$" aria-label="Quote">` : `<div class="money num">${money(x.amount)}</div>`}
+        <div class="sub">${x.fee ? `${x.feePct}% fee ${money(x.fee)} · net ${money(x.net)}` : x.amount != null ? 'no platform fee' : ''}</div></td>
+      <td class="c-fit"><span class="st st-${x.status}">${esc(Q_LABEL[x.status])}</span>
+        ${x.status === 'converted' && x.job ? `<div class="sub">${x.job.url ? `<a href="${esc(x.job.url)}" target="_blank" rel="noopener noreferrer">${esc(x.job.no || 'job ' + x.job.id)}</a>` : esc(x.job.no || 'job ' + x.job.id)}</div>` : ''}
+        ${x.status === 'won' ? `<div class="sub">pickup <input type="date" class="qdate" data-qdate="${x.id}" value="${esc(x.pickupDate || '')}"></div>` : ''}
+        ${gone ? '<div class="sub warn" title="It dropped off the board: taken by someone, or booked with us on the platform">no longer listed</div>' : ''}
+        <div class="acts">${x.status === 'quoted' ? `<button class="btn sm" data-qs="won" title="They accepted: Katara Freight can make the job">Won</button><button class="btn sm" data-qs="lost">Lost</button>`
+        : x.status === 'won' ? `<button class="btn sm" data-qs="quoted">Undo</button>` : x.status === 'converted' ? `<button class="btn sm" data-qs="won" title="Unlink from the Katara Freight job (e.g. it was deleted there)">Unlink</button>` : `<button class="btn sm" data-qs="quoted">Reopen</button>`}
+        ${x.jobKey && jobs.some(j => j.key === x.jobKey) ? `<button class="btn sm" data-contact="${esc(x.jobKey)}">Contact</button>` : ''}</div></td>
+    </tr>`;
+  }).join('')}</tbody></table>`;
+}
+async function patchQuote(id, body) {
+  const r = await fetch('/api/freight/quotes/' + id, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) { const e = await r.json().catch(() => ({})); $('#updated').textContent = e.error || 'Could not save'; }
+  return load();
+}
+$('#list').addEventListener('submit', async e => {
+  if (e.target.id !== 'qAdd') return;
+  e.preventDefault();
+  const r = await fetch('/api/freight/quotes', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ link: $('#qLink').value, amount: $('#qAmt').value }) });
+  const d = await r.json();
+  if (!r.ok) { $('#qAddMsg').textContent = d.error; return; }
+  qFilter = 'open'; save('qfilter', qFilter); load();
+});
+$('#list').addEventListener('change', e => {
+  const a = e.target.closest('[data-qamt]'); if (a) return patchQuote(a.dataset.qamt, { amount: a.value });
+  const d = e.target.closest('[data-qdate]'); if (d) return patchQuote(d.dataset.qdate, { pickup_date: d.value });
+});
+$('#list').addEventListener('click', e => {
+  const b = e.target.closest('[data-qs]'); if (b) { const tr = b.closest('[data-q]'); return patchQuote(tr.dataset.q, { status: b.dataset.qs }); }
+  const f = e.target.closest('[data-qf]'); if (f) { qFilter = f.dataset.qf; save('qfilter', qFilter); return render(); }
+  if (e.target.closest('[data-link]')) { e.preventDefault(); openLink(); }
+});
+
+// ---- Katara Freight link: the API key their Jobs page uses ----
+async function openLink(fresh = null) {
+  const k = fresh || await (await fetch('/api/freight/apikey')).json();
+  const p = k.push || {};
+  const host = location.origin;
+  $('#linkBody').innerHTML = `
+    <div class="kv"><span>Status</span><span>${k.set ? `<b class="gain">On</b>${k.fromEnv ? ' (key from the server settings)' : k.tail ? ` · key ending …${esc(k.tail)}, made ${esc(ago(k.madeAt))}${k.madeBy ? ' by ' + esc(k.madeBy) : ''}` : ''}` : '<b class="warn">Not set up</b>'}</span>
+    <span>Sending to</span><span><input type="text" id="kfUrl" value="${esc(p.url || '')}" style="max-width:300px;padding:3px 8px"> <button class="btn sm" type="button" id="kfUrlSave">Save</button></span>
+    <span>Last sent</span><span>${p.lastSent ? esc(ago(p.lastSent)) : 'nothing yet'}${p.queued ? ` · <b class="warn">${p.queued} waiting</b>` : ''}${p.lastError ? ` · <span class="warn">${esc(p.lastError)}</span>` : ''}</span>
+    <span>Jobs made</span><span>${k.lastUsed ? `Katara Freight last reported one ${esc(ago(k.lastUsed))}` : 'none reported yet'}</span></div>
+    ${k.key ? `<p class="muted" style="margin:10px 0 0">The new key. Copy it now: it isn't shown again here.</p><div class="keybox" id="newKey">${esc(k.key)}</div><button class="btn sm" type="button" id="copyKey">Copy key</button>` : ''}
+    <ol class="steps">
+      <li>${k.set ? 'Key made.' : 'Press <b>Make a key</b> below and copy it.'}</li>
+      <li>Cloudflare → Workers &amp; Pages → <b>katara-freight</b> → Settings → Variables and Secrets: add <code>KAMRADS_API_KEY</code> = the key (as a <b>Secret</b>) and <code>KAMRADS_URL</code> = <code>${esc(host)}</code>. Redeploy.</li>
+      <li>Press <b>Send all quotes now</b>. They appear in Katara Freight Admin Tools → <b>Quoted</b>; a won one becomes a booked job with <b>Convert to job</b>, and shows here as "In Katara Freight".</li>
+    </ol>
+    <div class="end" style="justify-content:flex-start;flex-wrap:wrap">${k.set ? '<button class="btn primary" type="button" id="pushAll">Send all quotes now</button>' : ''}${k.fromEnv ? '' : `<button class="btn ${k.set ? '' : 'primary'}" type="button" id="makeKey">${k.set ? 'Make a new key' : 'Make a key'}</button>${k.set ? '<button class="btn" type="button" id="revokeKey">Turn off</button>' : ''}`}<span class="muted" id="linkMsg" style="align-self:center"></span></div>`;
+  if (!$('#linkDlg').open) $('#linkDlg').showModal();
+}
+$('#linkBody').addEventListener('click', async e => {
+  if (e.target.id === 'makeKey') { if (e.target.textContent.includes('new') && !confirm('Make a new key? The old one stops working until Katara Freight has the new one.')) return; openLink(await (await fetch('/api/freight/apikey', { method: 'POST' })).json()); }
+  if (e.target.id === 'revokeKey') { if (!confirm('Turn off the link? Quotes stop going to Katara Freight.')) return; openLink(await (await fetch('/api/freight/apikey', { method: 'DELETE' })).json()); }
+  if (e.target.id === 'pushAll') { $('#linkMsg').textContent = 'Sending…'; const r = await (await fetch('/api/freight/push', { method: 'POST' })).json(); openLink(r); setTimeout(() => { if ($('#linkMsg')) $('#linkMsg').textContent = r.sent ? `Sent ${r.sent}.` : r.queued ? "Couldn't reach Katara Freight yet: it keeps trying." : 'No quotes to send yet.'; }, 0); }
+  if (e.target.id === 'kfUrlSave') { const r = await fetch('/api/freight/link', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: $('#kfUrl').value }) }); const d = await r.json(); if (!r.ok) { $('#linkMsg').textContent = d.error; return; } openLink(d); }
+  if (e.target.id === 'copyKey') { try { await navigator.clipboard.writeText($('#newKey').textContent); e.target.textContent = 'Copied'; } catch {} }
+});
+$('#linkOpen').addEventListener('click', e => { e.preventDefault(); openLink(); });
+$('#linkClose').addEventListener('click', () => $('#linkDlg').close());
+if (location.hash === '#quotes') { view = 'quotes'; }
 
 fetch('/api/me').then(r => r.json()).then(x => { $('#who').textContent = x.user; }).catch(() => {});
 load();
