@@ -153,6 +153,19 @@ dialog.box p.lead { color: var(--muted); margin: 0 0 10px; }
   .aform { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* thin dark scrollbars that match the desk (the sidebar only shows its bar while you're over it) */
+* { scrollbar-width: thin; scrollbar-color: var(--rule-2) transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--rule-2); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--dim); background-clip: padding-box; }
+::-webkit-scrollbar-corner { background: transparent; }
+aside { scrollbar-color: transparent transparent; }
+aside:hover { scrollbar-color: var(--rule-2) transparent; }
+aside::-webkit-scrollbar-thumb { background: transparent; }
+aside:hover::-webkit-scrollbar-thumb { background: var(--rule-2); background-clip: padding-box; }
+html { color-scheme: dark; }
 </style>
 </head>
 <body>

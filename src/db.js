@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
 import { config } from './config.js';
-import { identify } from './vehicle.js';
+import { identify, tidyTitle } from './vehicle.js';
 
 fs.mkdirSync(config.dataDir, { recursive: true });
 export const db = new DatabaseSync(path.join(config.dataDir, 'auctions.db'));
@@ -63,6 +63,13 @@ if (db.prepare('PRAGMA user_version').get().user_version < 14) {
   db.exec('PRAGMA user_version = 14');
 }
 
+// v1.5: tidy Pickles "CP: 01/2014, Hino, ..." titles already stored
+if (db.prepare('PRAGMA user_version').get().user_version < 15) {
+  const set = db.prepare('UPDATE lots SET title = ? WHERE key = ?');
+  for (const r of db.prepare("SELECT key, title FROM lots WHERE title LIKE 'CP:%' OR title LIKE 'CP :%'").all()) set.run(tidyTitle(r.title), r.key);
+  db.exec('PRAGMA user_version = 15');
+}
+
 const FIELDS = ['url', 'title', 'category', 'year', 'make', 'model', 'odometer', 'wovr', 'location', 'state', 'image',
   'buy_method', 'sale_name', 'lot_no', 'bid', 'bid_count', 'buy_now', 'start_price', 'end_at', 'buyer_premium', 'gst_extra', 'opens_at', 'reserve'];
 
@@ -83,6 +90,7 @@ export function upsertLot(lot, { checked = false } = {}) {
   const now = Date.now();
   const key = `${lot.site}:${lot.ext_id}`;
   const prev = getBidStmt.get(key);
+  if (lot.title && /^\s*CP\s*:/i.test(lot.title)) lot = { ...lot, title: tidyTitle(lot.title) };
   // Store what the vehicle is as clean columns (make / model / year), so our own results group properly.
   if (lot.title && (!lot.make || !lot.year)) {
     const id = identify(lot);

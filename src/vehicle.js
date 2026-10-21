@@ -16,3 +16,11 @@ export function identify(lot) {
   const year = lot.year || Number((/\b(19[5-9]\d|20[0-3]\d)\b/.exec(t) || [])[1]) || null;
   return { make: canon(m[1]), model: m[2].toLowerCase(), year };
 }
+
+/** Pickles' detail-page titles: "CP: 01/2014, Hino, 300 Series 616, Cab Chassis" -> "2014 Hino 300 Series 616 Cab Chassis" */
+export function tidyTitle(t) {
+  if (!t) return t;
+  const m = /^\s*CP\s*:\s*(?:\d{1,2}\/)?(\d{4})\s*,\s*(.+)$/i.exec(t);
+  if (m) return `${m[1]} ${m[2].split(',').map(x => x.trim()).filter(Boolean).join(' ')}`.replace(/\s+/g, ' ').trim();
+  return t.replace(/^\s*CP\s*:\s*/i, '').trim();
+}
