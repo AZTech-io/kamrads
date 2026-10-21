@@ -98,7 +98,7 @@ async function discoveryLoop() {
 export function dueForRefresh(now = Date.now()) {
   const usable = l => adapters[l.site] && config.sites[l.site]?.enabled && l.url && !isPaused(l.site, now);
   // Your watchlist: every WATCH_EVERY_SEC (faster in the final minutes), whatever the price or close time.
-  const watched = q.watchedOpen.all().filter(l => usable(l) && (l.end_at == null || l.end_at > now - FINAL_GRACE_MS)).filter(l => {
+  const watched = q.watchedOpen.all().filter(l => usable(l) && (l.end_at == null || l.end_at > now - config.closeWithoutReadMin * 60000)).filter(l => {
     const since = now - (l.last_checked || 0);
     if (l.end_at && l.end_at <= now) return (l.last_checked || 0) < l.end_at;
     const left = l.end_at ? l.end_at - now : Infinity;
@@ -106,11 +106,12 @@ export function dueForRefresh(now = Date.now()) {
       : left <= config.hotWindowMin * 60000 ? Math.min(config.hotEverySec, config.watchEverySec) : config.watchEverySec;
     return since >= every * 900;
   });
-  const rows = q.openWindow.all(now - FINAL_GRACE_MS, now + config.warmWindowMin * 60000).filter(l => !l.starred);
+  // From lots still waiting for a read after their close (up to CLOSE_WITHOUT_READ_MIN ago) to the warm window
+  const rows = q.openWindow.all(now - config.closeWithoutReadMin * 60000, now + config.warmWindowMin * 60000).filter(l => !l.starred);
   const due = rows.filter(l => {
     if (!usable(l)) return false;
     // Expensive lots aren't worth a slow page read; with a fast feed they're cheap, so keep them (final prices).
-    if (!quick(l.site) && !l.starred && l.bid != null && l.bid > config.hotMaxBid) return false;
+    if (!quick(l.site) && !l.starred && l.bid != null && l.bid > config.hotMaxBid && l.end_at > now) return false;
     const mins = (l.end_at - now) / 60000;
     const since = now - (l.last_checked || 0);
     // Past its close: one last read to capture the final price (sites hide it once sold).
@@ -129,7 +130,10 @@ export function dueForRefresh(now = Date.now()) {
   const capOk = l => { const cap = config.perCycle[l.site] ?? config.fastBatch; perSite[l.site] = (perSite[l.site] || 0) + 1; return perSite[l.site] <= cap; };
   for (const l of watched) perSite[l.site] = (perSite[l.site] || 0) + 1;   // the watchlist uses the same allowance
   const fast = due.filter(l => quick(l.site)).filter(capOk).slice(0, config.fastBatch);
-  const paged = due.filter(l => !quick(l.site)).slice(0, config.hotBatch);
+  // Slow sites: lots past their close get their own (bigger) allowance, so a whole sale closing together
+  // still gets each lot read once before it's called sold.
+  const pagedFinal = due.filter(l => !quick(l.site) && l.end_at <= now).slice(0, config.finalBatch);
+  const paged = [...pagedFinal, ...due.filter(l => !quick(l.site) && l.end_at > now).slice(0, config.hotBatch)];
   // Lots closing later today/tomorrow: a light check every few hours, so a lot sold early (or with a
   // changed close time) doesn't sit on the board as "ending in 6 hours".
   const seen = new Set([...watched, ...fast, ...paged].map(l => l.key));
@@ -143,7 +147,7 @@ export function dueForRefresh(now = Date.now()) {
 
 async function hotCycle() {
   const now = Date.now();
-  const closed = q.closeDue.all(now, now - FINAL_GRACE_MS);
+  const closed = q.closeConfirmed.all(now, now - FINAL_GRACE_MS, now - config.closeWithoutReadMin * 60000);
   if (closed.length) log.info('hot', `${closed.length} lots closed`);
   for (const { key } of closed) { const l = q.lot.get(key); if (l?.starred) await announceResult(l).catch(e => log.warn('alert', e.message)); }
   const due = dueForRefresh(now);
@@ -153,6 +157,14 @@ async function hotCycle() {
     try {
       const fresh = await withTimeout(adapters[lot.site].refresh(lot), REFRESH_TIMEOUT_MS, 're-check took too long');
       pauseOk(lot.site);
+      const saysClosed = !!fresh.closed; delete fresh.closed;
+      // Read after its listed close but the bid is still moving and the page doesn't say closed: it was
+      // extended (soft close). Look again in 3 minutes rather than calling it sold.
+      const t = Date.now();
+      if (lot.end_at && lot.end_at <= t && !(fresh.end_at > t) && !saysClosed && !fresh.gone && fresh.bid != null && lot.bid != null && fresh.bid !== lot.bid) {
+        fresh.end_at = t + 3 * 60000;
+        log.info('hot', `${lot.key} ${lot.title?.slice(0, 40)} still taking bids after its close ($${lot.bid} → $${fresh.bid}): extended`);
+      }
       // Detail pages often carry worse titles ("CP: 01/2014,Hino,...") - only take live fields,
       // and descriptive ones only where we had nothing.
       const update = { site: lot.site, ext_id: lot.ext_id };
@@ -251,7 +263,17 @@ export function watchUrl(url, user = config.dashUser) {
   return key;
 }
 
+/** Lots on slow sites that were called sold at their listed time without being read after it (the old rule):
+ *  open the recent ones again so they get that read (a soft close may still be running). */
+export function reopenUnconfirmed(now = Date.now()) {
+  const slow = Object.keys(adapters).filter(s => !quick(s));
+  const rows = q.reopenUnconfirmed.all(now - config.closeWithoutReadMin * 60000, JSON.stringify(slow));
+  if (rows.length) log.info('hot', `${rows.length} recently closed lots re-opened for a final read`);
+  return rows.length;
+}
+
 export async function startScheduler() {
+  try { reopenUnconfirmed(); } catch (e) { log.warn('hot', e.message); }
   for (const a of enabled()) if (a.loginUrl) await ensureLogin(a.site, a.loginUrl).catch(e => log.warn(a.site, e.message));
   runSearches().catch(e => log.warn('search', e.message));
   discoveryLoop();

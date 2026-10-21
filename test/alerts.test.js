@@ -153,3 +153,26 @@ test('a big Lloyds sale closing: at most 6 reads a cycle, vehicles before wine; 
   assert.equal(dueForRefresh(now + 3 * 60000).filter(l => l.site === 'lloyds').length, 6, 'back after the pause');
   pz._reset();
 });
+
+test('soft close: not called sold without a read after its close; a moving bid means extended; recent unread closes reopened', async () => {
+  const sch = await import('../src/scheduler.js');
+  const { db } = await import('../src/db.js');
+  const now = Date.now();
+  upsertLot({ site: 'grays', ext_id: '0036-23502706', title: '2008 BMW X5 si Petrol', category: 'cars', bid: 1009, end_at: now - 10 * 60000, url: 'https://www.grays.com/lot/0036-23502706/x' });
+  upsertLot({ site: 'grays', ext_id: '0036-23502706', bid: 1009 }, { checked: true });
+  db.prepare("UPDATE lots SET last_checked = ? WHERE key = 'grays:0036-23502706'").run(now - 40 * 60000);
+  q.closeConfirmed.all(now, now - 6 * 60000, now - 120 * 60000);
+  assert.equal(q.lot.get('grays:0036-23502706').status, 'open', 'no read since its close: still open');
+  assert.ok(dueForRefresh(now).some(l => l.key === 'grays:0036-23502706'), 'and queued for that read');
+  db.prepare("UPDATE lots SET last_checked = ? WHERE key = 'grays:0036-23502706'").run(now);
+  q.closeConfirmed.all(now + 1, now - 6 * 60000, now - 120 * 60000);
+  assert.equal(q.lot.get('grays:0036-23502706').status, 'closed', 'read after close: closed');
+  // a lot closed the old way (no read after close) is reopened on start
+  upsertLot({ site: 'grays', ext_id: '0036-23502707', title: '2012 Ford Territory', category: 'cars', bid: 409, end_at: now - 30 * 60000, url: 'https://www.grays.com/lot/0036-23502707/x' });
+  db.prepare("UPDATE lots SET status = 'closed', final_bid = 409, last_checked = ?, closed_at = ? WHERE key = 'grays:0036-23502707'").run(now - 70 * 60000, now - 20 * 60000);
+  assert.ok(sch.reopenUnconfirmed(now) >= 1);
+  assert.equal(q.lot.get('grays:0036-23502707').status, 'open');
+  const { factsFromText } = await import('../src/extract.js');
+  assert.equal(factsFromText('Bidding has closed. Final bid $1,850').closed, true);
+  assert.equal(factsFromText('Time Left 0d 0h 4m 10s Current Bid $1,809').closed, undefined);
+});

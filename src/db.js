@@ -117,6 +117,13 @@ export const q = {
     end_at = CASE WHEN end_at IS NULL OR end_at > ? THEN ? ELSE end_at END WHERE key = ? AND status = 'open' RETURNING key`),
   dayWindow: db.prepare(`SELECT * FROM lots WHERE status = 'open' AND starred = 0 AND end_at BETWEEN ? AND ? AND (last_checked IS NULL OR last_checked < ?) ORDER BY end_at LIMIT ?`),
   closeDue: db.prepare(`UPDATE lots SET status = 'closed', final_bid = bid, final_seen_at = last_checked, closed_at = ? WHERE status = 'open' AND end_at < ? RETURNING key`),
+  // What the scheduler uses: closed once read after its close time (soft closes can run on), or when long
+  // past it with no read possible.
+  closeConfirmed: db.prepare(`UPDATE lots SET status = 'closed', final_bid = bid, final_seen_at = last_checked, closed_at = ?
+    WHERE status = 'open' AND end_at < ? AND (last_checked >= end_at OR end_at < ?) RETURNING key`),
+  // Lots marked sold at their listed time without a read after it (before that rule): open them again for one.
+  reopenUnconfirmed: db.prepare(`UPDATE lots SET status = 'open', closed_at = NULL, final_bid = NULL, final_seen_at = NULL
+    WHERE status = 'closed' AND COALESCE(ended_early, 0) = 0 AND end_at > ? AND (last_checked IS NULL OR last_checked < end_at) AND site IN (SELECT value FROM json_each(?)) RETURNING key`),
   star: db.prepare('UPDATE lots SET starred = ? WHERE key = ?'),
   watchedOpen: db.prepare(`SELECT * FROM lots WHERE starred = 1 AND status = 'open' ORDER BY end_at IS NULL, end_at`),
   watchlist: db.prepare(`SELECT * FROM lots WHERE starred = 1 AND (status = 'open' OR closed_at > ?) ORDER BY status = 'closed', end_at IS NULL, end_at`),
