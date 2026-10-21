@@ -192,8 +192,9 @@ export const config = {
     },
     slattery: {
       enabled: bool('SLATTERY_ENABLED', true),
-      auctionsFrom: env.SLATTERY_AUCTIONS || 'https://slatteryauctions.com.au/auctions?categoryGroups=Motor%20Vehicles',
-      maxAuctions: num('SLATTERY_MAX_AUCTIONS', 12),
+      // every category (vehicles, trucks, plant, forklifts, equipment...); EOI and property are skipped
+      auctionsFrom: env.SLATTERY_AUCTIONS || 'https://slatteryauctions.com.au/auctions',
+      maxAuctions: num('SLATTERY_MAX_AUCTIONS', 40),
     },
     auctionbarn: {
       enabled: bool('AUCTIONBARN_ENABLED', true),
