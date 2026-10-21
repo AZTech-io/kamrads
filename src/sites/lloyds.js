@@ -2,7 +2,7 @@
 // Auction list -> each auction's lot list (AuctionLots.aspx) -> lot pages (LotDetails.aspx?...&lid=N).
 // Lots in an auction close one after another, so each lot carries its own countdown ("1d 5h 06m").
 import { withPage, looksBlocked, browserFetch } from '../browser.js';
-import { factsFromText, parseCountdown, parseAuDate, parseMoney } from '../extract.js';
+import { factsFromText, parseCountdown, parseAuDate, parseMoney, placeFromAddress } from '../extract.js';
 import { config } from '../config.js';
 import { log } from '../log.js';
 import { cardToLot, absUrl, titleFromPage, goodTitle } from './common.js';
@@ -33,6 +33,15 @@ export function rowCountdown(text) {
   return m ? parseCountdown(m[0]) : null;
 }
 
+/** "52 Happy Campers, Albert Park... $1 01:32:42" -> "Happy Campers, Albert Park" (no lot number, price or countdown) */
+export function cleanRowTitle(title, lotNo = null) {
+  let t = squash(title);
+  if (lotNo) t = t.replace(new RegExp(`^${lotNo}\\s+`), '');
+  t = t.replace(/\s+\$\s?[\d,]+(?:\.\d+)?(?:\s+(?:\d+\s*[dhms]\b\s*|\d{1,2}:\d{2}(?::\d{2})?\b\s*)*)?(?:\.\.\.|…)?\s*$/, '');
+  t = t.replace(/\s*(\.\.\.|…)$/, '').trim();
+  return t || null;
+}
+
 /** One lot row from an AuctionLots page: "1200 2004 Volvo FH12 500 6x4 Prime Mover... $1,350 1d 5h 06m". */
 export function rowToLot(card, auction, now = Date.now()) {
   const lid = idFromUrl(card.href);
@@ -43,7 +52,7 @@ export function rowToLot(card, auction, now = Date.now()) {
   const row = /^(\d{1,6}[A-Z]?)\s+(.+?)\s+\$\s?([\d,]+(?:\.\d+)?)\b/.exec(text);
   let title = row ? row[2] : base.title;
   if (card.heading && goodTitle(card.heading)) title = card.heading;
-  title = squash(title).replace(/(\.\.\.|…)$/, '').trim() || null;
+  title = cleanRowTitle(title, row?.[1]);
   const ms = rowCountdown(text);
   return {
     ext_id: lid, url: lotUrl(aid, lid), title,
@@ -166,6 +175,13 @@ export function factsFromLotPage(html, now = Date.now()) {
   if (yr) out.year = +yr[1];
   const loc = /location\s*of\s*item\s*:\s*([^:]{3,120}?)(?:,\s*Australia|\s{2}|$)/i.exec(text);
   if (loc && !out.location) out.location = loc[1].trim();
+  // No "Location of item": the sale's own address ("Auction Address: 148 Main Street Beverley SA 5009")
+  if (!out.location) {
+    const aa = /auction\s*address\s*:\s*(.{3,140}?\b(?:NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b)/i.exec(text);
+    const pl = aa && placeFromAddress(aa[1]);
+    if (pl) { out.location = pl.location; out.state = out.state || pl.state; }
+  }
+  if (out.location && /shipping\s+only/i.test(text)) out.location += ' · ships only';
   return out;
 }
 

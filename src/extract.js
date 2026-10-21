@@ -271,6 +271,16 @@ export function factsFromText(text, now = Date.now()) {
   return out;
 }
 
+/** "140 National Drive Dandenong South VIC 3125" / "Unit 3/12 Smith St, Fyshwick ACT 2609" -> { location: "Dandenong South, VIC", state: "VIC" } */
+export function placeFromAddress(addr) {
+  const m = /^(.{2,120}?),?\s+(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b/i.exec(String(addr || '').replace(/\s+/g, ' ').trim());
+  if (!m) return null;
+  const sub = m[1].replace(/^.*\b(?:drive|dr|road|rd|street|st|avenue|ave|highway|hwy|court|ct|crescent|cres|place|pl|parade|pde|way|lane|ln|close|circuit|cct|boulevard|blvd|terrace|tce|grove|gr)\b\.?,?\s*/i, '')
+    .replace(/^[\d/ -]+/, '').replace(/,\s*$/, '').trim();
+  if (!sub || sub.length > 40) return null;
+  return { location: `${sub}, ${m[2].toUpperCase()}`, state: m[2].toUpperCase() };
+}
+
 /** "27 October 20:00 AEDT" (no year): the next such date, in the zone given (Sydney if none). */
 export function parseDayMonthTime(s, now = Date.now()) {
   const m = /(\d{1,2})\s+([A-Za-z]{3})[a-z]*\.?,?\s+(?:(\d{4})\s+)?(?:at\s+)?(\d{1,2})[:.](\d{2})\s*(am|pm)?\s*(AEDT|AEST|ACDT|ACST|AWST)?/i.exec(String(s || ''));

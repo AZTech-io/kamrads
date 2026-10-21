@@ -235,3 +235,17 @@ test('Grays: the lot page gives the place and its own buyer premium; accessories
   assert.equal(c.fee, 0, 'no $495 vehicle fee'); assert.equal(c.landed, 11);
   assert.ok(allIn(box, null, 9).landed < 15, 'goods premium even before its page is read');
 });
+
+test('Lloyds: the sale address when a lot has no location; row titles without lot number, price or countdown', async () => {
+  const { factsFromLotPage, cleanRowTitle, rowToLot } = await import('../src/sites/lloyds.js');
+  const html = '<div>Cork &amp; Barrel - Lot 52</div><div>Auction Address:</div><div>148 Main Street Beverley SA 5009</div><p>This Auction is ONLINE VIEWING and SHIPPING ONLY</p><div>Buyer\'s Premium: 19.75% GST Inclusive</div><div>Auction Date: 21-Oct-2026 19:00</div>';
+  const f = factsFromLotPage(html);
+  assert.equal(f.location, 'Beverley, SA · ships only'); assert.equal(f.state, 'SA'); assert.equal(f.buyer_premium, 19.75);
+  const g = factsFromLotPage('<div>Location of item: Villawood, NSW, Australia</div><div>Auction Address: 1 Smith St Yatala QLD 4207</div>');
+  assert.equal(g.location, 'Villawood, NSW', 'the item location wins over the sale address');
+  assert.equal(cleanRowTitle('52 Happy Campers, Albert Park Estate, 2013 Heathcote... $1 01:32:42', '52'), 'Happy Campers, Albert Park Estate, 2013 Heathcote');
+  assert.equal(cleanRowTitle('670 2016 Sol Invictus Mercury - Silver - 6,209km -... $52 1d 5h 06m', '670'), '2016 Sol Invictus Mercury - Silver - 6,209km -');
+  assert.equal(cleanRowTitle('2004 Volvo FH12 Prime Mover', null), '2004 Volvo FH12 Prime Mover');
+  const l = rowToLot({ href: 'https://www.lloydsonline.com.au/LotDetails.aspx?smode=0&aid=74642&lid=6107422', heading: '52 Happy Campers, Albert Park Estate, 2013 Heathcote... $1 01:32:42', text: '52 Happy Campers, Albert Park Estate, 2013 Heathcote... $1 01:32:42' }, { aid: '74642' });
+  assert.equal(l.title, 'Happy Campers, Albert Park Estate, 2013 Heathcote'); assert.equal(l.lot_no, '52'); assert.equal(l.bid, 1);
+});
