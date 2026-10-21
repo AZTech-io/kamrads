@@ -244,7 +244,8 @@ export function factsFromText(text, now = Date.now()) {
   const w = /(statutory\s*write-?\s*off|inspection\s*passed\s*repairable\s*write-?\s*off|repairable\s*write-?\s*off|wovr\s*n\/a)/i.exec(t);
   out.wovr = w ? normaliseWovr(w[1]) : null;
   // Close time: a countdown first, then an explicit date.
-  const cd = /(?:ends?|closes?|closing|time\s*left|time\s*remaining|remaining)\s*(?:in)?\s*:?\s*((?:\d+\s*d(?:ays?)?\s*)?\d{1,2}:\d{2}:\d{2}|(?:\d+\s*(?:d|days?|h|hrs?|hours?|m|mins?|minutes?|s|secs?|seconds?)\s*){1,4})/i.exec(t);
+  // (Grays' final phase reads "Going, going, gone: 4m 9s")
+  const cd = /(?:ends?|closes?|closing|time\s*left|time\s*remaining|remaining|going,?\s*going,?\s*gone!?)\s*(?:in)?\s*:?\s*((?:\d+\s*d(?:ays?)?\s*)?\d{1,2}:\d{2}:\d{2}|(?:\d+\s*(?:d|days?|h|hrs?|hours?|m|mins?|minutes?|s|secs?|seconds?)\s*){1,4})/i.exec(t);
   const cdMs = cd ? parseCountdown(cd[1]) : null;
   if (cdMs != null) out.end_at = now + cdMs;
   else {

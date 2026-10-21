@@ -38,13 +38,13 @@ test('view settings are kept with the login and come back in the page', async ()
 
 test('rough value: not enough Caddys sold, so similar vans of the same age and km', () => {
   const now = Date.now();
-  const sold = (id, title, price, km) => upsertLot({ site: 'pickles', ext_id: id, title, category: 'vans', odometer: km, bid: price, url: 'https://x/' + id, end_at: now - 3600000 });
+  const sold = (id, title, price, km) => upsertLot({ site: 'manheim', ext_id: id, title, category: 'vans', odometer: km, bid: price, url: 'https://x/' + id, end_at: now - 3600000 });
   const vans = [['V1', '2009 Volkswagen Caddy Van', 5200, 300000], ['V2', '2011 Toyota HiAce Van', 9000, 350000], ['V3', '2010 Ford Transit Van', 4800, 310000], ['V4', '2012 Renault Kangoo Van', 4500, 280000],
     ['V5', '2010 Hyundai iLoad Van', 7600, 330000], ['V6', '2009 Mitsubishi Express Van', 3900, 360000], ['V7', '2011 Volkswagen Transporter Van', 8800, 300000], ['V8', '2010 Peugeot Partner Van', 3500, 260000],
     ['V9', '2008 Toyota HiAce Van', 7900, 400000]];
   for (const v of vans) sold(...v);
   // as if read right at the close
-  db.exec(`UPDATE lots SET status = 'closed', final_bid = bid, final_seen_at = end_at WHERE site = 'pickles' AND ext_id LIKE 'V%'`);
+  db.exec(`UPDATE lots SET status = 'closed', final_bid = bid, final_seen_at = end_at WHERE site = 'manheim' AND ext_id LIKE 'V%'`);
   history.rebuild();
   upsertLot({ site: 'grays', ext_id: '0022-23502706', title: '2010 Volkswagen Caddy Petrol', category: 'commercial vehicles van', odometer: 332204, bid: 3000, end_at: now + 3600000,
     url: 'https://www.grays.com/lot/0022-23502706/commercial-vehicles/2010-volkswagen-caddy-petrol' });
@@ -57,4 +57,35 @@ test('rough value: not enough Caddys sold, so similar vans of the same age and k
   assert.equal(estimateSource(caddy), 'type'); assert.equal(estimateOf(caddy), t.median);
   // a car with no year gets nothing rather than a guess
   assert.equal(history.typeLike({ ...caddy, key: 'x:1', title: 'Volkswagen Caddy', year: null }), null);
+});
+
+test('rough values never mix salvage sales with retail; Grays "Going, going, gone" countdown read', async () => {
+  const { marketOf } = history;
+  assert.equal(marketOf({ site: 'pickles', title: '2015 Ford Kuga Ambiente' }), 'salvage');
+  assert.equal(marketOf({ site: 'grays', title: '2015 Ford Kuga Ambiente Petrol', sale_name: 'WA Motor Vehicle Auction' }), 'retail');
+  assert.equal(marketOf({ site: 'grays', title: '2012 Ford Territory TX Diesel (WOVR Inspected)' }), 'salvage');
+  assert.equal(marketOf({ site: 'lloyds', title: '2014 Hyundai i30', wovr: 'WOVR N/A' }), 'retail');
+  const now = Date.now();
+  // nine salvage SUVs sold cheap at Pickles: a clean Grays Kuga gets no rough value from them
+  for (let i = 0; i < 9; i++) upsertLot({ site: 'pickles', ext_id: `S${i}`, title: `201${4 + (i % 3)} Mazda CX-5 Maxx`, category: 'cars', odometer: 120000, bid: 2000 + i * 50, url: `https://x/s${i}`, end_at: now - 3600000 });
+  db.exec(`UPDATE lots SET status = 'closed', final_bid = bid, final_seen_at = end_at WHERE site = 'pickles' AND ext_id LIKE 'S%'`);
+  history.rebuild();
+  upsertLot({ site: 'grays', ext_id: '0036-1', title: '2015 Ford Kuga Ambiente Petrol', category: 'cars', odometer: 110000, bid: 4400, end_at: now + 3600000, url: 'https://www.grays.com/lot/0036-1/x' });
+  assert.equal(history.typeLike(q.lot.get('grays:0036-1')), null, 'salvage prices are not a value for a clean car');
+  const { factsFromText } = await import('../src/extract.js');
+  const f = factsFromText('Going, going, gone: 4m 9s Current Bid (141 bids) $17,600', now);
+  assert.ok(Math.abs(f.end_at - (now + 249000)) < 2000);
+});
+
+test('a Grays car is a car (not a motorbike), and a Grays price only counts if read after the close', async () => {
+  const { sectorOf } = await import('../src/categories.js');
+  assert.equal(sectorOf({ title: '2015 Ford Kuga Ambiente Petrol', url: 'https://www.grays.com/lot/0036-23502706/motor-vehicles-motor-cycles/2015-ford-kuga' }), 'cars');
+  assert.equal(sectorOf({ title: '2019 Kawasaki Ninja 400', url: 'https://www.grays.com/lot/1-2/motor-vehicles-motor-cycles/2019-kawasaki-ninja' }), 'bikes');
+  const now = Date.now();
+  upsertLot({ site: 'grays', ext_id: '9-1', title: '2016 Ford Focus Trend Petrol', category: 'cars', bid: 1109, end_at: now - 7200000, url: 'https://www.grays.com/lot/9-1/x' });
+  upsertLot({ site: 'grays', ext_id: '9-2', title: '2016 Ford Focus Trend Petrol', category: 'cars', bid: 9800, end_at: now - 7200000, url: 'https://www.grays.com/lot/9-2/x' });
+  db.prepare(`UPDATE lots SET status = 'closed', final_bid = bid, final_seen_at = end_at - 600000 WHERE key = 'grays:9-1'`).run();   // seen 10 min before: soft close may have run on
+  db.prepare(`UPDATE lots SET status = 'closed', final_bid = bid, final_seen_at = end_at + 60000 WHERE key = 'grays:9-2'`).run();    // read after the close
+  const keys = q.historyRows.all(now - 864e5).map(r => r.key);
+  assert.ok(keys.includes('grays:9-2')); assert.ok(!keys.includes('grays:9-1'));
 });

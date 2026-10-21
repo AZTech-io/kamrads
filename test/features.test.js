@@ -95,7 +95,8 @@ test('own history: what similar vehicles sold for, used as the estimate', () => 
   q.closeDue.all(now, now);
   history.rebuild();
   assert.deepEqual(history.identify({ title: '2018 Mercedes-Benz Sprinter 319' }), { make: 'mercedes', model: 'sprinter', year: 2018 });
-  const live = { key: 'allbids:9', site: 'allbids', title: '2016 Mercedes-Benz Sprinter 316 Van', category: 'cars', bid: 5000 };
+  // (valued against the same market: these are Pickles salvage results)
+  const live = { key: 'pickles:9', site: 'pickles', title: '2016 Mercedes-Benz Sprinter 316 Van', category: 'cars', bid: 5000 };
   const h = history.soldLike(live);
   assert.equal(h.n, 3, 'similar year, not the statutory one, not the 2004');
   assert.equal(h.median, 14000);
@@ -210,8 +211,8 @@ test('own history uses kilometres: a low-km van is valued against low-km results
   sold('83000006', '2018 Toyota HiAce LWB Van', 30500, 2018, 95000);
   q.closeDue.all(t, t);
   history.rebuild();
-  const low = history.soldLike({ key: 'x:1', site: 'allbids', title: '2018 Toyota HiAce Van', category: 'vans', odometer: 90000 }, { k: 3 });
-  const high = history.soldLike({ key: 'x:2', site: 'allbids', title: '2018 Toyota HiAce Van', category: 'vans', odometer: 330000 }, { k: 3 });
+  const low = history.soldLike({ key: 'x:1', site: 'pickles', title: '2018 Toyota HiAce Van', category: 'vans', odometer: 90000 }, { k: 3 });
+  const high = history.soldLike({ key: 'x:2', site: 'pickles', title: '2018 Toyota HiAce Van', category: 'vans', odometer: 330000 }, { k: 3 });
   assert.ok(low.median >= 30000, `low km ~$31k, got ${low.median}`);
   assert.ok(high.median <= 19000, `high km ~$18k, got ${high.median}`);
   assert.match(low.label, /toyota hiace 2016–2020, 70–95k km/);

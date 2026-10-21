@@ -38,7 +38,9 @@ const GOODS_RULES = RULES.slice(5);
 
 /** Which sector a lot belongs to. */
 export function sectorOf(lot) {
-  const t = `${lot.title || ''} ${lot.category || ''} ${lot.sale_name || ''} ${lot.url || ''}`.toLowerCase().replace(/[-_/]/g, ' ');
+  // (Grays files every car under "motor-vehicles-motor-cycles": that's not a motorbike)
+  const t = `${lot.title || ''} ${lot.category || ''} ${lot.sale_name || ''} ${lot.url || ''}`.toLowerCase().replace(/[-_/]/g, ' ')
+    .replace(/motor vehicles motor ?cycles/g, 'motor vehicles');
   if (isVehicle(lot)) return (VEHICLE_RULES.find(([, re]) => re.test(t)) || ['cars'])[0];
   // Equipment words first, so a "pallet truck" is warehouse gear, not a truck.
   const goods = GOODS_RULES.find(([, re]) => re.test(t));

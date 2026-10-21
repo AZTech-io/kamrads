@@ -182,8 +182,10 @@ export const q = {
   dbStats: db.prepare(`SELECT count(*) AS lots, sum(status = 'closed') AS closed, sum(final_bid IS NOT NULL) AS priced, min(first_seen) AS since FROM lots`),
   bidRows: db.prepare('SELECT count(*) AS n FROM bids'),
   // only results read within 15 min of the close count as real prices
-  historyRows: db.prepare(`SELECT key, site, title, year, odometer, wovr, category, url, final_bid, end_at FROM lots
-    WHERE status = 'closed' AND final_bid IS NOT NULL AND final_bid > 0 AND end_at > ? AND final_seen_at IS NOT NULL AND end_at - final_seen_at <= 900000`),
+  historyRows: db.prepare(`SELECT key, site, title, year, odometer, wovr, category, url, sale_name, buy_method, final_bid, end_at FROM lots
+    WHERE status = 'closed' AND final_bid IS NOT NULL AND final_bid > 0 AND end_at > ? AND final_seen_at IS NOT NULL AND end_at - final_seen_at <= 900000
+      -- Grays runs on past its listed close (soft close): only a price read after the close is a result
+      AND (site != 'grays' OR final_seen_at >= end_at)`),
   setCheck: db.prepare('UPDATE lots SET check_verdict = ?, check_note = ?, check_at = ? WHERE key = ?'),
   checkQueue: db.prepare(`SELECT l.* FROM lots l WHERE l.status = 'open' AND l.check_at IS NULL AND l.end_at > ?
     AND EXISTS (SELECT 1 FROM watches w WHERE w.key = l.key AND w.my_bid IS NOT NULL) ORDER BY l.end_at LIMIT 5`),

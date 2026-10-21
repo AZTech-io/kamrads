@@ -8,7 +8,12 @@ import { identify } from './vehicle.js';
 import { sectorOf } from './categories.js';
 export { identify };
 
-const wclass = l => (/statutory/i.test(l.wovr || '') ? 'stat' : /repairable/i.test(l.wovr || '') ? 'rep' : 'clean');
+// Write-off class, and which market it sold in: salvage sales (hail, insurance, non-runners) go for a
+// fraction of what the same car makes at a general vehicle auction, so they're never compared.
+const SALVAGE = /salvage|insurance|insurer|write-?\s?off|damaged|\bhail\b|non[\s-]?runner|flood|fire\s+damage|repairable|wovr(?!\s*n\/a)/i;
+// (KAMRADS only searches Pickles' salvage sales, so every Pickles result is salvage)
+const marketOf = l => (l.site === 'pickles' || SALVAGE.test(`${l.category || ''} ${l.sale_name || ''} ${l.url || ''} ${l.buy_method || ''} ${l.title || ''} ${l.wovr && !/n\/a/i.test(l.wovr) ? l.wovr : ''}`) ? 'salvage' : 'retail');
+const wclass = l => `${/statutory/i.test(l.wovr || '') ? 'stat' : /repairable/i.test(l.wovr || '') ? 'rep' : 'clean'}|${marketOf(l)}`;
 const keyOf = (id, l) => `${id.make}|${id.model}|${wclass(l)}`;
 
 let index = new Map(), byType = new Map(), builtAt = 0, memo = new Map();
@@ -68,6 +73,7 @@ export function historyEstimate(lot) {
   return h ? h.median : null;
 }
 
+export { marketOf };
 const TYPE_NAME = { cars: 'cars', vans: 'vans', trucks: 'trucks', trailers: 'trailers', bikes: 'motorbikes', marine: 'boats' };
 /**
  * A rough value when we haven't seen enough of this model sell: sold vehicles of the same type (vans, utes,
