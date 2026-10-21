@@ -215,7 +215,7 @@ test('own history uses kilometres: a low-km van is valued against low-km results
   const high = history.soldLike({ key: 'x:2', site: 'pickles', title: '2018 Toyota HiAce Van', category: 'vans', odometer: 330000 }, { k: 3 });
   assert.ok(low.median >= 30000, `low km ~$31k, got ${low.median}`);
   assert.ok(high.median <= 19000, `high km ~$18k, got ${high.median}`);
-  assert.match(low.label, /toyota hiace 2016–2020, 70–95k km/);
+  assert.match(low.label, /Toyota Hiace 2016–2020, 70–95k km/);
   // stored as clean columns
   const row = q.lot.get('pickles:83000004');
   assert.equal(row.make, 'toyota'); assert.equal(row.model, 'hiace'); assert.equal(row.year, 2018);
