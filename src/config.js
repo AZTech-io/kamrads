@@ -79,6 +79,8 @@ export const config = {
   finalEverySec: num('FINAL_EVERY_SEC', 10),   // ...are re-read this often (fast feed / watchlist)     // lots closing within this get re-checked every HOT_EVERY_SEC
   warmWindowMin: num('WARM_WINDOW_MIN', 60),   // lots closing within this get re-checked every WARM_EVERY_MIN
   warmEveryMin: num('WARM_EVERY_MIN', 5),
+  dayWindowHours: num('DAY_WINDOW_HOURS', 24),   // lots closing within this get a light check...
+  dayEveryHours: num('DAY_EVERY_HOURS', 3),      // ...every N hours (catches lots sold early or re-timed)
   hotBatch: num('HOT_BATCH', 4),
   fillTimesPerScan: num('FILL_TIMES_PER_SCAN', 40),  // lot pages read per scan where lists show no close time (Grays)
   fastBatch: num('FAST_BATCH', 80),          // max fast-feed reads per cycle (each ~0.3 s)               // max detail pages per hot cycle

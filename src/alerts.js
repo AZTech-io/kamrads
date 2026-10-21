@@ -6,6 +6,7 @@ import { finalMinutes } from './users.js';
 import { historyEstimate } from './history.js';
 import { allIn } from './costs.js';
 import { sectorOf } from './categories.js';
+import { isLiveSale } from './live.js';
 
 const FRESH_MS = 3 * 60000;
 const money = n => (n == null ? '?' : '$' + Math.round(n).toLocaleString('en-AU'));
@@ -18,6 +19,7 @@ export const estimateSource = lot => (lot.manual_estimate != null ? 'yours' : lo
 /** Which alert (if any) this lot deserves right now. Pure function: easy to test. */
 export function classify(lot, now = Date.now()) {
   if (lot.status !== 'open' || !lot.end_at) return null;
+  if (isLiveSale(lot)) return null; // sold in a live lane: there's no real "10 minutes to go"
   const minsLeft = (lot.end_at - now) / 60000;
   if (minsLeft <= 0 || minsLeft > config.alertMinutes) return null;
   const statutory = lot.wovr === 'Statutory Write-Off';

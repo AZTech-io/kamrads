@@ -116,8 +116,15 @@ export function dueForRefresh(now = Date.now()) {
   // Sites with a fast price feed can take many reads a cycle; full page reads are limited to HOT_BATCH.
   const fast = due.filter(l => quick(l.site)).slice(0, config.fastBatch);
   const paged = due.filter(l => !quick(l.site)).slice(0, config.hotBatch);
+  // Lots closing later today/tomorrow: a light check every few hours, so a lot sold early (or with a
+  // changed close time) doesn't sit on the board as "ending in 6 hours".
+  const seen = new Set([...watched, ...fast, ...paged].map(l => l.key));
+  const day = q.dayWindow.all(now + config.warmWindowMin * 60000, now + config.dayWindowHours * 3600000, now - config.dayEveryHours * 3600000, config.fastBatch)
+    .filter(l => usable(l) && !seen.has(l.key));
+  const dayFast = day.filter(l => quick(l.site)).slice(0, Math.max(0, config.fastBatch - fast.length));
+  const dayPaged = day.filter(l => !quick(l.site)).slice(0, paged.length < config.hotBatch ? 1 : 0);
   // Watchlist always goes first and doesn't count against the limits.
-  return [...watched, ...fast, ...paged];
+  return [...watched, ...fast, ...paged, ...dayFast, ...dayPaged];
 }
 
 async function hotCycle() {
@@ -136,6 +143,14 @@ async function hotCycle() {
       for (const k of LIVE_FIELDS) if (fresh[k] != null) update[k] = fresh[k];
       for (const [k, v] of Object.entries(fresh)) if (!(k in update) && lot[k] == null && v != null) update[k] = v;
       upsertLot(update, { checked: true });
+      if (fresh.gone) {
+        // The lot page says it's gone (sold early / withdrawn): close it with the last price seen before that.
+        q.closeEarly.run(lot.last_checked ?? null, Date.now(), Date.now(), Date.now(), lot.key);
+        log.info('hot', `${lot.key} ${lot.title?.slice(0, 40)} ended before its listed close (last seen $${lot.bid ?? '?'})`);
+        const row = q.lot.get(lot.key);
+        if (row?.starred) await announceResult(row).catch(e => log.warn('alert', e.message));
+        return;
+      }
       if (lot.starred) await checkBidders(q.lot.get(lot.key)).catch(e => log.warn('alert', e.message));
       if (fresh.fast) { viaFeed++; return; } // fast reads are too frequent to log one by one
       const row = q.lot.get(lot.key);

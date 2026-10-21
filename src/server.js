@@ -11,6 +11,7 @@ import { checkListing } from './inspect.js';
 import { buildDigest } from './digest.js';
 import { sectorOf, SECTORS } from './categories.js';
 import { photo } from './photos.js';
+import { isLiveSale } from './live.js';
 import { freightRoutes } from './freight/routes.js';
 import { isVehicle } from './extract.js';
 import { push } from './notify.js';
@@ -56,7 +57,7 @@ const shape = (l, alertKinds, view = null) => {
     key: l.key, site: l.site, url: l.url, title: l.title, photo: l.image ? `/photo/${encodeURIComponent(l.key)}` : null, category: l.category,
     sector: sectorOf(l),
     year: l.year, odometer: l.odometer, wovr: l.wovr, location: l.location, state: l.state,
-    buyMethod: l.buy_method, sale: l.sale_name, lotNo: l.lot_no,
+    buyMethod: l.buy_method, sale: l.sale_name, lotNo: l.lot_no, liveSale: isLiveSale(l),
     bid: l.bid, bidCount: l.bid_count, startPrice: l.start_price, buyNow: l.buy_now,
     endAt: l.end_at, opensAt: l.opens_at ?? null, reserve: l.reserve ?? null, lastChecked: l.last_checked, starred: !!l.starred,
     estLow: l.est_low, estHigh: l.est_high, estNote: l.est_note, manualEstimate: l.manual_estimate,
@@ -162,6 +163,7 @@ export function startServer() {
       const out = shape({ ...l, bid: l.final_bid }, new Map(), viewOf(req.user));
       out.finalBid = l.final_bid;
       out.closedAt = l.closed_at;
+      out.endedEarly = !!l.ended_early;
       // How close to the end our last look was: 0-1 min = the real hammer price, more = it may have gone higher.
       out.seenMinsBeforeClose = l.final_seen_at && l.end_at ? Math.max(0, Math.round((l.end_at - l.final_seen_at) / 60000)) : null;
       return out;

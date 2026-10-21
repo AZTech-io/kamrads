@@ -111,3 +111,29 @@ test('final minutes: a lot on a fast feed is re-read every ~10 s', async () => {
   assert.ok(dueForRefresh(now).some(l => l.ext_id === 'Z9'), 'with a feed: due after 10 s');
   fast.forget('allbids');
 });
+
+test('lots closing later today get a light check every few hours; a lot sold early is closed', async () => {
+  const { factsFromText } = await import('../src/extract.js');
+  assert.equal(factsFromText('2012 Holden Barina\nSOLD\nNo longer available').gone, true);
+  assert.equal(factsFromText('Current bid $110\nEnds in 06:00:00').gone, undefined);
+  const now = Date.now();
+  upsertLot({ site: 'pickles', ext_id: '62447142', title: '2012 Holden Barina', bid: 110, end_at: now + 6 * 3600000, url: 'https://www.pickles.com.au/used/details/cars/2012-holden-barina/62447142' });
+  assert.ok(dueForRefresh(now).some(l => l.ext_id === '62447142'), 'never checked: due');
+  dbMod.db.prepare('UPDATE lots SET last_checked = ? WHERE key = ?').run(now - 3600000, 'pickles:62447142');
+  assert.ok(!dueForRefresh(now).some(l => l.ext_id === '62447142'), 'checked an hour ago: not yet');
+  q.closeEarly.run(now - 3600000, now, now, now, 'pickles:62447142');
+  const row = q.lot.get('pickles:62447142');
+  assert.equal(row.status, 'closed'); assert.equal(row.ended_early, 1); assert.equal(row.final_bid, 110);
+  assert.ok(row.end_at <= now, 'close time moved to when it actually ended');
+});
+
+test('live-lane lots: no countdown alerts, placeholder 11:59:59 pm close recognised', async () => {
+  const { isLiveSale } = await import('../src/live.js');
+  const t = Date.parse('2026-10-21T15:59:59Z'); // 23:59:59 in Perth
+  assert.equal(isLiveSale({ buy_method: 'Pickles Live' }), true);
+  assert.equal(isLiveSale({ end_at: t }), true);
+  assert.equal(isLiveSale({ buy_method: 'Pickles Online', end_at: Date.parse('2026-10-21T08:30:00Z') }), false);
+  assert.equal(classify(lot({ bid: 900, buy_method: 'Pickles Live' }), NOW), null);
+  upsertLot({ site: 'pickles', ext_id: '62447199', title: 'x', bid: 0, url: 'https://x/z' });
+  assert.equal(q.lot.get('pickles:62447199').bid, null, '$0 means no bid');
+});

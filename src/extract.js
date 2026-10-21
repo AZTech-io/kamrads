@@ -257,6 +257,8 @@ export function factsFromText(text, now = Date.now()) {
   }
   const loc = /([A-Z][A-Za-z .'-]{2,30}),\s*(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b/.exec(t);
   if (loc) { out.location = `${loc[1].trim()}, ${loc[2]}`; out.state = loc[2]; }
+  // Lot already gone before its listed close (sold early / withdrawn): Pickles shows "SOLD - No longer available"
+  if (/no longer available|this (?:item|lot|vehicle) (?:has been|is) (?:sold|withdrawn)|lot (?:has been )?withdrawn|item withdrawn/i.test(t)) out.gone = true;
   // Reserve: "Reserve not met" / "No Reserve" / "Reserve met" (not the "once the reserve is met..." help text)
   if (/\breserve\s+not\s+(?:yet\s+)?met\b/i.test(t)) out.reserve = 'not met';
   else if (/\bno\s+reserve\b|\bunreserved\b|\babsolute\s+sale\b/i.test(t)) out.reserve = 'none';

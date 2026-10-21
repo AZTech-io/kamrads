@@ -24,7 +24,7 @@ CREATE INDEX IF NOT EXISTS bids_key ON bids(key, at);
 CREATE TABLE IF NOT EXISTS alerts (key TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL, message TEXT, PRIMARY KEY(key, kind));
 CREATE TABLE IF NOT EXISTS site_status (site TEXT PRIMARY KEY, last_ok INTEGER, last_count INTEGER, last_error TEXT, last_error_at INTEGER, logged_in INTEGER);
 `);
-for (const col of ['final_seen_at INTEGER', 'est_avg REAL', 'est_comps TEXT', 'est_method TEXT', 'buyer_premium REAL', 'gst_extra INTEGER', 'check_verdict TEXT', 'check_note TEXT', 'check_at INTEGER', 'opens_at INTEGER', 'reserve TEXT']) { try { db.exec(`ALTER TABLE lots ADD COLUMN ${col}`); } catch { /* exists */ } }
+for (const col of ['final_seen_at INTEGER', 'est_avg REAL', 'est_comps TEXT', 'est_method TEXT', 'buyer_premium REAL', 'gst_extra INTEGER', 'check_verdict TEXT', 'check_note TEXT', 'check_at INTEGER', 'opens_at INTEGER', 'reserve TEXT', 'ended_early INTEGER']) { try { db.exec(`ALTER TABLE lots ADD COLUMN ${col}`); } catch { /* exists */ } }
 db.exec(`UPDATE lots SET title = NULL WHERE title IS NOT NULL AND (trim(title) = '' OR title LIKE '%{{%')`);
 db.exec(`UPDATE lots SET bid_count = NULL WHERE bid_count > 500`); // bad counts read from site-wide text
 // v1.1 cleanup: drop duplicate Pickles records created from internal ids
@@ -91,6 +91,7 @@ export function upsertLot(lot, { checked = false } = {}) {
   const row = { key, site: lot.site, ext_id: String(lot.ext_id), now, checked: checked ? now : null };
   // blank strings count as "don't know", so they never overwrite a real value
   for (const f of FIELDS) row[f] = typeof lot[f] === 'string' && !lot[f].trim() ? null : lot[f] ?? null;
+  if (row.bid === 0) row.bid = null; // "$0" = no bid yet
   upsertStmt.run(row);
   if (lot.bid != null && (!prev || prev.bid !== lot.bid)) addBidStmt.run(key, now, lot.bid);
   return key;
@@ -103,6 +104,10 @@ export const q = {
   dashboard: db.prepare(`SELECT * FROM lots WHERE status = 'open' AND ((end_at > ? AND end_at < ?) OR (end_at IS NULL AND ? = 1)) ORDER BY end_at IS NULL, end_at LIMIT ?`),
   recentClosed: db.prepare(`SELECT * FROM lots WHERE status = 'closed' AND closed_at > ? ORDER BY end_at DESC LIMIT 3000`),
   closedStats: db.prepare(`SELECT site, count(*) AS closed, sum(final_bid IS NOT NULL) AS priced, sum(final_seen_at IS NOT NULL AND end_at - final_seen_at <= 60000) AS hammer FROM lots WHERE status = 'closed' AND closed_at > ? GROUP BY site`),
+  // Sold or withdrawn before its listed close: close it now with the last price we saw.
+  closeEarly: db.prepare(`UPDATE lots SET status = 'closed', final_bid = bid, final_seen_at = ?, closed_at = ?, ended_early = 1,
+    end_at = CASE WHEN end_at IS NULL OR end_at > ? THEN ? ELSE end_at END WHERE key = ? AND status = 'open' RETURNING key`),
+  dayWindow: db.prepare(`SELECT * FROM lots WHERE status = 'open' AND starred = 0 AND end_at BETWEEN ? AND ? AND (last_checked IS NULL OR last_checked < ?) ORDER BY end_at LIMIT ?`),
   closeDue: db.prepare(`UPDATE lots SET status = 'closed', final_bid = bid, final_seen_at = last_checked, closed_at = ? WHERE status = 'open' AND end_at < ? RETURNING key`),
   star: db.prepare('UPDATE lots SET starred = ? WHERE key = ?'),
   watchedOpen: db.prepare(`SELECT * FROM lots WHERE starred = 1 AND status = 'open' ORDER BY end_at IS NULL, end_at`),
