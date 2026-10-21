@@ -12,6 +12,11 @@ export const grays = makeSite({
   detailRe: /grays\.com\/lot\/\d{2,6}-\d{5,}(?:[/?#]|$)/i,
   idFromUrl: u => (/\/lot\/(\d{2,6}-\d{5,})/i.exec(u || '') || [])[1] || null,
   listings: config.sites.grays.listings, pageParam: 'page', maxPages: config.sites.grays.maxPages, scrolls: 4,
+  // Grays' category menu: /search/<category> links (top level only), each read like a listing
+  auctionsFrom: config.sites.grays.categoriesFrom || null,
+  auctionRe: /grays\.com\/search\/[a-z0-9-]+\/?(?:\?[^#]*)?$/i,
+  maxAuctions: config.sites.grays.maxCategories,
+  skipFilter: config.sites.grays.skipCategories,
   timesFromLotPage: true, // search cards show no close time
   // "Opens: 22 October 18:00 AEDT"  "Closes: (27 October 20:00 AEDT)" or a countdown "Closes: 6d 13h 52m"
   pageFacts: text => {

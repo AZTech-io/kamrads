@@ -24,7 +24,7 @@ CREATE INDEX IF NOT EXISTS bids_key ON bids(key, at);
 CREATE TABLE IF NOT EXISTS alerts (key TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL, message TEXT, PRIMARY KEY(key, kind));
 CREATE TABLE IF NOT EXISTS site_status (site TEXT PRIMARY KEY, last_ok INTEGER, last_count INTEGER, last_error TEXT, last_error_at INTEGER, logged_in INTEGER);
 `);
-for (const col of ['final_seen_at INTEGER', 'est_avg REAL', 'est_comps TEXT', 'est_method TEXT', 'buyer_premium REAL', 'gst_extra INTEGER', 'check_verdict TEXT', 'check_note TEXT', 'check_at INTEGER', 'opens_at INTEGER', 'reserve TEXT', 'ended_early INTEGER']) { try { db.exec(`ALTER TABLE lots ADD COLUMN ${col}`); } catch { /* exists */ } }
+for (const col of ['final_seen_at INTEGER', 'est_avg REAL', 'est_comps TEXT', 'est_method TEXT', 'buyer_premium REAL', 'gst_extra INTEGER', 'check_verdict TEXT', 'check_note TEXT', 'check_at INTEGER', 'opens_at INTEGER', 'reserve TEXT', 'ended_early INTEGER', 'market TEXT']) { try { db.exec(`ALTER TABLE lots ADD COLUMN ${col}`); } catch { /* exists */ } }
 db.exec(`UPDATE lots SET title = NULL WHERE title IS NOT NULL AND (trim(title) = '' OR title LIKE '%{{%')`);
 db.exec(`UPDATE lots SET bid_count = NULL WHERE bid_count > 500`); // bad counts read from site-wide text
 // v1.1 cleanup: drop duplicate Pickles records created from internal ids
@@ -70,8 +70,17 @@ if (db.prepare('PRAGMA user_version').get().user_version < 15) {
   db.exec('PRAGMA user_version = 15');
 }
 
+// v1.6: which market a lot sells in ('salvage' when it came from a salvage search). Pickles lots stored
+// before this were mostly from salvage searches: mark the ones that say so.
+if (db.prepare('PRAGMA user_version').get().user_version < 16) {
+  db.exec(`UPDATE lots SET market = 'salvage' WHERE market IS NULL AND site = 'pickles'
+    AND (lower(COALESCE(sale_name, '')) LIKE '%salvage%' OR lower(COALESCE(url, '')) LIKE '%salvage%' OR lower(COALESCE(category, '')) LIKE '%salvage%'
+      OR (wovr IS NOT NULL AND wovr NOT LIKE '%N/A%'))`);
+  db.exec('PRAGMA user_version = 16');
+}
+
 const FIELDS = ['url', 'title', 'category', 'year', 'make', 'model', 'odometer', 'wovr', 'location', 'state', 'image',
-  'buy_method', 'sale_name', 'lot_no', 'bid', 'bid_count', 'buy_now', 'start_price', 'end_at', 'buyer_premium', 'gst_extra', 'opens_at', 'reserve'];
+  'buy_method', 'sale_name', 'lot_no', 'bid', 'bid_count', 'buy_now', 'start_price', 'end_at', 'buyer_premium', 'gst_extra', 'opens_at', 'reserve', 'market'];
 
 const upsertStmt = db.prepare(`
 INSERT INTO lots (key, site, ext_id, ${FIELDS.join(', ')}, first_seen, last_seen, last_checked)
@@ -182,7 +191,7 @@ export const q = {
   dbStats: db.prepare(`SELECT count(*) AS lots, sum(status = 'closed') AS closed, sum(final_bid IS NOT NULL) AS priced, min(first_seen) AS since FROM lots`),
   bidRows: db.prepare('SELECT count(*) AS n FROM bids'),
   // only results read within 15 min of the close count as real prices
-  historyRows: db.prepare(`SELECT key, site, title, year, odometer, wovr, category, url, sale_name, buy_method, final_bid, end_at FROM lots
+  historyRows: db.prepare(`SELECT key, site, title, year, odometer, wovr, category, url, sale_name, buy_method, market, final_bid, end_at FROM lots
     WHERE status = 'closed' AND final_bid IS NOT NULL AND final_bid > 0 AND end_at > ? AND final_seen_at IS NOT NULL AND end_at - final_seen_at <= 900000
       -- Grays runs on past its listed close (soft close): only a price read after the close is a result
       AND (site != 'grays' OR final_seen_at >= end_at)`),

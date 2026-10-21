@@ -50,7 +50,9 @@ export async function discover() {
       if (p === 1 && search === searches[0] && fromJson[0]) log.info(site, `sample: ${JSON.stringify(fromJson[0]).slice(0, 400)}`);
       const lots = mergeLots(fromJson, fromDom);
       let fresh = 0;
-      for (const l of lots) if (!all.has(l.ext_id)) { all.set(l.ext_id, l); fresh++; }
+      // lots from a salvage search sell in the salvage market (valued only against other salvage sales)
+      const market = /salvage/i.test(search) ? 'salvage' : null;
+      for (const l of lots) if (!all.has(l.ext_id)) { all.set(l.ext_id, market ? { ...l, market } : l); fresh++; }
       log.info(site, `${new URL(search).pathname} p${p}: ${lots.length} lots (${fromJson.length} json, ${fromDom.length} cards)`);
       if (fresh === 0 || lots.length < Math.min(pageSize, 30)) break;
     }

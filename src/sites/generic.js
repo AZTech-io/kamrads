@@ -61,7 +61,7 @@ export function makeSite(def) {
   async function discover() {
     const all = new Map();
     const targets = [...(def.listings || []).map(url => ({ url, name: null }))];
-    if (def.auctionsFrom) for (const a of await auctionsList()) targets.push({ url: a.href, name: a.name || null });
+    if (def.auctionsFrom) for (const a of await auctionsList()) if (!targets.some(t => t.url.replace(/\/$/, '') === a.href.replace(/\/$/, ''))) targets.push({ url: a.href, name: a.name || null });
     for (const t of targets) {
       let got = 0;
       for (let p = 1; p <= (def.maxPages ?? 1); p++) {

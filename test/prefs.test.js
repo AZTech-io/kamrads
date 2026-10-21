@@ -16,6 +16,7 @@ const { estimateOf, estimateSource } = await import('../src/alerts.js');
 startServer();
 await new Promise(r => setTimeout(r, 300));
 const base = 'http://127.0.0.1:18791';
+test.after(() => setTimeout(() => process.exit(0), 50));   // the web server would keep the file running
 const H = u => ({ authorization: 'Basic ' + Buffer.from(u).toString('base64'), 'content-type': 'application/json' });
 
 test('view settings are kept with the login and come back in the page', async () => {
@@ -62,13 +63,14 @@ test('rough value: not enough Caddys sold, so similar vans of the same age and k
 
 test('rough values never mix salvage sales with retail; Grays "Going, going, gone" countdown read', async () => {
   const { marketOf } = history;
-  assert.equal(marketOf({ site: 'pickles', title: '2015 Ford Kuga Ambiente' }), 'salvage');
+  assert.equal(marketOf({ site: 'pickles', title: '2015 Ford Kuga Ambiente', market: 'salvage' }), 'salvage', 'found through a salvage search');
+  assert.equal(marketOf({ site: 'pickles', title: '2015 Ford Kuga Ambiente' }), 'retail', 'Pickles all-cars search');
   assert.equal(marketOf({ site: 'grays', title: '2015 Ford Kuga Ambiente Petrol', sale_name: 'WA Motor Vehicle Auction' }), 'retail');
   assert.equal(marketOf({ site: 'grays', title: '2012 Ford Territory TX Diesel (WOVR Inspected)' }), 'salvage');
   assert.equal(marketOf({ site: 'lloyds', title: '2014 Hyundai i30', wovr: 'WOVR N/A' }), 'retail');
   const now = Date.now();
   // nine salvage SUVs sold cheap at Pickles: a clean Grays Kuga gets no rough value from them
-  for (let i = 0; i < 9; i++) upsertLot({ site: 'pickles', ext_id: `S${i}`, title: `201${4 + (i % 3)} Mazda CX-5 Maxx`, category: 'cars', odometer: 120000, bid: 2000 + i * 50, url: `https://x/s${i}`, end_at: now - 3600000 });
+  for (let i = 0; i < 9; i++) upsertLot({ site: 'pickles', ext_id: `S${i}`, title: `201${4 + (i % 3)} Ford Escape`, category: 'cars', market: 'salvage', odometer: 120000, bid: 2000 + i * 50, url: `https://x/s${i}`, end_at: now - 3600000 });
   db.exec(`UPDATE lots SET status = 'closed', final_bid = bid, final_seen_at = end_at WHERE site = 'pickles' AND ext_id LIKE 'S%'`);
   history.rebuild();
   upsertLot({ site: 'grays', ext_id: '0036-1', title: '2015 Ford Kuga Ambiente Petrol', category: 'cars', odometer: 110000, bid: 4400, end_at: now + 3600000, url: 'https://www.grays.com/lot/0036-1/x' });

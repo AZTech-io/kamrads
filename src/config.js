@@ -154,7 +154,7 @@ export const config = {
       enabled: bool('PICKLES_ENABLED', true),
       email: env.PICKLES_EMAIL || '',
       password: env.PICKLES_PASSWORD || '',
-      maxPages: num('PICKLES_MAX_PAGES', 3),
+      maxPages: num('PICKLES_MAX_PAGES', 10),
       pageSize: num('PICKLES_PAGE_SIZE', 120),
       searches: list('PICKLES_SEARCHES', [
         // Online (timed) salvage items - cars, trucks, everything
@@ -165,6 +165,8 @@ export const config = {
         'https://www.pickles.com.au/used/search/cars?filter=and%255B0%255D%255Bor%255D%255B0%255D%255BbuyMethod%255D%3DPickles%2520Online&contentkey=all-cars',
         // Trucks (the Isuzu NPR type of lot)
         'https://www.pickles.com.au/used/search/trucks?contentkey=trucks',
+        // Everything else sold online: machinery, forklifts, equipment, general goods
+        'https://www.pickles.com.au/used/search/items?filter=and%255B0%255D%255Bor%255D%255B0%255D%255BbuyMethod%255D%3DPickles%2520Online&contentkey=online-items',
       ]),
     },
     allbids: {
@@ -178,8 +180,8 @@ export const config = {
     },
     lloyds: {
       enabled: bool('LLOYDS_ENABLED', true),
-      maxAuctions: num('LLOYDS_MAX_AUCTIONS', 20),     // soonest-closing auctions scanned each pass
-      withinHours: num('LLOYDS_WITHIN_HOURS', 72),
+      maxAuctions: num('LLOYDS_MAX_AUCTIONS', 50),     // soonest-closing auctions scanned each pass
+      withinHours: num('LLOYDS_WITHIN_HOURS', 120),
       maxPages: num('LLOYDS_MAX_PAGES', 8),
       pageSize: num('LLOYDS_PAGE_SIZE', 100),
       // Auctions whose name matches this are skipped (regex): property tenders etc.
@@ -188,7 +190,11 @@ export const config = {
     grays: {
       enabled: bool('GRAYS_ENABLED', true),
       listings: list('GRAYS_LISTINGS', ['https://www.grays.com/search/automotive-trucks-and-marine']),
-      maxPages: num('GRAYS_MAX_PAGES', 5),
+      // every category in Grays' own menu (read from this page each pass), except businesses for sale
+      categoriesFrom: env.GRAYS_CATEGORIES_FROM ?? 'https://www.grays.com/search/automotive-trucks-and-marine',
+      maxCategories: num('GRAYS_MAX_CATEGORIES', 20),
+      skipCategories: env.GRAYS_SKIP || 'business(?:es)?[- ]for[- ]sale',
+      maxPages: num('GRAYS_MAX_PAGES', 10),
     },
     slattery: {
       enabled: bool('SLATTERY_ENABLED', true),
@@ -199,7 +205,7 @@ export const config = {
     auctionbarn: {
       enabled: bool('AUCTIONBARN_ENABLED', true),
       auctionsFrom: env.AUCTIONBARN_AUCTIONS || 'https://theauctionbarn.com.au/upcoming-auctions',
-      maxAuctions: num('AUCTIONBARN_MAX_AUCTIONS', 8),
+      maxAuctions: num('AUCTIONBARN_MAX_AUCTIONS', 20),
     },
     manheim: {
       enabled: bool('MANHEIM_ENABLED', true),

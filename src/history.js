@@ -11,8 +11,8 @@ export { identify };
 // Write-off class, and which market it sold in: salvage sales (hail, insurance, non-runners) go for a
 // fraction of what the same car makes at a general vehicle auction, so they're never compared.
 const SALVAGE = /salvage|insurance|insurer|write-?\s?off|damaged|\bhail\b|non[\s-]?runner|flood|fire\s+damage|repairable|wovr(?!\s*n\/a)/i;
-// (KAMRADS only searches Pickles' salvage sales, so every Pickles result is salvage)
-const marketOf = l => (l.site === 'pickles' || SALVAGE.test(`${l.category || ''} ${l.sale_name || ''} ${l.url || ''} ${l.buy_method || ''} ${l.title || ''} ${l.wovr && !/n\/a/i.test(l.wovr) ? l.wovr : ''}`) ? 'salvage' : 'retail');
+// (a lot found through a salvage search carries market = 'salvage')
+const marketOf = l => (l.market === 'salvage' || SALVAGE.test(`${l.category || ''} ${l.sale_name || ''} ${l.url || ''} ${l.buy_method || ''} ${l.title || ''} ${l.wovr && !/n\/a/i.test(l.wovr) ? l.wovr : ''}`) ? 'salvage' : 'retail');
 const wclass = l => `${/statutory/i.test(l.wovr || '') ? 'stat' : /repairable/i.test(l.wovr || '') ? 'rep' : 'clean'}|${marketOf(l)}`;
 const keyOf = (id, l) => `${id.make}|${id.model}|${wclass(l)}`;
 
