@@ -17,7 +17,7 @@ globalThis.fetch = async (url, opts = {}) => {
   return realFetch(url, opts);
 };
 
-const { jobFromCard, parseAgo, placesIn, jobsFromJson, truckitJob, loadshiftJobsFromText } = await import('../src/freight/parse.js');
+const { jobFromCard, parseAgo, placesIn, jobsFromJson, truckitJob, loadshiftJobsFromText, loadshiftRowsFromText } = await import('../src/freight/parse.js');
 const { upsertJob, fq } = await import('../src/freight/store.js');
 const { fit, runFreightAlerts } = await import('../src/freight/match.js');
 const geo = await import('../src/geo.js');
@@ -76,6 +76,16 @@ test('Loadshift board text: id, cargo, title, places, weight, ready date, distan
   assert.equal(a.due_text, '8300 kg · ready 27 Oct'); assert.equal(a.url, 'https://www.loadshift.com.au/loads/40778814'); assert.equal(a.price, null);
   assert.equal(b.category, 'Truck or Prime Mover'); assert.equal(b.title, 'Kenworth T409 Prime Mover - 8m L (9.5T)');
   assert.equal(b.to_text, 'Perth WA 6000'); assert.equal(b.url, 'https://www.loadshift.com.au/search/loads', 'no link found: the board');
+});
+
+test('Loadshift board as the page text reads (real layout, Oct 2026)', () => {
+  const text = ['Showing 1-100 of 1797', 'Sort by: Latest', 'Load ID', 'Freight', 'Qty.', 'Title', 'Weight', 'Pickup and Dropoff', 'Distance', 'Ready On',
+    '40778994', 'Machinery', '1', 'Yanmar ViO80-1 Excavator - 6m L (9T)', '9000 kg', 'MacMasters Beach, NSW 2251', 'Kyogle, NSW 2474', '685 km', 'No date yet',
+    '40720315', 'Machinery', '1', 'Komatsu PC300 Excavator - 3.19m W (Oversize)', '-', 'Garbutt, QLD 4814', 'Charters Towers City, QLD 4820', '137 km', '20-Oct-26'].join('\n\n');
+  const [y, k] = loadshiftRowsFromText(text);
+  assert.equal(y.ext_id, '40778994'); assert.equal(y.title, 'Yanmar ViO80-1 Excavator - 6m L (9T)'); assert.equal(y.km, 685);
+  assert.equal(y.due_text, '9000 kg · ready: no date yet'); assert.equal(y.to_text, 'Kyogle NSW 2474');
+  assert.equal(k.title, 'Komatsu PC300 Excavator - 3.19m W (Oversize)'); assert.equal(k.due_text, 'ready 20 Oct');
 });
 
 const route = { kind: 'route', a_lat: -35.2809, a_lon: 149.13, b_lat: -33.8688, b_lon: 151.2093, radius_km: 30, both_ways: 1, min_price: null };

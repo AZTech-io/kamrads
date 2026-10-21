@@ -130,13 +130,14 @@ const TRUCKIT = {
     : { data: [{ status: 'active', item_label: 'crane hoist rope', category_label: 'Other General', created_at: '1792526930', collection_date_view: 'Ready Now', suburb1: 'SOMERSBY', state1: 'NSW', postcode1: '2250', suburb2: 'WILLIAMSTOWN', state2: 'VIC', postcode2: '3016', distance_estimate: '952' }], page_count: 2, page: 1, record_count: 2 }),
 };
 
-const lsLoad = (id, cargo, title, w, from, to, ready, km) => `<div class="load"><a href="/loads/${id}">View</a><div>Load ID ${id}</div><div>${cargo}</div><h3>${title}</h3><dl><dt>Weight</dt><dd>${w} kg</dd><dt>Pickup</dt><dd>${from}</dd><dt>Dropoff</dt><dd>${to}</dd><dt>Ready On</dt><dd>${ready}</dd><dt>Distance</dt><dd>${km} km</dd></dl></div>`;
+// Loadshift's real layout: a table, one row per load, each row linking to /projects/<type>/<slug>
+const lsRow = (id, freight, qty, title, w, from, to, km, ready, href) => `<div class="row"><a href="${href}"></a><div>${id}</div><div>${freight}</div><div>${qty}</div><div>${title}</div><div>${w}</div><div><div>${from}</div><div>${to}</div></div><div>${km} km</div><div>${ready}</div></div>`;
 const LOADSHIFT = {
-  '/search/loads': u => html(u.searchParams.get('page') === '2'
-    ? lsLoad(40777708, 'Shipping Container', '1x 20ft shipping container', 17000, 'Townsville City, QLD 4810', 'Noah, QLD 4873', '19-Oct-26', 120)
-    : u.searchParams.get('page') ? '<p>No loads</p>'
-    : lsLoad(40778814, 'Machinery', 'Telehandler', 8300, 'Merredin, WA 6415', 'Wallumbilla, QLD 4428', '27-Oct-26', 3775)
-      + lsLoad(40778728, 'Truck or Prime Mover', 'Kenworth T409 Prime Mover', 9500, 'Freemans Reach, NSW 2756', 'Perth, WA 6000', '20-Oct-26', 3960)),
+  '/search/loads': u => html(u.searchParams.get('page') ? '<p>Showing 1-3 of 3</p>'
+    : '<div>Load ID</div><div>Freight</div><div>Qty.</div><div>Title</div><div>Weight</div><div>Pickup and Dropoff</div><div>Distance</div><div>Ready On</div>'
+    + lsRow(40720315, 'Machinery', 1, 'Komatsu PC300 Excavator - 3.19m W (Oversize)', '-', 'Garbutt, QLD 4814', 'Charters Towers City, QLD 4820', 137, '20-Oct-26', '/projects/machinery-mobile/Excavator-40720315')
+    + lsRow(40779029, 'General Freight', 2, '1 Pallet - (turnbuckles)', '1850 kg', 'Kewdale, WA 6105', 'Kalgoorlie, WA 6430', 585, '21-Oct-26', '/projects/general-full-load/Pallet-turnbuckles')
+    + lsRow(40778632, 'Machinery', 1, 'Bobcat machine on a trailer', '4000 kg', 'Australia', 'Boulia, QLD 4829', 2293, 'No date yet', '/projects/machinery-mobile/Bobcat-machine-trailer')),
 };
 
 async function fakeSite(site, origin, pages) {
@@ -301,14 +302,18 @@ test('Truckit freight: job feed read from the board page, more pages fetched dir
   assert.ok(jobs.some(j => j.title === 'Fridge' && j.from_text === 'Fyshwick ACT 2609'), 'page 2');
 });
 
-test('Loadshift freight: public board pages read from their labelled text, load links kept', { skip: !chromeOk }, async () => {
+test('Loadshift freight: table rows with their own links', { skip: !chromeOk }, async () => {
   const { loadshift } = await import('../src/freight/sites.js');
   await fakeSite('loadshift', 'https://www.loadshift.com.au', LOADSHIFT);
   const jobs = await loadshift.discover();
-  assert.deepEqual(jobs.map(j => j.ext_id).sort(), ['40777708', '40778728', '40778814']);
-  const th = jobs.find(j => j.ext_id === '40778814');
-  assert.equal(th.title, 'Telehandler'); assert.equal(th.from_text, 'Merredin WA 6415'); assert.equal(th.km, 3775);
-  assert.equal(th.url, 'https://www.loadshift.com.au/loads/40778814');
+  assert.deepEqual(jobs.map(j => j.ext_id).sort(), ['40720315', '40778632', '40779029']);
+  const ex = jobs.find(j => j.ext_id === '40720315');
+  assert.equal(ex.title, 'Komatsu PC300 Excavator - 3.19m W (Oversize)'); assert.equal(ex.category, 'Machinery');
+  assert.equal(ex.from_text, 'Garbutt QLD 4814'); assert.equal(ex.to_text, 'Charters Towers City QLD 4820'); assert.equal(ex.km, 137);
+  assert.equal(ex.url, 'https://www.loadshift.com.au/projects/machinery-mobile/Excavator-40720315');
+  const pal = jobs.find(j => j.ext_id === '40779029');
+  assert.equal(pal.due_text, '1850 kg · qty 2 · ready 21 Oct');
+  assert.equal(jobs.find(j => j.ext_id === '40778632').from_text, null, '"Australia" is not a pickup place');
 });
 
 test('login check: a "My Pickles" menu link alone is not a logged-in session', { skip: !chromeOk }, async () => {

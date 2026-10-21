@@ -180,3 +180,52 @@ export function loadshiftJobsFromText(text, links = {}) {
   }
   return out;
 }
+
+// ---- Loadshift table rows (the real layout, Oct 2026). Each row's text, in order:
+//   40778994 / Machinery / 1 / Yanmar ViO80-1 Excavator - 6m L (9T) / 9000 kg / MacMasters Beach, NSW 2251 /
+//   Kyogle, NSW 2474 / 685 km / No date yet          ("-" when no weight; "Australia" when no pickup suburb)
+const LS_ID = /^\d{7,9}$/;
+const LS_KM = /^[\d,]+\s*km$/i;
+export function loadshiftRow(lines, href = null) {
+  const L = lines.map(tidy).filter(Boolean);
+  const id = L[0];
+  if (!LS_ID.test(id || '')) return null;
+  const k = L.findIndex(l => LS_KM.test(l));
+  // pickup / dropoff are the two lines before the distance (or the last two place-like lines)
+  const placeLike = l => /,\s*(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b/.test(l) || /^australia$/i.test(l);
+  let pi, di;
+  if (k > 0) { pi = k - 2; di = k - 1; }
+  else { const idx = L.map((l, i) => (placeLike(l) ? i : -1)).filter(i => i > 0); if (idx.length < 2) return null; [pi, di] = idx.slice(-2); }
+  const freight = L[1] || null;
+  const hasQty = /^\d{1,3}$/.test(L[2] || '');
+  const tStart = hasQty ? 3 : 2;
+  const wIdx = pi - 1;
+  const weight = /kg|\bt\b|tonne/i.test(L[wIdx] || '') ? L[wIdx] : null;
+  const titleEnd = weight || L[wIdx] === '-' ? wIdx : pi;
+  const title = L.slice(tStart, titleEnd).join(' ') || freight || 'Load';
+  const ready = k > 0 ? L[k + 1] : null;
+  const readyTxt = ready && /no date/i.test(ready) ? 'ready: no date yet' : lsDate(ready) ? `ready ${lsDate(ready)}` : null;
+  return {
+    site: 'loadshift', ext_id: id, url: href || 'https://www.loadshift.com.au/search/loads',
+    title: tidy(title).slice(0, 160), category: freight,
+    from_text: /^australia$/i.test(L[pi] || '') ? null : lsPlace(L[pi]), to_text: lsPlace(L[di]),
+    km: k > 0 ? parseMoney(L[k]) : null, price: null, price_kind: null,
+    offers: null, posted_at: null,
+    due_text: [weight ? weight.replace(/\s+/g, ' ') : null, hasQty && +L[2] > 1 ? `qty ${L[2]}` : null, readyTxt].filter(Boolean).join(' · ') || null,
+    status: 'open',
+  };
+}
+
+/** Whole page text -> rows (used when the rows can't be picked out of the page itself). */
+export function loadshiftRowsFromText(text) {
+  const L = String(text || '').split('\n').map(tidy).filter(Boolean);
+  const out = [];
+  let cur = null;
+  for (let i = 0; i < L.length; i++) {
+    // a row starts with a load id followed by a freight type (not a number)
+    if (LS_ID.test(L[i]) && L[i + 1] && !/^\d/.test(L[i + 1])) { if (cur) out.push(cur); cur = [L[i]]; continue; }
+    if (cur) cur.push(L[i]);
+  }
+  if (cur) out.push(cur);
+  return out.map(r => loadshiftRow(r)).filter(Boolean);
+}

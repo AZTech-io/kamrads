@@ -4,7 +4,7 @@
 import { withPage, looksBlocked, browserFetch } from '../browser.js';
 import { config } from '../config.js';
 import { log } from '../log.js';
-import { jobFromCard, truckitJob, loadshiftJobsFromText, jobsFromJson } from './parse.js';
+import { jobFromCard, truckitJob, loadshiftJobsFromText, loadshiftRow, loadshiftRowsFromText } from './parse.js';
 
 /** Each link matching `re` with its own card text (climbing while the box holds only this one job). */
 const jobCards = (page, re) => page.evaluate(src => {
@@ -87,24 +87,40 @@ export const truckit = {
 
 export const loadshift = {
   site: 'loadshift', label: 'Loadshift',
-  // Public load board. Each load is read from the page's labelled text; any link that carries the
-  // load's id becomes its link, otherwise we link to the board.
+  // Public load board: a table of the latest 100 loads (id, freight, qty, title, weight, pickup,
+  // dropoff, distance, ready date), each row linking to /projects/<type>/<slug>.
   async discover() {
     const all = new Map();
     const { pages, maxPages } = config.freight.loadshift;
     for (let p = 1; p <= maxPages; p++) {
       const url = new URL(pages[0]); if (p > 1) url.searchParams.set('page', String(p));
       const r = await withPage('loadshift', url.toString(), page => page.evaluate(() => {
-        const links = {};
-        for (const a of document.querySelectorAll('a[href]')) { const m = /(\d{6,})/.exec(a.getAttribute('href') || ''); if (m && /load|freight|job/i.test(a.href)) links[m[1]] = a.href.split('#')[0]; }
-        return links;
+        const rows = [];
+        const seen = new Set();
+        for (const a of document.querySelectorAll('a[href*="/projects/"]')) {
+          let box = a;
+          for (let i = 0; i < 8 && box.parentElement; i++) {
+            box = box.parentElement;
+            const t = box.innerText || '';
+            if (/^\s*\d{7,9}\s*$/m.test(t) && /\d\s*km/i.test(t)) break;
+          }
+          const text = (box.innerText || '').trim();
+          const id = (/^\s*(\d{7,9})\s*$/m.exec(text) || [])[1];
+          if (!id || seen.has(id)) continue;
+          // the box must hold just this one load
+          if ((text.match(/^\s*\d{7,9}\s*$/gm) || []).length > 1) continue;
+          seen.add(id);
+          rows.push({ href: a.href.split('#')[0], text });
+        }
+        return rows;
       }), { scrolls: 2, waitMs: 2500 });
       if (looksBlocked(r)) throw new Error(`blocked by Loadshift (HTTP ${r.status})`);
+      let jobs = (r.result || []).map(x => loadshiftRow(x.text.split('\n'), x.href)).filter(Boolean);
+      if (!jobs.length) jobs = loadshiftRowsFromText(r.text);                 // rows not separable: read the page text
+      if (!jobs.length) jobs = loadshiftJobsFromText(r.text);                 // older labelled layout
       let fresh = 0;
-      for (const j of loadshiftJobsFromText(r.text, r.result || {})) if (!all.has(j.ext_id)) { all.set(j.ext_id, j); fresh++; }
-      // if the board's data feed is recognisable, take it too (fills gaps the text misses)
-      for (const { body } of r.json) for (const j of jobsFromJson(body, { site: 'loadshift', urlFor: (o, id) => (r.result || {})[id] || 'https://www.loadshift.com.au/search/loads' })) if (!all.has(j.ext_id)) { all.set(j.ext_id, j); fresh++; }
-      log.info('loadshift', `${url.pathname}${url.search}: ${fresh} new loads`);
+      for (const j of jobs) if (!all.has(j.ext_id)) { all.set(j.ext_id, j); fresh++; }
+      log.info('loadshift', `${url.pathname}${url.search}: ${fresh} new loads (${(r.result || []).length} linked rows)`);
       if (!fresh) break;
     }
     if (!all.size) log.warn('loadshift', 'no loads recognised - run: npm run probe-freight -- https://www.loadshift.com.au/search/loads');
