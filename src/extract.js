@@ -239,8 +239,10 @@ export function factsFromText(text, now = Date.now()) {
     || /\b(?:bids?|bid\s*count)\s*:\s*(\d{1,4})\b/i.exec(t)
     || /(?<![\d,])(\d{1,3})\s+bids?\b(?!\s*(?:placed|this|today|so\s+far\s+this))/i.exec(t);
   out.bid_count = bc && +bc[1] <= 500 ? +bc[1] : (/\bno\s+bids\b/i.test(t) ? 0 : null);
-  const odo = /([\d,]{1,9})\s*(?:km|kms|kilometres)\b/i.exec(t);
-  out.odometer = odo ? parseInt0(odo[1]) : null;
+  // "Indicated Odometer Reading: 332204" (Grays: no unit), "Odometer: 85,000 km", else "85,000 km"
+  const odo = /\b(?:indicated\s+)?odometer(?:\s+reading)?\s*(?:\(km\))?\s*:?\s*([\d,]{1,9})\b/i.exec(t) || /\bkms?\s*:\s*([\d,]{1,9})\b/i.exec(t) || /([\d,]{1,9})\s*(?:km|kms|kilometres)\b/i.exec(t);
+  const km = odo ? parseInt0(odo[1]) : null;
+  out.odometer = km != null && km > 0 && km < 2000000 ? km : null;
   const w = /(statutory\s*write-?\s*off|inspection\s*passed\s*repairable\s*write-?\s*off|repairable\s*write-?\s*off|wovr\s*n\/a)/i.exec(t);
   out.wovr = w ? normaliseWovr(w[1]) : null;
   // Close time: a countdown first, then an explicit date.

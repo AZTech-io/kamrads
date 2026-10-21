@@ -89,3 +89,11 @@ test('a Grays car is a car (not a motorbike), and a Grays price only counts if r
   const keys = q.historyRows.all(now - 864e5).map(r => r.key);
   assert.ok(keys.includes('grays:9-2')); assert.ok(!keys.includes('grays:9-1'));
 });
+
+test('odometer: Grays "Indicated Odometer Reading" (no unit), "Kms:", "85,000 km"', async () => {
+  const { factsFromText } = await import('../src/extract.js');
+  assert.equal(factsFromText('Indicated Odometer Reading: 332204 Registration Expiry').odometer, 332204);
+  assert.equal(factsFromText('Kms: 120,500').odometer, 120500);
+  assert.equal(factsFromText('2015 Hilux SR 98,000 km').odometer, 98000);
+  assert.equal(factsFromText('Odometer reading 0').odometer, undefined);
+});
