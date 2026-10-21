@@ -137,3 +137,19 @@ test('live-lane lots: no countdown alerts, placeholder 11:59:59 pm close recogni
   upsertLot({ site: 'pickles', ext_id: '62447199', title: 'x', bid: 0, url: 'https://x/z' });
   assert.equal(q.lot.get('pickles:62447199').bid, null, '$0 means no bid');
 });
+
+test('a big Lloyds sale closing: at most 6 reads a cycle, vehicles before wine; a 429 pauses the site', async () => {
+  const pz = await import('../src/pause.js');
+  const now = Date.now();
+  for (let i = 0; i < 40; i++) upsertLot({ site: 'lloyds', ext_id: `W${i}`, title: `Shiraz 2013 750ML lot ${i}`, bid: 5, end_at: now + 60000 + i * 1000, url: `https://x/w${i}` });
+  upsertLot({ site: 'lloyds', ext_id: 'UTE', title: '2012 Toyota Hilux SR', category: 'cars', bid: 3000, end_at: now + 170000, url: 'https://x/ute' });
+  const due = dueForRefresh(now).filter(l => l.site === 'lloyds');
+  assert.equal(due.length, 6, 'capped');
+  assert.equal(due[0].ext_id, 'UTE', 'the ute before the wine, though it closes later');
+  pz.pause('lloyds', 'HTTP 429', now);
+  assert.equal(dueForRefresh(now).filter(l => l.site === 'lloyds').length, 0, 'paused');
+  assert.ok(pz.pausedUntil('lloyds') - now >= 2 * 60000);
+  assert.ok(pz.isRateLimit('blocked by Lloyds (HTTP 429)'));
+  assert.equal(dueForRefresh(now + 3 * 60000).filter(l => l.site === 'lloyds').length, 6, 'back after the pause');
+  pz._reset();
+});

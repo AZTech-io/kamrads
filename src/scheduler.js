@@ -20,6 +20,8 @@ import { checkPending } from './inspect.js';
 import { prunePhotos } from './photos.js';
 import { freightLoop } from './freight/loop.js';
 import { pushLoop } from './freight/push.js';
+import { isPaused, pause, ok as pauseOk, isRateLimit } from './pause.js';
+import { sectorOf } from './categories.js';
 
 export const adapters = { pickles, manheim, allbids, lloyds, grays, slattery, auctionbarn };
 // Sites where a re-read is cheap (learned JSON feed, or plain-HTML lot pages)
@@ -42,6 +44,7 @@ export const stop = () => { stopping = true; };
 
 async function discoverSite(a) {
   const t0 = Date.now();
+  if (isPaused(a.site)) return;
   try {
     const lots = await a.discover();
     db.exec('BEGIN');
@@ -55,6 +58,7 @@ async function discoverSite(a) {
   } catch (e) {
     q.statusErr.run(a.site, e.message.slice(0, 300), Date.now());
     log.error(a.site, `discovery failed: ${e.message}`);
+    if (isRateLimit(e.message)) pause(a.site, e.message.slice(0, 60));
   }
 }
 
@@ -65,7 +69,7 @@ async function fillTimes(a) {
     ...q.missingPlace.all(a.site, now, now + 3 * 864e5, now - 12 * 3600000, Math.ceil(config.fillTimesPerScan / 2))].filter(l => !seen.has(l.key) && seen.add(l.key));
   let got = 0;
   for (const lot of todo) {
-    if (stopping) break;
+    if (stopping || isPaused(a.site)) break;
     try {
       const fresh = await withTimeout(a.refresh(lot), REFRESH_TIMEOUT_MS, 'took too long');
       const update = { site: lot.site, ext_id: lot.ext_id };
@@ -73,6 +77,7 @@ async function fillTimes(a) {
       upsertLot(update, { checked: true });
       if (fresh.end_at) got++;
     } catch (e) {
+      if (isRateLimit(e.message)) { pause(a.site, e.message.slice(0, 60)); break; }
       upsertLot({ site: lot.site, ext_id: lot.ext_id }, { checked: true });
       log.warn(a.site, `${lot.key}: ${e.message}`);
     }
@@ -91,7 +96,7 @@ async function discoveryLoop() {
 
 /** Pick the lots that need a fresh look: closing within the hot/warm windows. */
 export function dueForRefresh(now = Date.now()) {
-  const usable = l => adapters[l.site] && config.sites[l.site]?.enabled && l.url;
+  const usable = l => adapters[l.site] && config.sites[l.site]?.enabled && l.url && !isPaused(l.site, now);
   // Your watchlist: every WATCH_EVERY_SEC (faster in the final minutes), whatever the price or close time.
   const watched = q.watchedOpen.all().filter(l => usable(l) && (l.end_at == null || l.end_at > now - FINAL_GRACE_MS)).filter(l => {
     const since = now - (l.last_checked || 0);
@@ -103,7 +108,7 @@ export function dueForRefresh(now = Date.now()) {
   });
   const rows = q.openWindow.all(now - FINAL_GRACE_MS, now + config.warmWindowMin * 60000).filter(l => !l.starred);
   const due = rows.filter(l => {
-    if (!adapters[l.site] || !config.sites[l.site]?.enabled || !l.url) return false;
+    if (!usable(l)) return false;
     // Expensive lots aren't worth a slow page read; with a fast feed they're cheap, so keep them (final prices).
     if (!quick(l.site) && !l.starred && l.bid != null && l.bid > config.hotMaxBid) return false;
     const mins = (l.end_at - now) / 60000;
@@ -115,17 +120,22 @@ export function dueForRefresh(now = Date.now()) {
     if (mins <= config.hotWindowMin) return since >= config.hotEverySec * 900;
     return since >= config.warmEveryMin * 60000;
   });
-  // Final reads first (they can't wait), then whatever closes soonest.
-  due.sort((a, b) => ((a.end_at <= now) === (b.end_at <= now) ? a.end_at - b.end_at : a.end_at <= now ? -1 : 1));
-  // Sites with a fast price feed can take many reads a cycle; full page reads are limited to HOT_BATCH.
-  const fast = due.filter(l => quick(l.site)).slice(0, config.fastBatch);
+  // Final reads first (they can't wait), then whatever closes soonest; general goods (wine, paint, toys)
+  // after vehicles and equipment, so when a site's cap bites it's the junk that waits.
+  const goods = l => (sectorOf(l) === 'general' ? 1 : 0);
+  due.sort((a, b) => goods(a) - goods(b) || ((a.end_at <= now) === (b.end_at <= now) ? a.end_at - b.end_at : a.end_at <= now ? -1 : 1));
+  // Sites with a fast price feed can take many reads a cycle (up to SITE_PER_CYCLE each); full page reads are limited to HOT_BATCH.
+  const perSite = {};
+  const capOk = l => { const cap = config.perCycle[l.site] ?? config.fastBatch; perSite[l.site] = (perSite[l.site] || 0) + 1; return perSite[l.site] <= cap; };
+  for (const l of watched) perSite[l.site] = (perSite[l.site] || 0) + 1;   // the watchlist uses the same allowance
+  const fast = due.filter(l => quick(l.site)).filter(capOk).slice(0, config.fastBatch);
   const paged = due.filter(l => !quick(l.site)).slice(0, config.hotBatch);
   // Lots closing later today/tomorrow: a light check every few hours, so a lot sold early (or with a
   // changed close time) doesn't sit on the board as "ending in 6 hours".
   const seen = new Set([...watched, ...fast, ...paged].map(l => l.key));
   const day = q.dayWindow.all(now + config.warmWindowMin * 60000, now + config.dayWindowHours * 3600000, now - config.dayEveryHours * 3600000, config.fastBatch)
     .filter(l => usable(l) && !seen.has(l.key));
-  const dayFast = day.filter(l => quick(l.site)).slice(0, Math.max(0, config.fastBatch - fast.length));
+  const dayFast = day.filter(l => quick(l.site)).filter(capOk).slice(0, Math.max(0, config.fastBatch - fast.length));
   const dayPaged = day.filter(l => !quick(l.site)).slice(0, paged.length < config.hotBatch ? 1 : 0);
   // Watchlist always goes first and doesn't count against the limits.
   return [...watched, ...fast, ...paged, ...dayFast, ...dayPaged];
@@ -139,8 +149,10 @@ async function hotCycle() {
   const due = dueForRefresh(now);
   let viaFeed = 0;
   await pool(due, 6, async lot => {
+    if (isPaused(lot.site)) return;   // a 429 earlier in this cycle: leave the rest of that site alone
     try {
       const fresh = await withTimeout(adapters[lot.site].refresh(lot), REFRESH_TIMEOUT_MS, 're-check took too long');
+      pauseOk(lot.site);
       // Detail pages often carry worse titles ("CP: 01/2014,Hino,...") - only take live fields,
       // and descriptive ones only where we had nothing.
       const update = { site: lot.site, ext_id: lot.ext_id };
@@ -161,6 +173,7 @@ async function hotCycle() {
       const mins = row.end_at ? Math.round((row.end_at - Date.now()) / 60000) : '?';
       log.info('hot', `${lot.key} ${row.title?.slice(0, 40)} · bid ${row.bid ?? '-'} · ${mins} min left`);
     } catch (e) {
+      if (isRateLimit(e.message)) { pause(lot.site, e.message.slice(0, 60)); return; }   // the lot wasn't read: try it once the pause is over
       upsertLot({ site: lot.site, ext_id: lot.ext_id }, { checked: true }); // don't hammer a failing page
       log.warn('hot', `${lot.key}: ${e.message}`);
     }
