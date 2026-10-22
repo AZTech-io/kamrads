@@ -274,14 +274,16 @@ function left(l) {
   if (m < 48 * 60) return `${Math.floor(m / 60)}h ${m % 60}m left`;
   return `ends ${when(l.endAt)}`;
 }
-const specOf = l => [l.item?.drive, l.item?.cab ? `${l.item.cab} cab` : null, l.item?.body && l.item.body !== 'curtainsider' ? l.item.body : null, l.item?.code ? l.item.code.toUpperCase() : null].filter(Boolean).join(' · ');
+const TRIM = { sx: 'SX', 'ls-m': 'LS-M', 'ls-u': 'LS-U', 'ls-u+': 'LS-U+', 'x-rider': 'X-Rider', 'x-runner': 'X-Runner', 'x-terrain': 'X-Terrain', blade: 'Blade' };
+const specOf = l => [TRIM[l.item?.trim], l.item?.drive, l.item?.cab ? `${l.item.cab} cab` : null, l.item?.body && l.item.body !== 'curtainsider' ? l.item.body : null, l.item?.code ? l.item.code.toUpperCase() : null].filter(Boolean).join(' · ');
 const dmgChip = d => !d || d.level === 'clean' ? '' : `<span class="dmg ${d.level === 'repairable' ? 'rep' : ''}" title="${esc(d.label)}">${esc(d.level === 'repairable' ? 'Repairable WO' : d.level === 'statutory' ? 'Statutory WO' : d.kinds.length ? d.kinds.join(', ') : 'Salvage')}</span>`;
 
 // ---- spec filter (truck class / drive & cab) ----
 function specOptions() {
   if (!view) return '';
   if (view.classes) return `<option value="">All classes</option>` + Object.entries(view.classes).map(([k, v]) => `<option value="cls:${k}">${esc(v)}</option>`).join('');
-  if (view.dream.kind === 'dmax') return ['', 'drive:4x4', 'drive:4x2', 'cab:crew', 'cab:space', 'cab:single'].map(v => `<option value="${v}">${{ '': 'Any spec', 'drive:4x4': '4x4 only', 'drive:4x2': '4x2 only', 'cab:crew': 'Crew cab', 'cab:space': 'Space cab', 'cab:single': 'Single cab' }[v]}</option>`).join('');
+  if (view.dream.kind === 'dmax') return ['', 'drive:4x4', 'drive:4x2', 'cab:crew', 'cab:space', 'cab:single'].map(v => `<option value="${v}">${{ '': 'Any spec', 'drive:4x4': '4x4 only', 'drive:4x2': '4x2 only', 'cab:crew': 'Crew cab', 'cab:space': 'Space cab', 'cab:single': 'Single cab' }[v]}</option>`).join('')
+    + Object.entries(view.trims || {}).map(([k, v]) => `<option value="trim:${k}">${esc(v)} only</option>`).join('');
   return '<option value="">Any spec</option>';
 }
 function specOk(it) {
@@ -293,7 +295,7 @@ function specOk(it) {
 const text = l => `${l.title} ${l.location || ''} ${l.state || ''} ${l.body || ''} ${l.item?.code || ''} ${l.site || l.source || ''}`.toLowerCase();
 function filtered(rows) {
   const q = $('#q').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  return rows.filter(l => specOk(l.item || { cls: l.cls, drive: l.drive, cab: l.cab }) && q.every(w => text(l).includes(w)) && (!$('#onlyFit').checked || l.inCriteria !== false));
+  return rows.filter(l => specOk(l.item || { cls: l.cls, drive: l.drive, cab: l.cab, trim: l.trim }) && q.every(w => text(l).includes(w)) && (!$('#onlyFit').checked || l.inCriteria !== false));
 }
 function sorted(rows) {
   const s = $('#sort').value;
@@ -394,7 +396,7 @@ function maybe() {
 function detailHtml(l) {
   const r = l.retail, c = l.atExpected, rates = view.model.rates;
   const comps = r?.comps?.length ? `<table class="mini"><thead><tr><th>Comparable</th><th class="r">Asked / sold</th><th class="r">As this one</th></tr></thead><tbody>${r.comps.map(x => `<tr><td>${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.title)}</a>` : esc(x.title)}<div class="sub">${[x.km ? kmTxt(x.km) : null, x.seller, x.state, SITE[x.source] || x.source].filter(Boolean).map(esc).join(' · ')}</div></td><td class="r num">${money(x.price)}</td><td class="r num">${money(x.adj)}</td></tr>`).join('')}</tbody></table>
-    <div class="note">${r.confidence === 'from auction' ? `No retail listings like it yet: worked back from what similar ones sold for at auction (÷ ${pct(l.factor)}).` : `Each listing is re-priced to this one's year and km: ${pct(rates.year)} a year, ${pct(rates.km)} per 100,000 km${rates.fitted ? `, learned from ${rates.n} listings` : ' (starting guess)'}. Private asks count 7% higher (dealer-equivalent). Range ${money(r.low)}–${money(r.high)}.`}${l.damage.stigmaPct ? ` Less ${pct(l.damage.stigmaPct)} for the write-off history.` : ''}</div>` : '<div class="note">No comparable prices yet — paste some listings.</div>';
+    <div class="note">${r.otherTrim ? `<b>${r.otherTrim} of these are a different trim</b>, re-priced by the usual gap between trims — paste listings of this trim for a firmer figure. ` : ''}${r.confidence === 'from auction' ? `No retail listings like it yet: worked back from what similar ones sold for at auction (÷ ${pct(l.factor)}).` : `Each listing is re-priced to this one's year and km: ${pct(rates.year)} a year, ${pct(rates.km)} per 100,000 km${rates.fitted ? `, learned from ${rates.n} listings` : ' (starting guess)'}. Private asks count 7% higher (dealer-equivalent). Range ${money(r.low)}–${money(r.high)}.`}${l.damage.stigmaPct ? ` Less ${pct(l.damage.stigmaPct)} for the write-off history.` : ''}</div>` : '<div class="note">No comparable prices yet — paste some listings.</div>';
   const line = (k, v, sub = '') => `<tr><td>${k}${sub ? `<div class="sub">${esc(sub)}</div>` : ''}</td><td class="r num">${v}</td></tr>`;
   const cost = c ? `<table class="mini">${line(l.buyNow && !l.bid && !l.endAt ? 'Buy now price' : 'Likely hammer', money(c.price), l.expectedFrom || '')}${line("Buyer's fees" + (c.gst ? ' + GST' : ''), money(c.fees))}${line('Transport home', c.transport == null ? '—' : money(c.transport), c.transport != null ? `${c.transportHow || ''}${c.km ? `, ${Math.round(c.km).toLocaleString('en-AU')} km` : ''}` : 'turned off for this dream')}${line('Repairs', money(c.repair), l.damage.repairFrom || 'none listed')}${line('Roadworthy, rego & service', money(c.onRoad))}<tr class="tot"><td>All-in</td><td class="r num">${money(c.total)}</td></tr><tr><td>Worth</td><td class="r num">${money(l.effective)}</td></tr><tr class="tot"><td>Saving</td><td class="r num ${c.saving >= 0 ? 'gain' : 'loss'}">${money(c.saving)} · ${pct(c.pct)}</td></tr></table>` : '<div class="note">No price to work from yet.</div>';
   const auction = l.auction ? `<div class="note">${l.auction.n} similar sold at auction: around ${money(l.auction.value)} (${money(l.auction.low)}–${money(l.auction.high)}).</div>` : '';
@@ -506,6 +508,7 @@ function settingsTab() {
     ${inp('budget', 'Most I\'ll spend all-in ($)', 'no limit')}
     ${inp('kmMax', 'Max kilometres', 'any')}
     ${inp('yearMin', 'Year from', 'any')}${inp('yearMax', 'Year to', 'any')}
+    ${view.trims ? `<div class="full"><div class="muted" style="font-size:12px;margin-bottom:4px">Trims I want (none ticked = any)</div><div class="classes">${Object.entries(view.trims).map(([k, v]) => `<label class="row"><input type="checkbox" name="trim" value="${k}" ${s.trims.includes(k) ? 'checked' : ''}> ${esc(v)}</label>`).join('')}</div></div>` : ''}
     ${d.kind === 'dmax' ? sel('drive', 'Drive', [['', 'Either'], ['4x4', '4x4'], ['4x2', '4x2']]) + sel('cab', 'Cab', [['', 'Any'], ['crew', 'Crew (dual) cab'], ['space', 'Space cab'], ['single', 'Single cab']]) : ''}
     ${view.classes ? `<div class="full"><div class="muted" style="font-size:12px;margin-bottom:4px">Truck sizes I want (none ticked = all)</div><div class="classes">${Object.entries(view.classes).map(([k, v]) => `<label class="row"><input type="checkbox" name="cls" value="${k}" ${s.classes.includes(k) ? 'checked' : ''}> ${esc(v)}</label>`).join('')}</div></div>` : ''}
     ${d.kind === 'custom' ? `<label class="full">Search words<input name="terms" value="${esc(s.terms)}"></label>` : ''}
@@ -553,8 +556,9 @@ document.addEventListener('click', async e => {
 });
 async function saveSettings() {
   const f = $('#setForm'), b = {};
-  for (const el of f.querySelectorAll('[name]')) { if (el.name === 'cls') continue; b[el.name] = el.type === 'checkbox' ? el.checked : el.value; }
+  for (const el of f.querySelectorAll('[name]')) { if (el.name === 'cls' || el.name === 'trim') continue; b[el.name] = el.type === 'checkbox' ? el.checked : el.value; }
   b.classes = [...f.querySelectorAll('[name=cls]:checked')].map(x => x.value);
+  if (view.trims) b.trims = [...f.querySelectorAll('[name=trim]:checked')].map(x => x.value);
   b.target = String(b.target).replace('%', ''); b.stigma = String(b.stigma).replace('%', '');
   try { await post(`/api/dreams/${dreamId}`, b, 'PATCH'); $('#setMsg').textContent = 'Saved'; load(); } catch (err) { $('#setMsg').textContent = err.message; }
 }

@@ -67,6 +67,20 @@ test('parse: Pickles search page -> auction lots with body type, stock number an
   assert.ok(!r.listings.some(l => /generator/i.test(l.title)), 'non-vehicle cards need a year + make title');
 });
 
+test('parse: Carsales results - spec line under the title, excl-govt price, demo cars; footers mention the other site', () => {
+  const r = parsePaste(seed('carsales-dmax-xterrain-blade-2023-p1.txt'));
+  assert.equal(r.source, 'carsales');
+  assert.equal(r.listings.length, 22);
+  const [a, b] = r.listings;
+  assert.deepEqual([a.title, a.price, a.km, a.seller, a.state, a.body], ['2023 Isuzu D-MAX X-TERRAIN Auto 4x4 MY23', 48990, 117445, 'dealer', 'SA', 'Ute']);
+  assert.deepEqual([b.price, b.driveAway], [45053, 46999], '"Drive away $45,053 Excl. Est. Govt. Charges" -> the excl-govt figure');
+  assert.deepEqual([a.features.trim, a.features.drive, a.features.dmax], ['x-terrain', '4x4', true]);
+  const demo = parsePaste(seed('carsales-dmax-xterrain-blade-2023-p6.txt')).listings.find(l => l.condition === 'demo');
+  assert.ok(demo && demo.seller === 'dealer');
+  assert.ok(parsePaste(seed('carsales-dmax-xterrain-blade-2023-p5.txt')).listings.some(l => l.features.trim === 'blade'));
+  assert.equal(detectSource(seed('trucksales-isuzu-curtainsider-p1.txt')), 'trucksales');
+});
+
 test('parse: CSV and source detection', () => {
   const r = parsePaste('title,price,km,state,seller\n"2021 Isuzu D-Max SX 4x4 Crew Cab","$39,990",85000,NSW,Dealer\n2019 Isuzu D-Max LS-U 4x4,31500,140000,QLD,private\n');
   assert.equal(r.source, 'csv');
@@ -85,6 +99,21 @@ test('features: Isuzu truck classes, D-Max spec, MU-X is not a D-Max', () => {
   const d = features('2022 Isuzu D-MAX RG MY22 SX Cab Chassis Space Cab 4dr Spts Auto 6sp 4x4 1240kg 3.0DT');
   assert.deepEqual([d.dmax, d.drive, d.cab, d.engine, d.truck], [true, '4x4', 'space', '3.0', false]);
   assert.equal(features('2023 Isuzu MU-X LS-T 4x2').dmax, false);
+  assert.equal(features('2022 Isuzu D-MAX RG MY22 LS-U+ Utility Crew Cab').trim, 'ls-u+');
+  assert.equal(features('2025 Isuzu D-MAX BLADE Auto 4x4 MY25.5').trim, 'blade');
+});
+
+test('valuation: a D-Max is valued against its own trim; another trim is re-priced and marked rough', () => {
+  const xt = [40000, 60000, 80000].map((km, i) => ({ key: `x${i}`, title: '2024 Isuzu D-MAX X-TERRAIN Auto 4x4', year: 2024, km, price: 58000 - i * 2000, f: features('2024 Isuzu D-MAX X-TERRAIN Auto 4x4 Ute') }));
+  const sx = [40000, 60000, 80000].map((km, i) => ({ key: `s${i}`, title: '2024 Isuzu D-MAX SX Crew Cab Chassis 4x4', year: 2024, km, price: 46000 - i * 2000, f: features('2024 Isuzu D-MAX SX Crew Cab Chassis 4x4') }));
+  const rates = { year: 0.08, km: 0.11 };
+  const item = { year: 2024, km: 60000, f: features('2024 Isuzu D-MAX RG MY24 X-TERRAIN Utility Crew Cab 4x4') };
+  const both = valueFrom(item, [...xt, ...sx], { kind: 'dmax', rates, k: 3 });
+  assert.ok(both.comps.every(c => c.key.startsWith('x')), 'same trim first');
+  assert.ok(Math.abs(both.value - 56000) < 1500, String(both.value));
+  const onlySx = valueFrom(item, sx, { kind: 'dmax', rates, k: 3 });
+  assert.equal(onlySx.confidence, 'rough'); assert.equal(onlySx.otherTrim, 3);
+  assert.ok(onlySx.value > 52000 && onlySx.value < 60000, `SX re-priced up to X-Terrain: ${onlySx.value}`);
 });
 
 test('damage: write-off class, kinds, stigma and avoid', () => {
@@ -140,8 +169,11 @@ test('seed + API: two dreams, retail listings and Pickles lots in; every curtain
   assert.ok(v.market.length >= 100 && v.market.every(m => /isuzu/i.test(m.title)), 'non-Isuzu listings are left out');
   assert.equal(v.model.rates.fitted, true);
   const dmax = (await api('GET', `/api/dreams/${list.dreams[0].id}`)).json;
-  assert.equal(dmax.model.retailN, 0, 'no D-Max retail pasted yet');
+  assert.ok(dmax.model.retailN >= 150, 'Carsales X-Terrain / Blade pages seeded');
+  assert.deepEqual([dmax.dream.settings.trims, dmax.dream.settings.yearMin], [['x-terrain', 'blade'], 2023], 'the spec searched for');
   assert.ok(dmax.lots.every(l => l.item.dmax && !l.item.mux));
+  for (const l of dmax.lots.filter(x => x.inCriteria)) assert.ok(['x-terrain', 'blade'].includes(l.item.trim) && l.item.year >= 2023 && l.retail.confidence !== 'rough', l.title);
+  assert.ok(dmax.lots.filter(x => x.item.trim === 'sx').every(x => !x.inCriteria && /not a trim you want/.test(x.misses.join())));
 });
 
 test('import endpoint: a pasted Carsales page values the D-Maxes; re-pasting updates, not duplicates', async () => {
@@ -161,7 +193,7 @@ test('import endpoint: a pasted Carsales page values the D-Maxes; re-pasting upd
   assert.equal((await api('POST', '/api/dreams-import', { text: 'hello' })).status, 400);
   const id = (await api('GET', '/api/dreams')).json.dreams.find(d => d.kind === 'dmax').id;
   const v = (await api('GET', `/api/dreams/${id}`)).json;
-  assert.equal(v.model.retailN, 5);
+  assert.ok(v.model.retailN >= 155);
   const m = v.market.find(x => x.price === 40990);
   assert.equal(m.prevPrice, 42990, 'price drop kept');
   const g = v.lots.find(l => l.key === 'grays:g1');
@@ -191,8 +223,8 @@ test('alerts: new dream lot pushed once; final minutes push at a deal price; dre
   settings.set({ ntfyUrl: 'https://ntfy.example/kamrads-test' });
   try {
     const now = Date.now();
-    upsertLot({ site: 'lloyds', ext_id: 'L77', url: 'https://www.lloydsonline.com.au/LotDetails.aspx?lid=L77', title: '2022 Isuzu D-MAX SX Cab Chassis Crew Cab 4x4 3.0DT',
-      year: 2022, odometer: 70000, bid: 26000, end_at: now + 3 * 3600000, state: 'NSW', location: 'Penrith, NSW' });
+    upsertLot({ site: 'lloyds', ext_id: 'L77', url: 'https://www.lloydsonline.com.au/LotDetails.aspx?lid=L77', title: '2024 Isuzu D-MAX X-TERRAIN Utility Crew Cab 4x4 3.0DT',
+      year: 2024, odometer: 50000, bid: 26000, end_at: now + 3 * 3600000, state: 'NSW', location: 'Penrith, NSW' });
     await dreams.runDreams();
     assert.equal(pushes.filter(p => /new .*D-Max/.test(p.title)).length, 1);
     await dreams.runDreams();
@@ -204,22 +236,22 @@ test('alerts: new dream lot pushed once; final minutes push at a deal price; dre
     db.prepare('UPDATE lots SET last_checked = ? WHERE key = ?').run(now - 10 * 60000, 'lloyds:L77');
     assert.ok(dueForRefresh(now).some(l => l.key === 'lloyds:L77'), 'dream lot over HOT_MAX_BID still re-read');
     // final minutes, fresh price, still a deal
-    upsertLot({ site: 'lloyds', ext_id: 'L77', bid: 24000, end_at: now + 5 * 60000 }, { checked: true });
+    upsertLot({ site: 'lloyds', ext_id: 'L77', bid: 34000, end_at: now + 5 * 60000 }, { checked: true });
     await dreams.dreamFinalAlert(q.lot.get('lloyds:L77'), now);
     await dreams.dreamFinalAlert(q.lot.get('lloyds:L77'), now);
     const fin = pushes.filter(p => /DREAM/.test(p.title));
     assert.equal(fin.length, 1, JSON.stringify(pushes.map(p => p.title)));
-    assert.match(fin[0].title, /min left · \$24,000/);
+    assert.match(fin[0].title, /min left · \$34,000/);
     assert.match(fin[0].body, /Bid up to \$/);
     // live lanes (most Pickles D-Maxes): one push a few hours before the lane starts, with the max bid
-    upsertLot({ site: 'pickles', ext_id: '62999999', url: 'https://www.pickles.com.au/used/details/cars/2021-isuzu-d-max/62999999', title: '2021 Isuzu D-MAX RG MY21 SX Cab Chassis Crew Cab 4x4 3.0DT',
-      year: 2021, odometer: 95000, buy_method: 'Pickles Live', opens_at: now + 2 * 3600000, end_at: now + 12 * 3600000, state: 'NSW', location: 'Gateshead, NSW' });
+    upsertLot({ site: 'pickles', ext_id: '62999999', url: 'https://www.pickles.com.au/used/details/cars/2021-isuzu-d-max/62999999', title: '2023 Isuzu D-MAX RG MY23 X-TERRAIN Utility Crew Cab 4x4 3.0DT',
+      year: 2023, odometer: 95000, buy_method: 'Pickles Live', opens_at: now + 2 * 3600000, end_at: now + 12 * 3600000, state: 'NSW', location: 'Gateshead, NSW' });
     await dreams.runDreams({ quiet: true });
     await dreams.dreamLiveAlerts(now);
     await dreams.dreamLiveAlerts(now);
     const live = pushes.filter(p => /live lanes soon/.test(p.title));
     assert.equal(live.length, 1);
-    assert.match(live[0].body, /2021 Isuzu D-MAX.*bid up to \$[\d,]+/);
+    assert.match(live[0].body, /2023 Isuzu D-MAX.*bid up to \$[\d,]+/);
     // found it: alerts stop
     const id = (await api('GET', '/api/dreams')).json.dreams.find(d => d.kind === 'dmax').id;
     await api('PATCH', `/api/dreams/${id}`, { status: 'found', foundKey: 'lloyds:L77' });

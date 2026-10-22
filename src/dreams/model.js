@@ -53,9 +53,30 @@ export function features(text) {
   const cab = /crew|dual cab|double cab|4dr/.test(t) && !/space|extended|king|club/.test(t) ? 'crew' : /space|extended|king|club/.test(t) ? 'space' : /single cab|single\b|2dr/.test(t) ? 'single' : null;
   const gen = dmax ? (/\brg\b/.test(t) ? 'RG' : /\btf\b/.test(t) ? 'TF' : null) : null;
   const engine = dmax ? (/1\.9|1\.9dt|\bls-?m 1\.9/.test(t) ? '1.9' : /3\.0|3\.0dt|3l\b/.test(t) ? '3.0' : null) : null;
-  const trim = dmax ? ((/\b(x-?terrain|x-?rider|ls-?u\+?|ls-?m|ls-?t|sx|blade|x-?runner)\b/.exec(t) || [])[1] || null) : null;
+  const trim = dmax ? canonTrim((/\b(x-?terrain|x-?rider|x-?runner|ls-?u\s?\+|ls-?u|ls-?m|sx|blade)(?![a-z0-9])/.exec(t) || [])[1]) : null;
   return { isuzu, dmax, mux, truck, code, series, cls, gvm, body, curtain: body === 'curtainsider', drive, cab, gen, engine, trim };
 }
+
+// ---- D-Max trims ----
+// Rough price of each trim against an X-Terrain of the same age and km (from new prices and what's on
+// Carsales: a Blade lists ~12% above an X-Terrain, an SX cab chassis ~20% below). Used only to re-price a
+// comparable of a different trim, and the valuation is marked rough when it leans on that.
+export const TRIMS = {
+  sx: { label: 'SX', index: 0.8, tier: 0 },
+  'ls-m': { label: 'LS-M', index: 0.84, tier: 1 },
+  'ls-u': { label: 'LS-U', index: 0.9, tier: 2 },
+  'x-runner': { label: 'X-Runner', index: 0.9, tier: 2 },
+  'ls-u+': { label: 'LS-U+', index: 0.93, tier: 2.5 },
+  'x-rider': { label: 'X-Rider', index: 0.92, tier: 2.5 },
+  'x-terrain': { label: 'X-Terrain', index: 1, tier: 3 },
+  blade: { label: 'Blade', index: 1.12, tier: 3.6 },
+};
+function canonTrim(s) {
+  if (!s) return null;
+  const k = s.toLowerCase().replace(/\s+/g, '').replace(/^x-?/, 'x-').replace(/^ls-?/, 'ls-');
+  return TRIMS[k] ? k : null;
+}
+export const trimRatio = (a, b) => (a && b && TRIMS[a] && TRIMS[b] ? TRIMS[a].index / TRIMS[b].index : 1);
 
 // ---- damage ----
 // Allowance: share of the retail value to set aside for repairs, by what's wrong. Stigma: what a written-off
@@ -96,7 +117,7 @@ export const KINDS = {
     match: f => (f.dmax ? 'yes' : null),
     pickles: ['https://www.pickles.com.au/used/search/cars/isuzu/d-max'],
     kmScale: 40000, rates: { year: 0.085, km: 0.11 }, factor: 0.8, onRoad: 750, stigma: 0.22,
-    group: f => `${f.drive || '?'}|${f.cab || '?'}`,
+    group: f => `${f.trim || '?'}|${f.drive || '?'}|${f.cab || '?'}`,
   },
   curtainsider: {
     label: 'Isuzu curtainsider', icon: '🚚',
@@ -124,6 +145,8 @@ export function specGap(kind, a, b) {
     if (a.body && b.body && a.body !== b.body) d += 0.4;
     if (a.gen && b.gen && a.gen !== b.gen) d += 0.8;
     if (a.engine && b.engine && a.engine !== b.engine) d += 0.6;
+    if (a.trim && b.trim && a.trim !== b.trim) d += 0.8 + Math.abs(TRIMS[a.trim].tier - TRIMS[b.trim].tier) * 0.6;
+    else if (!a.trim !== !b.trim) d += 0.6;   // one of them doesn't say its trim
     return d;
   }
   if (kind === 'curtainsider') {

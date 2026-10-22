@@ -7,7 +7,7 @@
 //   Deal: what it's worth to you once fixed (retail less any write-off stigma) against what you'd pay all-in
 //     (bid + buyer's fees + GST + transport home + repairs + roadworthy/rego).
 import { allIn, maxBidFor } from '../costs.js';
-import { features, damageOf, specGap, KINDS } from './model.js';
+import { features, damageOf, specGap, trimRatio, KINDS } from './model.js';
 
 const LOG = Math.log;
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -72,18 +72,22 @@ export function valueFrom(item, pool, { kind, rates, k = 8, exclude = null } = {
     let factor = 1;
     if (dy != null) factor *= Math.exp(rates.year * dy);
     if (dk != null) factor *= Math.exp(-rates.km * dk / 100000);
+    // a different trim (an SX against X-Terrains): re-price by the trims' usual gap
+    const crossTrim = !!(item.f.trim && c.f?.trim && item.f.trim !== c.f.trim);
+    if (crossTrim) factor *= trimRatio(item.f.trim, c.f.trim);
     factor = clamp(factor, 0.4, 2.5);
-    rows.push({ c, d, adj: c.price * factor, factor });
+    rows.push({ c, d, adj: c.price * factor, factor, crossTrim });
   }
   if (!rows.length) return null;
   rows.sort((a, b) => a.d - b.d);
   const near = rows.slice(0, k);
   const w = near.map(r => ({ v: r.adj, w: 1 / (1 + r.d) ** 2 }));
   const meanD = near.reduce((t, r) => t + r.d, 0) / near.length;
-  const confidence = near.length >= 5 && meanD <= 1.6 ? 'good' : near.length >= 3 && meanD <= 3 ? 'fair' : 'rough';
+  const cross = near.filter(r => r.crossTrim).length;
+  const confidence = cross * 2 > near.length ? 'rough' : near.length >= 5 && meanD <= 1.6 ? 'good' : near.length >= 3 && meanD <= 3 ? 'fair' : 'rough';
   return {
     value: round(wq(w, 0.5), 100), low: round(wq(w, 0.25), 100), high: round(wq(w, 0.75), 100),
-    n: near.length, of: rows.length, gap: Math.round(meanD * 10) / 10, confidence,
+    n: near.length, of: rows.length, gap: Math.round(meanD * 10) / 10, confidence, otherTrim: cross,
     comps: near.slice(0, 8).map(r => ({ key: r.c.key, title: r.c.title, price: r.c.raw ?? r.c.price, adj: Math.round(r.adj), year: r.c.year, km: r.c.km, seller: r.c.seller,
       source: r.c.source, url: r.c.url || null, state: r.c.state || null, at: r.c.at || null, d: Math.round(r.d * 10) / 10 })),
   };
@@ -189,6 +193,7 @@ export function analyze(lot, ctx) {
   if (s.classes?.length && item.f.cls && !s.classes.includes(item.f.cls)) misses.push('not a class you want');
   if (s.drive && item.f.drive && item.f.drive !== s.drive) misses.push(`not ${s.drive}`);
   if (s.cab && item.f.cab && item.f.cab !== s.cab) misses.push(`not ${s.cab} cab`);
+  if (s.trims?.length && kind === 'dmax' && !(item.f.trim && s.trims.includes(item.f.trim))) misses.push(item.f.trim ? `${item.f.trim.toUpperCase()}, not a trim you want` : 'trim not stated');
   if (dmg.level === 'statutory') misses.push('statutory write-off');
   if (dmg.level === 'repairable' && !s.allowRepairable) misses.push('repairable write-off');
   if (dmg.level === 'damaged' && !s.allowDamaged) misses.push('damaged');

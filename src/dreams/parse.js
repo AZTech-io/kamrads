@@ -22,8 +22,13 @@ function clean(line) {
 export function detectSource(text) {
   const t = String(text).slice(0, 200000);
   if (/MyPickles|Pickles Live|Pickles Online|pickles\.com\.au|\bStock \d{6,9}\b/i.test(t)) return 'pickles';
+  // each site's footer names the other, so go by the page's own title first
+  const own = /-\s*(trucksales|carsales)\.com\.au\s*$/im.exec(t);
+  if (own) return own[1].toLowerCase();
+  if (/\btrucks? for sale\b/i.test(t)) return 'trucksales';
+  if (/\bcars? for sale\b/i.test(t)) return 'carsales';
   if (/trucksales/i.test(t)) return 'trucksales';
-  if (/carsales|Excl\.? Govt\.? Charges|Drive ?away/i.test(t)) return 'carsales';
+  if (/carsales|Excl\.? (?:Est\.? )?Govt\.? Charges|Drive ?away/i.test(t)) return 'carsales';
   if (/^[^\n]*,[^\n]*\n/.test(t) && /\b(title|price|year)\b/i.test(t.split('\n')[0])) return 'csv';
   return 'other';
 }
@@ -63,7 +68,7 @@ const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').repl
 // ---- Trucksales / Carsales results ----
 function parseClassifieds(lines, source) {
   const out = [];
-  let cur = null;
+  let cur = null, expectSub = false;
   const done = () => { if (cur && (cur.price != null || cur.priceNote === 'poa' || cur.km != null)) out.push(cur); cur = null; };
   for (const raw of lines) {
     const { text: t, urls } = clean(raw);
@@ -73,15 +78,23 @@ function parseClassifieds(lines, source) {
     if (tm && !/^\d{4}\s+(?:km|kg|hp)\b/i.test(t)) {
       done();
       cur = { source, title: t, year: +tm[1], price: null, priceNote: null, km: null, gvm: null, hp: null, trans: null, body: null, seller: null, condition: null, state: null, location: null, url: null };
+      expectSub = true;
       continue;
     }
     if (!cur) continue;
     for (const u of urls) if (/\/(?:items\/details|cars\/details|details)\//i.test(u) && !cur.url) cur.url = u.split('?')[0];
     if (!t) continue;
     let m;
+    // Carsales puts the spec on the line under the title ("X-TERRAIN Auto 4x4 MY23")
+    if (expectSub) {
+      expectSub = false;
+      if (!/^\$|^enquire|^price on|^poa$|\b(?:km|kg|hp)$|^(?:dealer|private)\b|drive\s?away|excl\.?/i.test(t) && !BODY_WORDS.test(t) && t.length <= 90) { cur.title = `${cur.title} ${t}`; cur.subtitle = t; continue; }
+    }
+    // "Drive away $45,053 Excl. Est. Govt. Charges": the excl-govt figure is the one that compares with everything else
+    if ((m = /\$\s?([\d,]+)\s*excl\.?\s*(?:est\.?\s*)?govt/i.exec(t))) { cur.driveAway = cur.price; cur.price = int(m[1]); cur.priceNote = 'egc'; continue; }
     if (cur.price == null && /^\$\s?[\d,]/.test(t)) { cur.price = money(t); if (/drive\s?away/i.test(t)) cur.priceNote = 'driveaway'; continue; }
     if (/^enquire for price|^price on application|^POA$/i.test(t)) { cur.priceNote = 'poa'; continue; }
-    if (/excl\.?\s*govt/i.test(t)) { cur.priceNote = cur.priceNote || 'egc'; continue; }
+    if (/excl\.?\s*(?:est\.?\s*)?govt/i.test(t)) { cur.priceNote = cur.priceNote || 'egc'; continue; }
     if (/^drive\s?away/i.test(t)) { cur.priceNote = 'driveaway'; continue; }
     if ((m = /^([\d,]+)\s*km$/i.exec(t))) { cur.km = int(m[1]); continue; }
     if ((m = /^([\d,]+)\s*kg$/i.exec(t))) { cur.gvm = Math.max(cur.gvm || 0, int(m[1])); continue; }

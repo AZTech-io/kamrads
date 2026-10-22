@@ -16,7 +16,7 @@ import { withPage } from '../browser.js';
 import { lotsFromCapture } from '../sites/common.js';
 import { purchaseForLot } from '../purchases.js';
 import { dq } from './store.js';
-import { KINDS, CLASSES, damageOf } from './model.js';
+import { KINDS, CLASSES, TRIMS, damageOf } from './model.js';
 import { parsePaste } from './parse.js';
 import { analyze, asItem, fitRates, calibrate, valueFrom, levelRank } from './value.js';
 
@@ -29,7 +29,7 @@ const FRESH_MS = 3 * 60000;
 // ---- dreams ----
 export function defaults(kind) {
   const cfg = KINDS[kind] || KINDS.custom;
-  return { target: 0.25, alertLevel: 'good', newListings: 'all', yearMin: null, yearMax: null, kmMax: null, budget: null, classes: [], drive: '', cab: '',
+  return { target: 0.25, alertLevel: 'good', newListings: 'all', yearMin: null, yearMax: null, kmMax: null, budget: null, classes: [], trims: [], drive: '', cab: '',
     allowRepairable: true, allowDamaged: true, transport: true, onRoad: cfg.onRoad, stigma: cfg.stigma, terms: '', notes: '' };
 }
 const parseJson = s => { try { return JSON.parse(s || '{}') || {}; } catch { return {}; } };
@@ -46,6 +46,7 @@ function cleanSettings(kind, b, prev = defaults(kind)) {
   if ('alertLevel' in b) s.alertLevel = ['diamond', 'good', 'fair', 'off'].includes(b.alertLevel) ? b.alertLevel : 'good';
   if ('newListings' in b) s.newListings = ['all', 'deals', 'off'].includes(b.newListings) ? b.newListings : 'all';
   if ('classes' in b) s.classes = (Array.isArray(b.classes) ? b.classes : []).filter(c => CLASSES[c]);
+  if ('trims' in b) s.trims = (Array.isArray(b.trims) ? b.trims : []).filter(t => TRIMS[t]);
   if ('drive' in b) s.drive = ['4x4', '4x2'].includes(b.drive) ? b.drive : '';
   if ('cab' in b) s.cab = ['crew', 'space', 'single'].includes(b.cab) ? b.cab : '';
   for (const k of ['allowRepairable', 'allowDamaged', 'transport']) if (k in b) s[k] = !!b[k];
@@ -227,7 +228,7 @@ export function dreamView(id, user, now = Date.now()) {
     const it = toComp(m);
     const v = m.price ? valueFrom({ year: it.year, km: m.km, f: it.f }, ctx.retailPool, { kind: d.kind, rates: ctx.rates, exclude: it.key }) : null;
     return { id: m.id, source: m.source, title: m.title, year: it.year, km: m.km, price: m.price, prevPrice: m.prev_price, priceNote: m.price_note, seller: m.seller, condition: m.condition,
-      state: m.state, location: m.location, url: m.url, body: m.body, cls: it.f.cls, code: it.f.code, drive: it.f.drive, cab: it.f.cab, firstSeen: m.first_seen, lastSeen: m.last_seen,
+      state: m.state, location: m.location, url: m.url, body: m.body, cls: it.f.cls, code: it.f.code, drive: it.f.drive, cab: it.f.cab, trim: it.f.trim, firstSeen: m.first_seen, lastSeen: m.last_seen,
       model: v?.value ?? null, vsModel: v && it.price ? it.price / v.value - 1 : null };
   });
   const fh = d.found_key ? hits.find(h => h.key === d.found_key) : null;
@@ -237,6 +238,7 @@ export function dreamView(id, user, now = Date.now()) {
   return {
     now, dream: { id: d.id, name: d.name, kind: d.kind, user: d.user, status: d.status, icon: KINDS[d.kind]?.icon || '⭐', foundKey: d.found_key, settings: s, createdAt: d.created_at },
     classes: d.kind === 'curtainsider' ? CLASSES : null,
+    trims: d.kind === 'dmax' ? Object.fromEntries(Object.entries(TRIMS).map(([k, v]) => [k, v.label])) : null,
     model: { rates: ctx.rates, cal: ctx.cal, retailN: ctx.retailPool.length, soldN: ctx.auctionClean.length + ctx.auctionDamaged.length,
       soldOfRetail: ratios.length ? ratios[ratios.length >> 1] : null, base: ctx.base?.name || null },
     lots, maybes, sold, unpriced, market, found, bought,
@@ -373,24 +375,40 @@ export function dreamDigest(user, now = Date.now()) {
 }
 
 // ---- first run: the two dreams asked for, and the listings pasted in while building this ----
+// Each seed file is imported once (new files added later get imported on the next start).
+const FIRST_SEED = /^(pickles-isuzu-|trucksales-isuzu-curtainsider-)/;   // imported by the first version, before per-file tracking
 export function seed(now = Date.now()) {
-  if (dq.meta.get('seeded')?.v) return;
   const user = (config.dashUser || 'admin').toLowerCase();
-  if (!allDreams().length) {
+  const seededBefore = !!dq.meta.get('seeded')?.v;
+  if (!seededBefore && !allDreams().length) {
     const t = Date.now();
     dq.add.get('Isuzu D-Max — Katara 3 upgrade', 'dmax', user, 'hunting', JSON.stringify(defaults('dmax')), t, t);
     dq.add.get('Isuzu curtainsider', 'curtainsider', user, 'hunting', JSON.stringify(defaults('curtainsider')), t, t);
   }
+  dq.setMeta.run('seeded', dq.meta.get('seeded')?.v || String(now));
+  // the D-Max Aaron searched Carsales for (22 Oct 2026): X-Terrain or Blade, 2023 on. Only if still untouched.
+  if (!dq.meta.get('dmax-spec')?.v) {
+    for (const d of allDreams().filter(x => x.kind === 'dmax' && x.name === 'Isuzu D-Max — Katara 3 upgrade')) {
+      const s = settingsOf(d);
+      if (!s.trims.length && s.yearMin == null) dq.update.run(d.name, d.status, JSON.stringify({ ...s, trims: ['x-terrain', 'blade'], yearMin: 2023 }), d.found_key, Date.now(), d.id);
+    }
+    dq.setMeta.run('dmax-spec', String(now));
+  }
   const dir = path.join(here, '..', '..', 'seed', 'dreams');
-  try {
-    // copied off the sites on 22 Oct 2026, 8:50 pm Perth time
-    const at = Date.parse('2026-10-22T12:50:00Z');
-    for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.txt')).sort()) {
+  let files = [];
+  try { files = fs.readdirSync(dir).filter(f => f.endsWith('.txt')).sort(); } catch { return; }
+  // copied off the sites on 22 Oct 2026, 8:50-9:30 pm Perth time
+  const at = Date.parse('2026-10-22T12:50:00Z');
+  for (const f of files) {
+    const key = `seed:${f}`;
+    if (dq.meta.get(key)?.v) continue;
+    if (!(seededBefore && FIRST_SEED.test(f))) {
       try { importPaste(user, fs.readFileSync(path.join(dir, f), 'utf8'), { now: at, tz: 'Australia/Perth', quiet: true }); }
       catch (e) { log.warn('dreams', `seed ${f}: ${e.message}`); }
     }
-  } catch { /* no seed folder */ }
-  dq.setMeta.run('seeded', String(now));
+    dq.setMeta.run(key, String(now));
+  }
+  forget();
 }
 
 export function startDreams() {
