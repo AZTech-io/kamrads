@@ -63,7 +63,7 @@ export const config = {
 
   // Browser
   proxy: env.PROXY_URL || '',              // e.g. http://user:pass@au.proxy.example:8000 (only if blocked)
-  maxOpenPages: num('MAX_OPEN_PAGES', 1),  // tabs for the regular scan
+  maxOpenPages: num('MAX_OPEN_PAGES', 2),  // tabs for the regular scan (shared by every site, freight and Finds)
   hotPages: num('HOT_PAGES', 1),           // tabs for closing-soon re-checks (separate, so the scan never stalls)
   pageTimeoutMs: num('PAGE_TIMEOUT_MS', 45000),
   browserRecycleMin: num('BROWSER_RECYCLE_MIN', 180),

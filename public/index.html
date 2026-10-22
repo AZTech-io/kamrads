@@ -657,7 +657,8 @@ function renderSide() {
     const x = status.sites.find(z => z.site === site) || {};
     const age = x.last_ok ? (Date.now() - x.last_ok) / 60000 : Infinity;
     const err = x.last_error_at && (!x.last_ok || x.last_error_at > x.last_ok);
-    const cls = err ? 'bad' : age < 30 ? 'ok' : 'warn';
+    // a full read of a big site (every Grays category) can take a while: amber after an hour
+    const cls = err ? 'bad' : age < 60 ? 'ok' : 'warn';
     const tip = err ? x.last_error : x.last_ok ? `Last scan ${Math.round(age)} min ago, ${x.last_count} lots` : 'Waiting for its first scan';
     return `<label class="site-row" title="${esc(tip)}"><input type="checkbox" data-site="${site}" ${siteOff.has(site) ? '' : 'checked'}><span class="dot ${cls}"></span>${SITE_NAMES[site]}<span class="c num">${siteCounts[site] || ''}</span></label>`;
   }).join('');

@@ -86,13 +86,18 @@ async function fillTimes(a) {
   if (todo.length) log.info(a.site, `close times read for ${got} of ${todo.length} lots`);
 }
 
-async function discoveryLoop() {
+// Each site on its own timer: a site with a lot to read (every Grays category) doesn't hold up the others.
+// They share the browser's regular-scan tabs (MAX_OPEN_PAGES), taking turns page by page.
+async function siteLoop(a, delayMs) {
+  await sleep(delayMs);
   while (!stopping) {
     const start = Date.now();
-    for (const a of enabled()) { if (stopping) break; await discoverSite(a); }
-    const wait = config.discoveryEveryMin * 60000 - (Date.now() - start);
-    await sleep(Math.max(wait, 30000));
+    await discoverSite(a);
+    await sleep(Math.max(config.discoveryEveryMin * 60000 - (Date.now() - start), 30000));
   }
+}
+function discoveryLoop() {
+  enabled().forEach((a, i) => { siteLoop(a, i * 15000).catch(e => log.error(a.site, e.stack || e.message)); });
 }
 
 /** Pick the lots that need a fresh look: closing within the hot/warm windows. */
