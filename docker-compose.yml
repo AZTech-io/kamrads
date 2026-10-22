@@ -8,7 +8,7 @@ services:
       - ./data:/app/data
     ports:
       - "127.0.0.1:8787:8787"   # only reachable on the server itself; the tunnel publishes it
-    mem_limit: 1200m             # if Chromium misbehaves, only this container is killed
+    mem_limit: ${KAMRADS_MEM:-1200m}   # cap (set KAMRADS_MEM in .env, e.g. 1800m); if Chromium misbehaves, only this container is killed
     shm_size: 256m
     init: true
 
