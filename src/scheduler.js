@@ -23,6 +23,7 @@ import { pushLoop } from './freight/push.js';
 import { findsLoop } from './finds/loop.js';
 import { isPaused, pause, ok as pauseOk, isRateLimit } from './pause.js';
 import { sectorOf } from './categories.js';
+import { runDreams, isDreamKey, dreamFinalAlert, dreamLiveAlerts, startDreams, readMaybeBodies } from './dreams/index.js';
 
 export const adapters = { pickles, manheim, allbids, lloyds, grays, slattery, auctionbarn };
 // Sites where a re-read is cheap (learned JSON feed, or plain-HTML lot pages)
@@ -56,6 +57,7 @@ async function discoverSite(a) {
     // Sites whose lists don't show close times (Grays): read some lot pages each pass to fill them in.
     if (a.timesFromLotPage) await fillTimes(a);
     await runSearches().catch(e => log.warn('search', e.message));
+    await runDreams().catch(e => log.warn('dreams', e.message));
   } catch (e) {
     q.statusErr.run(a.site, e.message.slice(0, 300), Date.now());
     log.error(a.site, `discovery failed: ${e.message}`);
@@ -117,7 +119,8 @@ export function dueForRefresh(now = Date.now()) {
   const due = rows.filter(l => {
     if (!usable(l)) return false;
     // Expensive lots aren't worth a slow page read; with a fast feed they're cheap, so keep them (final prices).
-    if (!quick(l.site) && !l.starred && l.bid != null && l.bid > config.hotMaxBid && l.end_at > now) return false;
+    // (Dream lots always get read: their real prices are the whole point.)
+    if (!quick(l.site) && !l.starred && l.bid != null && l.bid > config.hotMaxBid && l.end_at > now && !isDreamKey(l.key)) return false;
     const mins = (l.end_at - now) / 60000;
     const since = now - (l.last_checked || 0);
     // Past its close: one last read to capture the final price (sites hide it once sold).
@@ -203,6 +206,7 @@ async function hotCycle() {
   for (const lot of q.openWindow.all(Date.now(), Date.now() + config.alertMinutes * 60000)) {
     await checkAlerts(lot);
     await searchFinalAlert(lot).catch(e => log.warn('search', e.message));
+    await dreamFinalAlert(lot).catch(e => log.warn('dreams', e.message));
   }
 }
 
@@ -243,7 +247,9 @@ async function choresLoop() {
   while (!stopping) {
     try { await digestTick(); } catch (e) { log.warn('digest', e.message); }
     try { await checkPending(); } catch (e) { log.warn('check', e.message); }
+    try { await dreamLiveAlerts(); } catch (e) { log.warn('dreams', e.message); }
     if (n % 60 === 0) prunePhotos();
+    if (n % 5 === 2) { try { await readMaybeBodies(); } catch (e) { log.warn('dreams', e.message); } }
     if (n++ % 5 === 0) { try { await geocodePending(q.openLots.all(Date.now())); } catch (e) { log.warn('geo', e.message); } }
     await sleep(60000);
   }
@@ -281,6 +287,7 @@ export async function startScheduler() {
   try { reopenUnconfirmed(); } catch (e) { log.warn('hot', e.message); }
   for (const a of enabled()) if (a.loginUrl) await ensureLogin(a.site, a.loginUrl).catch(e => log.warn(a.site, e.message));
   runSearches().catch(e => log.warn('search', e.message));
+  startDreams();
   discoveryLoop();
   hotLoop();
   estimateLoop();

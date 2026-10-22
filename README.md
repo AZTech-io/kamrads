@@ -38,6 +38,19 @@ What we've bought and what each item owes us. Press **Won it** on a lot you won 
 - Each item shows **it owes us** (total cost), break-even and +20% prices, our own value guide, asking price, and **profit / margin / days held** once sold.
 - Filter by status (bought, in transit, repairing, for sale, sold, keeping) and by the company that bought it. **Download all (CSV)** for the accountant.
 
+## Dreams (`/dreams`)
+
+The vehicles we want to own, hunted until we find a deal. Two dreams are set up to start: **Isuzu D-Max** (Katara 3 upgrade) and **Isuzu curtainsider**. **+ New** adds more (a custom one takes search words, e.g. `toyota hiace -crash`).
+
+- **Every one at auction:** each scan, every D-Max / Isuzu curtainsider on any site we watch is listed (Pickles also gets its own D-Max and Isuzu-truck searches, live lanes included). Isuzu trucks whose listing doesn't say the body are under **Maybe**; KAMRADS reads a few of their lot pages every 5 minutes for the body type, and they move to the board (with a push) or drop off.
+- **What it's worth:** from the dealer and private listings you paste in. On Trucksales or Carsales run the search, **Ctrl+A, Ctrl+C**, press **Paste listings**, paste — page by page. Each comparable is re-priced to the lot's year and kilometres (depreciation learned from the listings themselves) and the closest by spec are blended: drive/cab/generation for D-Maxes, model code and size class (NLR… FVL) for trucks. Private asks count 7% higher (dealer-equivalent). Pickles search pages can be pasted too: their lots go onto the board with their body type.
+- **Likely price:** what similar ones actually sold for at auction (our own results), else worth × the auction/retail ratio, which is learned from every result.
+- **Damage:** statutory write-offs are left off (they can never be registered); repairable write-offs lose a share of value for the history (setting) plus a repair allowance by what's wrong (hail, accident, mechanical…). Put your own repair estimate on any lot and it's used instead.
+- **All-in and max bid:** bid + buyer's fees + GST + transport to your home base + repairs + roadworthy/rego. **Bid up to** is the most you can pay and still land it your target % (25%) under what it's worth — within your budget, if you set one. 💎 Diamond = target met at the likely price.
+- **Pushes:** a new one listed (or only deals — setting), the final minutes of a timed auction while it's still a deal, and a few hours before a live lane with the max bid. The morning digest lists dream lots selling today. **This is the one** marks the dream found and stops its alerts.
+- **Sold at auction** shows every result against what it was worth; **Retail market** sorts the pasted listings by how far under the rest they are (a cheap dealer ad can be the find too). Hide any listing that's wrong or sold.
+- Dream lots always get their price read near the close and after it, whatever the price (`HOT_MAX_BID` doesn't apply), so the results build up. Extra Pickles searches: `DREAM_PICKLES_SEARCHES`.
+
 ## Freight board (`/freight`)
 
 Same login, at **kamrads.katara.com.au/freight** (or the 🚚 Freight button). It reads Loadshift's public load board, Airtasker's public delivery, removals, courier, man-with-a-van and ute job lists (nationally plus Canberra and Sydney) and the Truckit job board, every 10 minutes.

@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0d1824">
+<title>KAMRADS Dreams</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230d1824'/%3E%3Cpath d='M9 13l3-4h8l3 4-7 10z' fill='none' stroke='%23e5a93f' stroke-width='2.2' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b1520; --panel: #101d2b; --raised: #162637; --hover: #1b2e42; --rule: #20334a; --rule-2: #2a4058;
+  --ink: #e4ecf4; --muted: #8496ab; --dim: #5d7086;
+  --gain: #2fcb8c; --gain-bg: rgba(47,203,140,.12); --loss: #ef5b67; --loss-bg: rgba(239,91,103,.12);
+  --warn: #e5a93f; --warn-bg: rgba(229,169,63,.13); --info: #5fa4ee; --gem: #7fd7ff; --gem-bg: rgba(127,215,255,.12);
+  /* chart series (validated on this surface, all pairs): retail, sold at auction, at auction now */
+  --s-retail: #3987e5; --s-sold: #d95926; --s-live: #199e70;
+  --side: 236px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 13.5px/1.45 "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; font-feature-settings: "tnum" 1; }
+html { color-scheme: dark; }
+a { color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); } .dim { color: var(--dim); } .gain { color: var(--gain); } .loss { color: var(--loss); } .warn { color: var(--warn); }
+
+.top { position: sticky; top: 0; z-index: 20; background: var(--panel); border-bottom: 1px solid var(--rule); }
+.topbar { display: grid; grid-template-columns: var(--side) 1fr auto; align-items: center; height: 54px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 18px; text-decoration: none; height: 100%; border-right: 1px solid var(--rule); }
+.brand b { font-size: 17px; font-weight: 700; letter-spacing: .6px; }
+.brand span { display: block; color: var(--warn); font-size: 11px; margin-top: -3px; font-weight: 600; }
+.switch { display: flex; gap: 2px; padding: 0 18px; align-items: center; }
+.switch a { text-decoration: none; padding: 6px 12px; border-radius: 6px; color: var(--muted); }
+.switch a:hover { background: var(--raised); color: var(--ink); }
+.switch a.on { background: var(--raised); color: var(--ink); font-weight: 600; }
+.top-actions { display: flex; align-items: center; gap: 8px; padding: 0 14px; }
+.who { color: var(--dim); font-size: 12.5px; padding-left: 10px; border-left: 1px solid var(--rule); }
+.menu-btn { display: none; background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 16px; }
+
+.desk { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid var(--rule); }
+.kpi { padding: 9px 18px 10px; border-right: 1px solid var(--rule); min-width: 0; }
+.kpi:last-child { border-right: 0; }
+.kpi .v { font-size: 19px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi .l { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.frame { display: grid; grid-template-columns: var(--side) minmax(0, 1fr); min-height: calc(100vh - 110px); }
+aside { border-right: 1px solid var(--rule); background: var(--panel); padding: 8px 0 30px; position: sticky; top: 110px; align-self: start; max-height: calc(100vh - 110px); overflow-y: auto; }
+.side-h { color: var(--dim); font-size: 12px; font-weight: 600; padding: 14px 18px 6px; display: flex; justify-content: space-between; align-items: center; }
+.side-h button { background: none; border: 0; color: var(--warn); cursor: pointer; font-size: 12px; font-weight: 600; padding: 0; }
+.nav { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; background: none; border: 0; border-left: 3px solid transparent; padding: 6px 15px; text-align: left; cursor: pointer; color: var(--muted); }
+.nav:hover { background: var(--raised); color: var(--ink); }
+.nav[aria-pressed="true"] { border-left-color: var(--warn); background: var(--raised); color: var(--ink); font-weight: 600; }
+.nav .c { color: var(--dim); font-size: 12px; font-weight: 400; }
+.nav .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav .paused { color: var(--dim); font-size: 11px; font-weight: 400; }
+.side-foot { padding: 16px 18px 0; color: var(--dim); font-size: 12px; line-height: 1.6; }
+.side-foot b { color: var(--muted); font-weight: 600; }
+
+main { padding: 16px 20px 60px; min-width: 0; }
+.toolbar { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.toolbar h1 { margin: 0 4px 0 0; font-size: 18px; font-weight: 600; }
+.toolbar input[type=search], .toolbar select { background: var(--panel); border: 1px solid var(--rule-2); border-radius: 6px; padding: 6px 10px; }
+.toolbar input[type=search] { min-width: 180px; }
+.toolbar label.chk { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 12.5px; cursor: pointer; }
+.count { margin-left: auto; color: var(--muted); font-size: 12.5px; }
+.chip { font-size: 11.5px; font-weight: 700; border-radius: 4px; padding: 1px 7px; white-space: nowrap; background: var(--raised); color: var(--muted); display: inline-block; }
+.chip.hunting { background: var(--gain-bg); color: var(--gain); } .chip.paused { color: var(--dim); } .chip.found { background: var(--gem-bg); color: var(--gem); }
+.btn { background: var(--raised); border: 1px solid var(--rule-2); border-radius: 6px; padding: 6px 12px; cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-block; }
+.btn:hover { background: var(--hover); }
+.btn.primary { background: var(--warn); border-color: var(--warn); color: #241600; font-weight: 600; }
+.btn.sm { padding: 3px 9px; font-size: 12.5px; }
+.btn.danger { color: var(--loss); }
+.btn.on { border-color: var(--warn); color: var(--warn); }
+
+.callout { background: var(--warn-bg); border: 1px solid rgba(229,169,63,.35); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.callout.gem { background: var(--gem-bg); border-color: rgba(127,215,255,.35); }
+.callout p { margin: 0; flex: 1; min-width: 240px; }
+
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
+.panel-h { display: flex; align-items: baseline; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
+.panel-h h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.panel-h .sub { color: var(--muted); font-size: 12px; }
+table.grid { width: 100%; border-collapse: collapse; }
+.grid th { text-align: left; font-weight: 500; color: var(--dim); font-size: 12px; padding: 8px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+.grid th.r, .grid td.r { text-align: right; }
+.grid td { padding: 9px 10px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+.grid tr.row { cursor: pointer; }
+.grid tr.row:hover td { background: var(--hover); }
+.grid tr.row.open td { background: var(--raised); border-bottom-color: transparent; }
+.grid tr.out td { opacity: .55; }
+.grid tr.out:hover td { opacity: .85; }
+.lot { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.thumb { width: 64px; height: 48px; border-radius: 5px; background: var(--raised) center/cover no-repeat; flex: none; display: grid; place-items: center; color: var(--dim); font-size: 18px; }
+.it-t { font-weight: 600; }
+.it-m { color: var(--muted); font-size: 12px; display: flex; gap: 3px 10px; flex-wrap: wrap; margin-top: 2px; }
+.site { font-size: 11px; font-weight: 600; color: var(--muted); border: 1px solid var(--rule-2); border-radius: 4px; padding: 0 5px; }
+.dmg { font-size: 11px; font-weight: 600; border-radius: 4px; padding: 0 6px; background: var(--loss-bg); color: var(--loss); }
+.dmg.rep { background: var(--warn-bg); color: var(--warn); }
+.money { font-weight: 600; white-space: nowrap; }
+.sub { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+.why { color: var(--dim); font-size: 11.5px; }
+.v { font-size: 11.5px; font-weight: 700; border-radius: 4px; padding: 1px 7px; white-space: nowrap; display: inline-block; }
+.v.diamond { background: var(--gem-bg); color: var(--gem); } .v.good { background: var(--gain-bg); color: var(--gain); }
+.v.fair { background: var(--warn-bg); color: var(--warn); } .v.market { background: var(--raised); color: var(--muted); }
+.v.avoid { background: var(--loss-bg); color: var(--loss); } .v.unknown { background: var(--raised); color: var(--dim); }
+.maxbid { font-size: 15px; font-weight: 700; color: var(--warn); white-space: nowrap; }
+.star { background: none; border: 0; cursor: pointer; font-size: 16px; color: var(--dim); padding: 0 2px; }
+.star.on { color: var(--warn); }
+
+tr.detail td { background: var(--raised); padding: 6px 16px 16px; }
+.dgrid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(250px, 3fr) minmax(230px, 3fr); gap: 16px 24px; }
+.dgrid > div { min-width: 0; overflow-x: auto; }
+.dgrid h4 { margin: 8px 0 6px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.mini { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.mini td, .mini th { padding: 4px 6px; border-bottom: 1px solid var(--rule); text-align: left; }
+.mini th { color: var(--dim); font-weight: 500; font-size: 11.5px; }
+.mini .r { text-align: right; }
+.mini tr.tot td { border-bottom: 0; font-weight: 700; padding-top: 7px; }
+.note { color: var(--dim); font-size: 11.5px; margin-top: 6px; line-height: 1.5; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+.fields label { display: flex; flex-direction: column; gap: 3px; color: var(--muted); font-size: 12px; }
+.fields label.row { flex-direction: row; align-items: center; gap: 8px; color: var(--ink); font-size: 13px; }
+.fields .full { grid-column: 1 / -1; }
+.fields input:not([type=checkbox]), .fields select, .fields textarea, .inline input { background: var(--bg); border: 1px solid var(--rule-2); border-radius: 6px; padding: 6px 8px; min-width: 0; width: 100%; }
+.inline { display: flex; gap: 6px; margin-top: 6px; }
+.dacts { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+.empty { color: var(--muted); text-align: center; padding: 40px 20px; }
+.empty b { color: var(--ink); }
+
+/* chart */
+.chart-wrap { position: relative; padding: 6px 12px 10px; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; padding: 8px 14px 0; color: var(--muted); font-size: 12px; align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend svg { flex: none; }
+.legend .axis-pick { margin-left: auto; display: inline-flex; gap: 2px; }
+.legend .axis-pick button { background: none; border: 1px solid var(--rule-2); color: var(--muted); border-radius: 5px; padding: 1px 8px; font-size: 12px; cursor: pointer; }
+.legend .axis-pick button[aria-pressed="true"] { color: var(--ink); background: var(--raised); }
+svg.chart { display: block; width: 100%; height: 300px; }
+svg.chart .grid-l { stroke: var(--rule); stroke-width: 1; }
+svg.chart .ax { fill: var(--dim); font-size: 11px; }
+.tip { position: absolute; pointer-events: none; background: #0a131d; border: 1px solid var(--rule-2); border-radius: 6px; padding: 7px 9px; font-size: 12px; max-width: 280px; box-shadow: 0 6px 18px rgba(0,0,0,.4); display: none; z-index: 5; }
+.tip b { display: block; font-weight: 600; margin-bottom: 2px; }
+
+dialog.box { background: var(--panel); color: var(--ink); border: 1px solid var(--rule-2); border-radius: 10px; padding: 18px 20px; width: min(640px, calc(100vw - 24px)); }
+dialog.box::backdrop { background: rgba(3,8,14,.6); }
+dialog.box h2 { margin: 0 0 4px; font-size: 17px; font-weight: 600; }
+dialog.box p { color: var(--muted); margin: 0 0 10px; }
+dialog.box textarea.paste { width: 100%; min-height: 220px; background: var(--bg); border: 1px solid var(--rule-2); border-radius: 6px; padding: 8px; font-size: 12px; resize: vertical; }
+.end { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; align-items: center; }
+.end .msg { margin-right: auto; color: var(--muted); font-size: 12.5px; }
+.classes { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+
+@media (max-width: 1150px) { .col-exp, .col-allin { display: none; } .dgrid { grid-template-columns: 1fr 1fr; } .dgrid > div:first-child { grid-column: 1 / -1; } }
+@media (max-width: 900px) {
+  :root { --side: 0px; }
+  .topbar { grid-template-columns: auto 1fr auto; } .brand { border-right: 0; padding: 0 8px 0 12px; } .brand > div { display: none; }
+  .menu-btn { display: inline-flex; } .who, .lbl { display: none; }
+  .switch { padding: 0; gap: 0; } .switch a { padding: 6px 7px; font-size: 13px; } .top-actions { padding: 0 10px 0 4px; }
+  .desk { grid-template-columns: repeat(3, minmax(0, 1fr)); } .kpi:nth-child(n+4) { display: none; } .kpi { padding: 7px 12px; } .kpi .v { font-size: 16px; }
+  .frame { grid-template-columns: 1fr; }
+  aside { position: fixed; top: 0; left: 0; bottom: 0; width: 272px; height: 100vh; height: 100dvh; max-height: none; align-self: auto; overflow-y: auto; overscroll-behavior: contain; z-index: 40; transform: translateX(-100%); transition: transform .18s ease; }
+  aside.open { transform: none; box-shadow: 0 0 0 100vmax rgba(3,8,14,.55); }
+  main { padding: 12px 10px 60px; }
+  table.grid > thead { display: none; } table.grid, table.grid > tbody { display: block; }
+  table.grid > tbody > tr.row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; padding: 10px 12px; border-bottom: 1px solid var(--rule); }
+  table.grid > tbody > tr.row > td { padding: 0; border: 0; background: none !important; }
+  table.grid > tbody > tr.row > td.c-main { grid-column: 1 / -1; }
+  table.grid > tbody > tr.row > td.hide-m { display: none; }
+  table.grid > tbody > tr.row > td.r { text-align: left; }
+  table.grid > tbody > tr.detail, table.grid > tbody > tr.detail > td { display: block; }
+  .dgrid { grid-template-columns: 1fr; } .fields { grid-template-columns: 1fr; }
+  .count { margin-left: 0; width: 100%; }
+  svg.chart { height: 240px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+* { scrollbar-width: thin; scrollbar-color: var(--rule-2) transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--rule-2); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="topbar">
+    <a class="brand" href="/dreams">
+      <svg width="30" height="30" viewBox="0 0 34 34" aria-hidden="true">
+        <path d="M8 13.5 12 8h10l4 5.5L17 27z" fill="none" stroke="#e5a93f" stroke-width="2.4" stroke-linejoin="round"/>
+        <path d="M8 13.5h18M14 8l-2 5.5L17 27l5-13.5L20 8" fill="none" stroke="#e5a93f" stroke-width="1.6" stroke-linejoin="round" opacity=".7"/>
+      </svg>
+      <div><b>KAMRADS</b><span>Dreams</span></div>
+    </a>
+    <div class="switch"><button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button><a href="/">Auctions</a><a href="/freight">Freight</a><a href="/bought">Bought</a><a href="/finds">Finds</a><a href="/dreams" class="on">Dreams</a></div>
+    <div class="top-actions"><button class="btn primary" id="pasteBtn">⇩<span class="lbl"> Paste listings</span></button><span class="who" id="who"></span></div>
+  </div>
+  <div class="desk" id="desk"></div>
+</div>
+
+<div class="frame">
+  <aside id="side">
+    <div class="side-h">Dreams <button id="newBtn">+ New</button></div><div id="dreams"></div>
+    <div class="side-h">View</div><div id="tabs"></div>
+    <div class="side-foot" id="foot"></div>
+  </aside>
+  <main>
+    <div class="toolbar">
+      <h1 id="title">Dreams</h1><span id="status"></span>
+      <select id="sort" aria-label="Sort"><option value="deal">Best deal first</option><option value="ending">Selling soonest</option><option value="near">Nearest first</option><option value="cheap">Cheapest likely price</option></select>
+      <select id="spec" aria-label="Spec"></select>
+      <input type="search" id="q" placeholder="Search: sx, 4x4, frr, nsw…">
+      <label class="chk"><input type="checkbox" id="onlyFit"> Only ones that fit</label>
+      <span class="count" id="count"></span>
+    </div>
+    <div id="body"></div>
+  </main>
+</div>
+
+<dialog id="pasteBox" class="box">
+  <form method="dialog" id="pasteForm">
+    <h2>Paste listings</h2>
+    <p>On <b>Trucksales</b>, <b>Carsales</b> or a <b>Pickles</b> search: run your search, press <b>Ctrl+A</b> then <b>Ctrl+C</b>, and paste here. One page at a time is fine — paste, add, next page. Trucksales/Carsales prices become the market we value against; Pickles pages add their lots to the board with their body type.</p>
+    <textarea class="paste" id="pasteText" placeholder="Paste the whole results page here…"></textarea>
+    <div class="inline"><input type="file" id="pasteFiles" accept=".txt,.csv,.md,text/plain,text/csv" multiple aria-label="Or choose saved pages"></div>
+    <div class="end"><span class="msg" id="pasteMsg"></span><button type="button" class="btn" id="pasteClose">Close</button><button class="btn primary" id="pasteGo">Add</button></div>
+  </form>
+</dialog>
+
+<dialog id="newBox" class="box">
+  <form method="dialog" id="newForm">
+    <h2>New dream</h2>
+    <p>Every auction lot that matches is listed, valued and watched until you find the one.</p>
+    <div class="fields">
+      <label>What it is <select id="nKind"><option value="dmax">Isuzu D-Max</option><option value="curtainsider">Isuzu curtainsider</option><option value="custom">Something else (search words)</option></select></label>
+      <label>Name <input id="nName" placeholder="e.g. Katara 4 replacement"></label>
+      <label class="full" id="nTermsL" hidden>Search words <input id="nTerms" placeholder="toyota hiace, renault master -crash"></label>
+    </div>
+    <div class="end"><span class="msg" id="newMsg"></span><button type="button" class="btn" id="newClose">Cancel</button><button class="btn primary">Start hunting</button></div>
+  </form>
+</dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = n => n == null ? '—' : (n < 0 ? '-$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-AU');
+const kmTxt = n => n == null ? '' : `${Math.round(n).toLocaleString('en-AU')} km`;
+const kk = n => n == null ? '—' : n >= 1000 ? `${Math.round(n / 1000)}k` : String(n);
+const pct = p => p == null ? '—' : `${Math.round(p * 100)}%`;
+const day = t => t ? new Date(t).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : '';
+const when = t => t ? new Date(t).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '';
+const SITE = { pickles: 'Pickles', manheim: 'Manheim', allbids: 'ALLBIDS', lloyds: 'Lloyds', grays: 'Grays', slattery: 'Slattery', auctionbarn: 'Auction Barn', trucksales: 'Trucksales', carsales: 'Carsales', csv: 'CSV', other: 'Pasted' };
+const VERDICT = { diamond: '💎 Diamond', good: 'Good buy', fair: 'Fair', market: 'Market price', avoid: 'Avoid', unknown: 'No value yet' };
+const post = (u, b, m = 'POST') => fetch(u, { method: m, headers: { 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined }).then(async r => { const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Something went wrong'); return j; });
+const P = window.__PREFS || {};
+const savePref = (key, value) => fetch('/api/prefs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key, value }) }).catch(() => {});
+
+let list = { dreams: [], imports: [], classes: {} }, view = null;
+let dreamId = Number(location.hash.slice(1)) || P.kd_dream || null;
+let tab = P.kd_tab || 'board', openKey = null, axis = P.kd_axis || 'km';
+$('#sort').value = P.kd_sort || 'deal';
+$('#onlyFit').checked = !!P.kd_fit;
+
+function left(l) {
+  if (l.status === 'closed') return `sold ${day(l.endAt)}`;
+  if (l.buyNow && !l.bid && !l.endAt) return 'Buy now';
+  if (l.liveSale) return l.opensAt ? `Live lane ${when(l.opensAt)}` : `Live lane ${l.endAt ? new Date(l.endAt).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }) : ''}`;
+  if (!l.endAt) return '';
+  const m = Math.round((l.endAt - Date.now()) / 60000);
+  if (m <= 0) return 'closing';
+  if (m < 60) return `${m} min left`;
+  if (m < 48 * 60) return `${Math.floor(m / 60)}h ${m % 60}m left`;
+  return `ends ${when(l.endAt)}`;
+}
+const specOf = l => [l.item?.drive, l.item?.cab ? `${l.item.cab} cab` : null, l.item?.body && l.item.body !== 'curtainsider' ? l.item.body : null, l.item?.code ? l.item.code.toUpperCase() : null].filter(Boolean).join(' · ');
+const dmgChip = d => !d || d.level === 'clean' ? '' : `<span class="dmg ${d.level === 'repairable' ? 'rep' : ''}" title="${esc(d.label)}">${esc(d.level === 'repairable' ? 'Repairable WO' : d.level === 'statutory' ? 'Statutory WO' : d.kinds.length ? d.kinds.join(', ') : 'Salvage')}</span>`;
+
+// ---- spec filter (truck class / drive & cab) ----
+function specOptions() {
+  if (!view) return '';
+  if (view.classes) return `<option value="">All classes</option>` + Object.entries(view.classes).map(([k, v]) => `<option value="cls:${k}">${esc(v)}</option>`).join('');
+  if (view.dream.kind === 'dmax') return ['', 'drive:4x4', 'drive:4x2', 'cab:crew', 'cab:space', 'cab:single'].map(v => `<option value="${v}">${{ '': 'Any spec', 'drive:4x4': '4x4 only', 'drive:4x2': '4x2 only', 'cab:crew': 'Crew cab', 'cab:space': 'Space cab', 'cab:single': 'Single cab' }[v]}</option>`).join('');
+  return '<option value="">Any spec</option>';
+}
+function specOk(it) {
+  const v = $('#spec').value;
+  if (!v || !it) return true;
+  const [k, val] = v.split(':');
+  return it[k] === val;
+}
+const text = l => `${l.title} ${l.location || ''} ${l.state || ''} ${l.body || ''} ${l.item?.code || ''} ${l.site || l.source || ''}`.toLowerCase();
+function filtered(rows) {
+  const q = $('#q').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return rows.filter(l => specOk(l.item || { cls: l.cls, drive: l.drive, cab: l.cab }) && q.every(w => text(l).includes(w)) && (!$('#onlyFit').checked || l.inCriteria !== false));
+}
+function sorted(rows) {
+  const s = $('#sort').value;
+  const by = {
+    deal: (a, b) => (b.inCriteria - a.inCriteria) || ((b.score ?? -9) - (a.score ?? -9)),
+    ending: (a, b) => (a.endAt ?? 9e15) - (b.endAt ?? 9e15),
+    near: (a, b) => (a.atExpected?.km ?? a.now?.km ?? 9e9) - (b.atExpected?.km ?? b.now?.km ?? 9e9),
+    cheap: (a, b) => (a.expected ?? 9e9) - (b.expected ?? 9e9),
+  }[s];
+  return [...rows].sort(by);
+}
+
+// ---- render ----
+function renderSide() {
+  $('#dreams').innerHTML = list.dreams.map(d => `<button class="nav" data-dream="${d.id}" aria-pressed="${d.id === dreamId}"><span class="t">${d.icon} ${esc(d.name)}${d.status !== 'hunting' ? ` <span class="paused">(${esc(d.status)})</span>` : ''}</span><span class="c num">${d.open || ''}</span></button>`).join('')
+    || '<div class="side-foot">No dreams yet.</div>';
+  const v = view;
+  const n = v ? { board: v.lots.length, maybe: v.maybes.length, sold: v.sold.length, market: v.market.length } : {};
+  const tabs = [['board', 'At auction now'], ...(v && (v.maybes.length || v.dream.kind === 'curtainsider') ? [['maybe', 'Maybe (body not stated)']] : []), ['sold', 'Sold at auction'], ['market', 'Retail market'], ['settings', 'Settings & alerts']];
+  $('#tabs').innerHTML = tabs.map(([k, l]) => `<button class="nav" data-tab="${k}" aria-pressed="${tab === k}"><span class="t">${l}</span><span class="c num">${n[k] ?? ''}</span></button>`).join('');
+  const imp = list.imports[0];
+  $('#foot').innerHTML = `<b>${list.marketListings}</b> retail listings held${imp ? `<br>Last paste ${esc(day(imp.at))}: ${imp.found} from ${esc(SITE[imp.source] || imp.source)}` : ''}${v ? `<br>Values from ${v.model.base ? `your base, <b>${esc(v.model.base)}</b>` : 'your home base'} (change it in Settings on Auctions)` : ''}<br><span id="updated"></span>`;
+}
+
+function kpis() {
+  if (!view) { $('#desk').innerHTML = ''; return; }
+  const v = view, fit = v.lots.filter(l => l.inCriteria);
+  const best = fit.filter(l => l.score != null && l.verdict !== 'avoid').sort((a, b) => b.score - a.score)[0];
+  const k = (val, l, cls = '') => `<div class="kpi"><div class="v num ${cls}">${val}</div><div class="l">${l}</div></div>`;
+  const cal = v.model.cal;
+  $('#desk').innerHTML = k(`${fit.length}<span class="muted" style="font-size:13px"> / ${v.lots.length}</span>`, 'At auction now (fit / all)')
+    + k(best ? pct(best.score) : '—', best ? `Best: ${esc(best.title)}` : 'Best saving at likely price', best ? (best.verdict === 'diamond' ? 'gain' : '') : '')
+    + k(v.model.retailN, `Retail prices valuing these`)
+    + k(v.model.soldN, 'Sold at auction (our results)')
+    + k(pct(cal.factor), cal.n ? `Auction ÷ retail, learned from ${cal.n}` : 'Auction ÷ retail (starting guess)');
+}
+
+function render() {
+  renderSide(); kpis();
+  if (!view) {
+    $('#title').textContent = 'Dreams'; $('#status').innerHTML = ''; $('#count').textContent = '';
+    $('#body').innerHTML = `<div class="panel"><div class="empty"><b>No dreams yet.</b><br>Press <b>+ New</b> to start hunting.</div></div>`;
+    return;
+  }
+  const d = view.dream;
+  $('#title').textContent = `${d.icon} ${d.name}`;
+  $('#status').innerHTML = `<span class="chip ${esc(d.status)}">${esc({ hunting: 'Hunting', paused: 'Paused', found: 'Found it' }[d.status] || d.status)}</span>`;
+  const specSel = $('#spec'); const keep = specSel.value; specSel.innerHTML = specOptions(); specSel.value = [...specSel.options].some(o => o.value === keep) ? keep : '';
+  for (const id of ['#sort', '#spec', '#q']) $(id).parentElement && ($(id).style.display = ['settings'].includes(tab) ? 'none' : '');
+  $('#onlyFit').parentElement.style.display = ['board', 'maybe'].includes(tab) ? '' : 'none';
+  $('#sort').style.display = ['board', 'maybe'].includes(tab) ? '' : 'none';
+  ({ board, maybe, sold, market, settings: settingsTab })[tab]?.();
+}
+
+function callouts() {
+  const v = view, out = [];
+  if (v.dream.status === 'found' && v.found) out.push(`<div class="callout gem"><p>💎 <b>Found it:</b> ${esc(v.found.title)}. Alerts are off for this dream. Set it back to <b>Hunting</b> in Settings if it falls through.</p></div>`);
+  else if (v.bought.length) out.push(`<div class="callout gem"><p>You've bought <b>${esc(v.bought[0].title)}</b>${v.bought.length > 1 ? ` and ${v.bought.length - 1} more` : ''} from this dream. Is that the one?</p><button class="btn sm" data-found="${esc(v.bought[0].key)}">Yes — mark found</button></div>`);
+  if (!v.model.retailN) out.push(`<div class="callout"><p><b>No ${v.dream.kind === 'dmax' ? 'D-Max' : ''} retail prices yet</b>, so these can't be valued. Run a ${v.dream.kind === 'dmax' ? '<b>Carsales</b> Isuzu D-Max' : 'Trucksales'} search, press Ctrl+A, Ctrl+C and paste it here. KAMRADS also learns from every one it sees sell.</p><button class="btn primary sm" data-paste>Paste listings</button></div>`);
+  return out.join('');
+}
+
+// the board: every lot at auction now
+function lotRows(rows, maybe = false) {
+  return rows.map(l => `<tr class="row ${l.inCriteria === false ? 'out' : ''} ${openKey === l.key ? 'open' : ''}" data-key="${esc(l.key)}">
+    <td class="c-main"><div class="lot"><div class="thumb" ${l.photo ? `style="background-image:url('${esc(l.photo)}')"` : ''}>${l.photo ? '' : esc(view.dream.icon)}</div><div style="min-width:0">
+      <div class="it-t">${esc(l.title)}</div>
+      <div class="it-m"><span class="site">${esc(SITE[l.site] || l.site)}</span>${l.location || l.state ? `<span>${esc(l.location || l.state)}</span>` : ''}${l.km ? `<span class="num">${kmTxt(l.km)}</span>` : ''}${specOf(l) ? `<span>${esc(specOf(l))}</span>` : ''}${dmgChip(l.damage)}${l.atExpected?.km ? `<span class="num">📍${Math.round(l.atExpected.km).toLocaleString('en-AU')} km away</span>` : ''}</div>
+      ${l.inCriteria === false ? `<div class="why">Outside your limits: ${esc(l.misses.join(', '))}</div>` : ''}${maybe ? '<div class="why">Body not stated — open the listing to check</div>' : ''}
+    </div></div></td>
+    <td class="r"><div class="money num">${l.current != null ? money(l.current) : l.buyNow ? money(l.buyNow) : '<span class="dim">no bid</span>'}</div><div class="sub">${esc(left(l))}${l.bidCount ? ` · ${l.bidCount} bids` : ''}</div></td>
+    <td class="r col-exp hide-m"><div class="num">${money(l.expected)}</div><div class="sub">likely price</div></td>
+    <td class="r"><div class="num">${money(l.effective)}</div><div class="sub">${l.retail ? `worth · ${esc(l.retail.confidence)}` : 'worth'}</div></td>
+    <td class="r col-allin hide-m"><div class="num">${money(l.atExpected?.total)}</div><div class="sub">all-in</div></td>
+    <td class="r"><span class="v ${esc(l.verdict)}">${esc(VERDICT[l.verdict])}</span><div class="sub num ${l.score > 0 ? 'gain' : l.score < 0 ? 'loss' : ''}">${l.score != null ? `${pct(l.score)} under · ${money(l.atExpected.saving)}` : ''}</div></td>
+    <td class="r"><div class="maxbid num">${l.maxBid ? money(l.maxBid) : '—'}</div><div class="sub">${l.buyNow && !l.bid && !l.endAt ? 'offer up to' : 'bid up to'}</div></td>
+    <td class="r hide-m"><button class="star ${l.starred ? 'on' : ''}" data-star="${esc(l.key)}" title="${l.starred ? 'On your watchlist' : 'Add to your watchlist (re-checked every minute)'}">${l.starred ? '★' : '☆'}</button></td>
+  </tr>${openKey === l.key ? detailHtml(l) : ''}`).join('');
+}
+const boardHead = `<thead><tr><th>Lot</th><th class="r">Now</th><th class="r col-exp">Likely</th><th class="r">Worth</th><th class="r col-allin">All-in</th><th class="r">Deal</th><th class="r">Max bid</th><th></th></tr></thead>`;
+
+function board() {
+  const rows = sorted(filtered(view.lots));
+  $('#count').textContent = `${rows.length} of ${view.lots.length} lots`;
+  $('#body').innerHTML = callouts()
+    + `<div class="panel"><div class="panel-h"><h2>At auction now</h2><span class="sub">Worth = what the same thing costs from a dealer, adjusted for year, km and damage. Bid up to = the most you can pay and still be ${pct(view.dream.settings.target)} under that, all-in.</span></div>`
+    + (rows.length ? `<table class="grid">${boardHead}<tbody>${lotRows(rows)}</tbody></table>` : `<div class="empty">${view.lots.length ? 'Nothing matches those filters.' : `<b>None at auction right now.</b><br>KAMRADS checks Pickles, Manheim, Grays, Lloyds, Slattery, ALLBIDS and The Auction Barn every 10 minutes and will push you when one turns up.`}</div>`)
+    + `</div>` + chartPanel();
+  drawChart();
+}
+function maybe() {
+  const rows = sorted(filtered(view.maybes));
+  $('#count').textContent = `${rows.length} lots`;
+  $('#body').innerHTML = `<div class="panel"><div class="panel-h"><h2>Maybe</h2><span class="sub">Isuzu trucks whose listing doesn't say what body they have (or a bare cab chassis that could take a curtain body). Open them to check — once KAMRADS reads the body type they move to the board or drop off.</span></div>`
+    + (rows.length ? `<table class="grid">${boardHead}<tbody>${lotRows(rows, true)}</tbody></table>` : '<div class="empty">Nothing here right now.</div>') + '</div>';
+}
+
+function detailHtml(l) {
+  const r = l.retail, c = l.atExpected, rates = view.model.rates;
+  const comps = r?.comps?.length ? `<table class="mini"><thead><tr><th>Comparable</th><th class="r">Asked / sold</th><th class="r">As this one</th></tr></thead><tbody>${r.comps.map(x => `<tr><td>${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.title)}</a>` : esc(x.title)}<div class="sub">${[x.km ? kmTxt(x.km) : null, x.seller, x.state, SITE[x.source] || x.source].filter(Boolean).map(esc).join(' · ')}</div></td><td class="r num">${money(x.price)}</td><td class="r num">${money(x.adj)}</td></tr>`).join('')}</tbody></table>
+    <div class="note">${r.confidence === 'from auction' ? `No retail listings like it yet: worked back from what similar ones sold for at auction (÷ ${pct(l.factor)}).` : `Each listing is re-priced to this one's year and km: ${pct(rates.year)} a year, ${pct(rates.km)} per 100,000 km${rates.fitted ? `, learned from ${rates.n} listings` : ' (starting guess)'}. Private asks count 7% higher (dealer-equivalent). Range ${money(r.low)}–${money(r.high)}.`}${l.damage.stigmaPct ? ` Less ${pct(l.damage.stigmaPct)} for the write-off history.` : ''}</div>` : '<div class="note">No comparable prices yet — paste some listings.</div>';
+  const line = (k, v, sub = '') => `<tr><td>${k}${sub ? `<div class="sub">${esc(sub)}</div>` : ''}</td><td class="r num">${v}</td></tr>`;
+  const cost = c ? `<table class="mini">${line(l.buyNow && !l.bid && !l.endAt ? 'Buy now price' : 'Likely hammer', money(c.price), l.expectedFrom || '')}${line("Buyer's fees" + (c.gst ? ' + GST' : ''), money(c.fees))}${line('Transport home', c.transport == null ? '—' : money(c.transport), c.transport != null ? `${c.transportHow || ''}${c.km ? `, ${Math.round(c.km).toLocaleString('en-AU')} km` : ''}` : 'turned off for this dream')}${line('Repairs', money(c.repair), l.damage.repairFrom || 'none listed')}${line('Roadworthy, rego & service', money(c.onRoad))}<tr class="tot"><td>All-in</td><td class="r num">${money(c.total)}</td></tr><tr><td>Worth</td><td class="r num">${money(l.effective)}</td></tr><tr class="tot"><td>Saving</td><td class="r num ${c.saving >= 0 ? 'gain' : 'loss'}">${money(c.saving)} · ${pct(c.pct)}</td></tr></table>` : '<div class="note">No price to work from yet.</div>';
+  const auction = l.auction ? `<div class="note">${l.auction.n} similar sold at auction: around ${money(l.auction.value)} (${money(l.auction.low)}–${money(l.auction.high)}).</div>` : '';
+  return `<tr class="detail"><td colspan="8"><div class="dgrid">
+    <div><h4>What it's worth${r ? ` · ${money(l.effective)}` : ''}</h4>${comps}</div>
+    <div><h4>What you'd pay</h4>${cost}${auction}${l.maxBid ? `<div class="note">Bid up to <b class="warn">${money(l.maxBid)}</b> to land it ${pct(view.dream.settings.target)} under what it's worth.</div>` : ''}</div>
+    <div><h4>Condition</h4><div>${esc(l.damage.label)}</div>${l.wovr ? `<div class="sub">${esc(l.wovr)}</div>` : ''}
+      <h4>Your repair estimate</h4>
+      <div class="inline"><input data-repair="${esc(l.key)}" inputmode="decimal" placeholder="${l.damage.repairFrom === 'yours' ? '' : `allowance ${money(l.damage.repair)}`}" value="${l.damage.repairFrom === 'yours' ? esc(l.damage.repair) : ''}" aria-label="Repair estimate"></div>
+      <div class="inline"><input data-note="${esc(l.key)}" placeholder="Note (what you saw)" value="${esc(l.damage.note || '')}" aria-label="Note"><button class="btn sm" data-savenote="${esc(l.key)}">Save</button></div>
+      <div class="dacts">${l.url ? `<a class="btn sm" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">Open listing</a>` : ''}<button class="btn sm ${l.starred ? 'on' : ''}" data-star="${esc(l.key)}">${l.starred ? '★ Watching' : '☆ Watch'}</button><button class="btn sm" data-found="${esc(l.key)}">This is the one</button></div>
+    </div></div></td></tr>`;
+}
+
+// ---- chart: price against km (or year) ----
+let points = [];
+function chartPanel() {
+  return `<div class="panel"><div class="panel-h"><h2>The market at a glance</h2><span class="sub">Each dot is one vehicle. Hover for details.</span></div>
+    <div class="legend"><span><svg width="12" height="12"><circle cx="6" cy="6" r="4.5" fill="var(--s-retail)"/></svg>Retail asking (${filtered(view.market.filter(m => m.price)).length})</span>
+    <span><svg width="12" height="12"><rect x="1.5" y="1.5" width="9" height="9" rx="1.5" fill="var(--s-sold)"/></svg>Sold at auction (${filtered(view.sold).length})</span>
+    <span><svg width="12" height="12"><path d="M6 1 11 10.5H1z" fill="var(--s-live)"/></svg>At auction now, likely price (${filtered(view.lots).filter(l => l.expected).length})</span>
+    <span class="axis-pick"><button data-axis="km" aria-pressed="${axis === 'km'}">by km</button><button data-axis="year" aria-pressed="${axis === 'year'}">by year</button></span></div>
+    <div class="chart-wrap" id="chartWrap"><svg class="chart" id="chart" role="img" aria-label="Price against ${axis === 'km' ? 'kilometres' : 'year'}"></svg><div class="tip" id="tip"></div></div></div>`;
+}
+function drawChart() {
+  const svg = $('#chart'); if (!svg) return;
+  const W = svg.clientWidth || 800, H = svg.clientHeight || 300, m = { l: 58, r: 14, t: 10, b: 28 };
+  const X = axis === 'km' ? (p => p.km) : (p => p.year);
+  points = [
+    ...filtered(view.market).filter(x => x.price).map(x => ({ t: 'retail', title: x.title, y: x.price, km: x.km, year: x.year, sub: `${SITE[x.source] || x.source} · ${x.seller || ''} ${x.state || ''}`, url: x.url })),
+    ...filtered(view.sold).map(x => ({ t: 'sold', title: x.title, y: x.price, km: x.km, year: x.year, sub: `sold ${day(x.soldAt)} · ${SITE[x.site] || x.site}${x.damage.level !== 'clean' ? ' · ' + x.damage.level : ''}`, url: x.url })),
+    ...filtered(view.lots).filter(x => x.expected).map(x => ({ t: 'live', title: x.title, y: x.expected, km: x.km, year: x.year, sub: `likely price · ${left(x)}`, key: x.key })),
+  ].filter(p => X(p) != null && p.y > 0);
+  if (!points.length) { svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" class="ax">Nothing to plot yet</text>`; return; }
+  const xs = points.map(X), ys = points.map(p => p.y);
+  let x0 = Math.min(...xs), x1 = Math.max(...xs); if (axis === 'km') x0 = 0; if (x1 === x0) x1 = x0 + 1;
+  if (axis === 'year') { x0 -= 0.5; x1 += 0.5; }
+  const y1 = Math.max(...ys) * 1.06, y0 = 0;
+  const sx = v => m.l + (v - x0) / (x1 - x0) * (W - m.l - m.r), sy = v => H - m.b - (v - y0) / (y1 - y0) * (H - m.t - m.b);
+  const nice = (lo, hi, n) => { const step0 = (hi - lo) / n, mag = 10 ** Math.floor(Math.log10(step0)), step = [1, 2, 2.5, 5, 10].map(k => k * mag).find(s => s >= step0); const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) out.push(v); return out; };
+  let g = '';
+  for (const v of nice(y0, y1, 5)) g += `<line class="grid-l" x1="${m.l}" x2="${W - m.r}" y1="${sy(v)}" y2="${sy(v)}"/><text class="ax" x="${m.l - 6}" y="${sy(v) + 4}" text-anchor="end">${v >= 1000 ? '$' + Math.round(v / 1000) + 'k' : '$' + v}</text>`;
+  const xt = axis === 'km' ? nice(x0, x1, 6) : nice(Math.ceil(x0), Math.floor(x1), Math.min(8, Math.floor(x1 - x0))).filter(v => Number.isInteger(v));
+  for (const v of xt) g += `<text class="ax" x="${sx(v)}" y="${H - 8}" text-anchor="middle">${axis === 'km' ? (v ? Math.round(v / 1000) + 'k km' : '0') : v}</text>`;
+  const shape = p => {
+    const x = sx(X(p)), y = sy(p.y);
+    p.px = x; p.py = y;
+    if (p.t === 'retail') return `<circle cx="${x}" cy="${y}" r="4.5" fill="var(--s-retail)" stroke="var(--panel)" stroke-width="1.5"/>`;
+    if (p.t === 'sold') return `<rect x="${x - 4.5}" y="${y - 4.5}" width="9" height="9" rx="1.5" fill="var(--s-sold)" stroke="var(--panel)" stroke-width="1.5"/>`;
+    return `<path d="M${x} ${y - 6} L${x + 5.5} ${y + 4} L${x - 5.5} ${y + 4}Z" fill="var(--s-live)" stroke="var(--panel)" stroke-width="1.5"/>`;
+  };
+  // draw retail first, then sold, then live on top
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = g + ['retail', 'sold', 'live'].map(t => points.filter(p => p.t === t).map(shape).join('')).join('');
+}
+function chartHover(e) {
+  const svg = $('#chart'), tip = $('#tip'); if (!svg || !points.length) return;
+  const r = svg.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  let best = null, bd = 16 * 16;
+  for (const p of points) { const d = (p.px - x) ** 2 + (p.py - y) ** 2; if (d < bd) { bd = d; best = p; } }
+  if (!best) { tip.style.display = 'none'; return; }
+  tip.innerHTML = `<b>${esc(best.title)}</b>${money(best.y)} · ${best.km ? kmTxt(best.km) : 'km ?'} · ${best.year || ''}<div class="sub">${esc(best.sub)}</div>`;
+  tip.style.display = 'block';
+  const wrap = $('#chartWrap').getBoundingClientRect();
+  tip.style.left = Math.min(e.clientX - wrap.left + 12, wrap.width - 290) + 'px'; tip.style.top = (e.clientY - wrap.top + 12) + 'px';
+}
+
+// sold at auction
+function sold() {
+  const rows = filtered(view.sold);
+  $('#count').textContent = `${rows.length} results`;
+  const ratios = rows.filter(x => x.ofRetail != null && x.damage.level === 'clean').map(x => x.ofRetail).sort((a, b) => a - b);
+  $('#body').innerHTML = `<div class="panel"><div class="panel-h"><h2>Sold at auction</h2><span class="sub">Real results KAMRADS read at the close${ratios.length ? ` · clean ones went for a median ${pct(ratios[ratios.length >> 1])} of retail` : ''}. Every one makes the next valuation better.</span></div>`
+    + (rows.length ? `<table class="grid"><thead><tr><th>Lot</th><th class="r">Sold for</th><th class="r">Worth</th><th class="r">Of retail</th><th class="r">Winner saved</th></tr></thead><tbody>${rows.map(l => `<tr class="row" data-href="${esc(l.url || '')}">
+      <td class="c-main"><div class="it-t">${esc(l.title)}</div><div class="it-m"><span class="site">${esc(SITE[l.site] || l.site)}</span><span>${esc(day(l.soldAt))}</span>${l.km ? `<span class="num">${kmTxt(l.km)}</span>` : ''}${l.location || l.state ? `<span>${esc(l.location || l.state)}</span>` : ''}${dmgChip(l.damage)}</div></td>
+      <td class="r"><div class="money num">${money(l.price)}</div></td><td class="r num">${money(l.effective)}</td><td class="r num">${pct(l.ofRetail)}</td>
+      <td class="r num ${l.winnerPct > 0 ? 'gain' : ''}">${l.winnerPct != null ? pct(l.winnerPct) : '—'}</td></tr>`).join('')}</tbody></table>`
+      : `<div class="empty"><b>No results yet.</b><br>Each time a ${esc(view.dream.name)} closes at auction KAMRADS reads what it went for and it lands here.</div>`)
+    + `</div>` + (view.unpriced.length ? `<div class="panel"><div class="panel-h"><h2>Closed, price not caught</h2><span class="sub">Sold in a live lane or before we could read the result.</span></div><table class="grid"><tbody>${view.unpriced.map(l => `<tr class="row" data-href="${esc(l.url || '')}"><td class="c-main"><div class="it-t">${esc(l.title)}</div><div class="it-m"><span class="site">${esc(SITE[l.site] || l.site)}</span><span>${esc(day(l.endAt))}</span>${l.km ? `<span>${kmTxt(l.km)}</span>` : ''}</div></td><td class="r sub">${l.lastBid ? `last seen ${money(l.lastBid)}` : ''}</td></tr>`).join('')}</tbody></table></div>` : '');
+}
+
+// retail market
+function market() {
+  const rows = filtered(view.market).sort((a, b) => (a.vsModel ?? 9) - (b.vsModel ?? 9));
+  $('#count').textContent = `${rows.length} listings`;
+  $('#body').innerHTML = `<div class="panel"><div class="panel-h"><h2>Retail market</h2><span class="sub">Dealer and private listings you've pasted in (kept ${'120'} days). Sorted by how far under the rest each one is priced — a dealer ad well under the pack can be the diamond too.</span><span style="flex:1"></span><button class="btn sm primary" data-paste>Paste more</button></div>`
+    + (rows.length ? `<table class="grid"><thead><tr><th>Listing</th><th class="r">Asking</th><th class="r">Others like it</th><th class="r">Vs the rest</th><th></th></tr></thead><tbody>${rows.map(m => `<tr class="row" data-href="${esc(m.url || '')}">
+      <td class="c-main"><div class="it-t">${esc(m.title)}</div><div class="it-m"><span class="site">${esc(SITE[m.source] || m.source)}</span>${m.km ? `<span class="num">${kmTxt(m.km)}</span>` : ''}<span>${esc([m.seller, m.condition, m.state].filter(Boolean).join(' · '))}</span>${m.code ? `<span>${esc(m.code.toUpperCase())}</span>` : ''}<span class="dim">seen ${esc(day(m.lastSeen))}</span></div></td>
+      <td class="r"><div class="money num">${m.price ? money(m.price) : '<span class="dim">enquire</span>'}</div>${m.prevPrice && m.prevPrice !== m.price ? `<div class="sub">was ${money(m.prevPrice)}</div>` : ''}</td>
+      <td class="r num">${money(m.model)}</td>
+      <td class="r num ${m.vsModel < -0.1 ? 'gain' : m.vsModel > 0.1 ? 'loss' : ''}">${m.vsModel == null ? '—' : `${m.vsModel > 0 ? '+' : ''}${Math.round(m.vsModel * 100)}%`}</td>
+      <td class="r hide-m"><button class="btn sm" data-hide="${m.id}" title="Leave this one out of the valuations (wrong data, sold, not comparable)">Hide</button></td></tr>`).join('')}</tbody></table>`
+      : `<div class="empty"><b>No listings yet.</b><br><button class="btn primary" data-paste>Paste a search page</button></div>`) + '</div>';
+}
+
+// settings
+function settingsTab() {
+  const d = view.dream, s = d.settings;
+  $('#count').textContent = '';
+  const inp = (k, label, ph = '', mode = 'numeric') => `<label>${label}<input name="${k}" inputmode="${mode}" value="${s[k] ?? ''}" placeholder="${esc(ph)}"></label>`;
+  const sel = (k, label, opts) => `<label>${label}<select name="${k}">${opts.map(([v, l]) => `<option value="${v}" ${String(s[k] ?? '') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
+  const chk = (k, label) => `<label class="row"><input type="checkbox" name="${k}" ${s[k] ? 'checked' : ''}> ${label}</label>`;
+  $('#body').innerHTML = `<div class="panel"><div class="panel-h"><h2>Settings & alerts</h2><span class="sub">Lots outside your limits stay listed (greyed) but never buzz your phone.</span></div><div style="padding:14px"><div class="fields" id="setForm">
+    <label class="full">Name<input name="name" value="${esc(d.name)}"></label>
+    ${sel('status', 'Status', [['hunting', 'Hunting'], ['paused', 'Paused'], ['found', 'Found it']])}
+    <label>Deal = at least this much under what it's worth<input name="target" inputmode="decimal" value="${Math.round(s.target * 100)}%"></label>
+    ${sel('alertLevel', 'Push me in the final minutes when it\'s', [['diamond', '💎 Diamond only'], ['good', 'Good buy or better'], ['fair', 'Fair or better'], ['off', 'Never']])}
+    ${sel('newListings', 'When a new one is listed', [['all', 'Push every one that fits'], ['deals', 'Only if it looks like a deal'], ['off', "Don't push"]])}
+    ${inp('budget', 'Most I\'ll spend all-in ($)', 'no limit')}
+    ${inp('kmMax', 'Max kilometres', 'any')}
+    ${inp('yearMin', 'Year from', 'any')}${inp('yearMax', 'Year to', 'any')}
+    ${d.kind === 'dmax' ? sel('drive', 'Drive', [['', 'Either'], ['4x4', '4x4'], ['4x2', '4x2']]) + sel('cab', 'Cab', [['', 'Any'], ['crew', 'Crew (dual) cab'], ['space', 'Space cab'], ['single', 'Single cab']]) : ''}
+    ${view.classes ? `<div class="full"><div class="muted" style="font-size:12px;margin-bottom:4px">Truck sizes I want (none ticked = all)</div><div class="classes">${Object.entries(view.classes).map(([k, v]) => `<label class="row"><input type="checkbox" name="cls" value="${k}" ${s.classes.includes(k) ? 'checked' : ''}> ${esc(v)}</label>`).join('')}</div></div>` : ''}
+    ${d.kind === 'custom' ? `<label class="full">Search words<input name="terms" value="${esc(s.terms)}"></label>` : ''}
+    ${inp('onRoad', 'Roadworthy, rego & first service ($)', '', 'numeric')}
+    <label>Value off for a repairable write-off history<input name="stigma" inputmode="decimal" value="${Math.round(s.stigma * 100)}%"></label>
+    ${chk('allowRepairable', 'Repairable write-offs can be a deal')}${chk('allowDamaged', 'Damaged (not written off) can be a deal')}
+    ${chk('transport', 'Add transport to my home base to the all-in cost')}
+    <label class="full">Notes<textarea name="notes" rows="3">${esc(s.notes || '')}</textarea></label>
+  </div><div class="dacts"><button class="btn primary" id="saveSet">Save</button><span class="msg muted" id="setMsg"></span><span style="flex:1"></span><button class="btn danger" id="delDream">Delete this dream</button></div></div></div>`;
+}
+
+// ---- data ----
+async function load() {
+  try {
+    list = await (await fetch('/api/dreams')).json();
+    if (!list.dreams.some(d => d.id === dreamId)) dreamId = list.dreams[0]?.id ?? null;
+    view = dreamId ? await (await fetch(`/api/dreams/${dreamId}`)).json() : null;
+    if (view?.error) view = null;
+    if (view && tab === 'maybe' && !view.maybes.length && view.dream.kind !== 'curtainsider') tab = 'board';
+    render();
+    const u = $('#updated'); if (u) u.textContent = 'Updated ' + new Date().toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
+  } catch (e) { const u = $('#updated'); if (u) u.textContent = 'Connection problem, retrying'; }
+}
+function pick(id) { dreamId = id; openKey = null; history.replaceState(null, '', `#${id}`); savePref('kd_dream', id); load(); }
+
+document.addEventListener('click', async e => {
+  const t = e.target;
+  const dr = t.closest('[data-dream]'); if (dr) { $('#side').classList.remove('open'); return pick(Number(dr.dataset.dream)); }
+  const tb = t.closest('[data-tab]'); if (tb) { tab = tb.dataset.tab; openKey = null; savePref('kd_tab', tab); $('#side').classList.remove('open'); return render(); }
+  const ax = t.closest('[data-axis]'); if (ax) { axis = ax.dataset.axis; savePref('kd_axis', axis); return render(); }
+  if (t.closest('[data-paste]')) return openPaste();
+  const st = t.closest('[data-star]');
+  if (st) { const l = [...view.lots, ...view.maybes].find(x => x.key === st.dataset.star); const on = !l?.starred; await post(`/api/lots/${encodeURIComponent(st.dataset.star)}/star`, { starred: on }).catch(err => alert(err.message)); if (l) l.starred = on; return render(); }
+  const fd = t.closest('[data-found]');
+  if (fd) { if (!confirm('Mark this as the one? Alerts stop for this dream (you can turn them back on in Settings).')) return; await post(`/api/dreams/${dreamId}`, { status: 'found', foundKey: fd.dataset.found }, 'PATCH').catch(err => alert(err.message)); return load(); }
+  const sn = t.closest('[data-savenote]');
+  if (sn) { const k = sn.dataset.savenote; try { await post(`/api/dreams-note/${encodeURIComponent(k)}`, { repair: document.querySelector(`[data-repair="${CSS.escape(k)}"]`).value, note: document.querySelector(`[data-note="${CSS.escape(k)}"]`).value }); sn.textContent = 'Saved'; load(); } catch (err) { alert(err.message); } return; }
+  const hd = t.closest('[data-hide]'); if (hd) { await post(`/api/dreams-market/${hd.dataset.hide}/hide`, { hidden: true }).catch(err => alert(err.message)); return load(); }
+  if (t.id === 'saveSet') return saveSettings();
+  if (t.id === 'delDream') { if (!confirm(`Delete "${view.dream.name}"? The lots and listings stay; only this dream goes.`)) return; await post(`/api/dreams/${dreamId}`, null, 'DELETE'); dreamId = null; return load(); }
+  const link = t.closest('tr.row[data-href]');
+  if (link && !t.closest('button, a, input')) { if (link.dataset.href) window.open(link.dataset.href, '_blank', 'noopener,noreferrer'); return; }
+  const row = t.closest('tr.row[data-key]');
+  if (row && !t.closest('button, a, input, select, textarea')) { openKey = openKey === row.dataset.key ? null : row.dataset.key; return render(); }
+});
+async function saveSettings() {
+  const f = $('#setForm'), b = {};
+  for (const el of f.querySelectorAll('[name]')) { if (el.name === 'cls') continue; b[el.name] = el.type === 'checkbox' ? el.checked : el.value; }
+  b.classes = [...f.querySelectorAll('[name=cls]:checked')].map(x => x.value);
+  b.target = String(b.target).replace('%', ''); b.stigma = String(b.stigma).replace('%', '');
+  try { await post(`/api/dreams/${dreamId}`, b, 'PATCH'); $('#setMsg').textContent = 'Saved'; load(); } catch (err) { $('#setMsg').textContent = err.message; }
+}
+
+// ---- paste ----
+function openPaste() { $('#pasteMsg').textContent = ''; $('#pasteText').value = ''; $('#pasteFiles').value = ''; $('#pasteBox').showModal(); setTimeout(() => $('#pasteText').focus(), 50); }
+async function addText(text) {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return post('/api/dreams-import', { text, tz });
+}
+const say = r => `${SITE[r.source] || r.source}: ${r.found} found — ${r.added} new, ${r.updated} updated${r.lots ? `, ${r.lots} auction lots added to the board` : ''}${r.skipped ? ` (${r.skipped} already sold)` : ''}.`;
+$('#pasteForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const msgs = [];
+  $('#pasteGo').disabled = true; $('#pasteMsg').textContent = 'Reading…';
+  try {
+    const text = $('#pasteText').value;
+    if (text.trim()) msgs.push(say(await addText(text)));
+    for (const f of $('#pasteFiles').files) { try { msgs.push(`${f.name}: ${say(await addText(await f.text()))}`); } catch (err) { msgs.push(`${f.name}: ${err.message}`); } }
+    if (!msgs.length) throw new Error('Paste a results page (or pick saved pages) first.');
+    $('#pasteText').value = ''; $('#pasteFiles').value = '';
+    $('#pasteMsg').textContent = msgs.join(' ') + ' Paste the next page, or close.';
+    load();
+  } catch (err) { $('#pasteMsg').textContent = err.message; }
+  $('#pasteGo').disabled = false;
+});
+$('#pasteBtn').addEventListener('click', openPaste);
+$('#pasteClose').addEventListener('click', () => $('#pasteBox').close());
+
+// ---- new dream ----
+$('#newBtn').addEventListener('click', () => { $('#newMsg').textContent = ''; $('#newBox').showModal(); });
+$('#newClose').addEventListener('click', () => $('#newBox').close());
+$('#nKind').addEventListener('change', () => { $('#nTermsL').hidden = $('#nKind').value !== 'custom'; });
+$('#newForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  try { const r = await post('/api/dreams', { kind: $('#nKind').value, name: $('#nName').value, terms: $('#nTerms').value }); $('#newBox').close(); $('#newForm').reset(); $('#nTermsL').hidden = true; tab = 'board'; pick(r.id); }
+  catch (err) { $('#newMsg').textContent = err.message; }
+});
+
+for (const id of ['#sort', '#spec', '#onlyFit']) $(id).addEventListener('change', () => { savePref('kd_sort', $('#sort').value); savePref('kd_fit', $('#onlyFit').checked); render(); });
+$('#q').addEventListener('input', render);
+$('#menuBtn').addEventListener('click', () => $('#side').classList.toggle('open'));
+document.addEventListener('mousemove', e => { if (e.target.closest && e.target.closest('#chartWrap')) chartHover(e); else { const tip = $('#tip'); if (tip) tip.style.display = 'none'; } });
+window.addEventListener('resize', () => { if (tab === 'board' && view) drawChart(); });
+window.addEventListener('hashchange', () => { const id = Number(location.hash.slice(1)); if (id && id !== dreamId) pick(id); });
+fetch('/api/me').then(r => r.json()).then(x => { $('#who').textContent = x.user; }).catch(() => {});
+load();
+setInterval(() => { if (!document.hidden && !openKey && !document.querySelector('dialog[open]') && tab !== 'settings') load(); }, 60000);
+</script>
+</body>
+</html>

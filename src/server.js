@@ -25,6 +25,7 @@ import { researchLot, testKey } from './estimate.js';
 import { log } from './log.js';
 import { watch, unwatch, setMyBid, bidStatus, warnRivals } from './users.js';
 import { addSearch } from './searches.js';
+import * as dreams from './dreams/index.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -80,7 +81,7 @@ const shape = (l, alertKinds, view = null) => {
 
 export function startServer() {
   const app = express();
-  app.use(express.json());
+  app.use(express.json({ limit: '6mb' }));   // pasted results pages (Dreams) can be large
   // Private tool: never pass our address on to the auction sites, never get indexed.
   app.use((_req, res, next) => { res.set({ 'Referrer-Policy': 'no-referrer', 'X-Robots-Tag': 'noindex, nofollow', 'X-Frame-Options': 'DENY' }); next(); });
   app.get('/robots.txt', (_req, res) => res.type('text/plain').send('User-agent: *\nDisallow: /\n'));
@@ -108,6 +109,26 @@ export function startServer() {
   app.delete('/api/purchases/:id', ok(req => { purchases.remove(Number(req.params.id)); }));
   app.post('/api/purchases/:id/costs', ok(req => ({ costId: purchases.addCost(Number(req.params.id), req.user, req.body || {}) })));
   app.delete('/api/purchases/:id/costs/:costId', ok(req => { purchases.delCost(Number(req.params.id), Number(req.params.costId)); }));
+  // ---- Dreams: the vehicles we want to own, every auction lot that could be one, valued against the market ----
+  app.get('/dreams', (req, res) => sendPage(res, 'dreams.html', req.user));
+  app.get('/api/dreams', (req, res) => res.json({ dreams: dreams.summary(req.user), imports: dreams.imports(), marketListings: dreams.marketCount(),
+    kinds: Object.fromEntries(Object.entries(dreams.KINDS).map(([k, v]) => [k, { label: v.label, icon: v.icon }])), classes: dreams.CLASSES }));
+  app.post('/api/dreams', ok(req => ({ id: dreams.createDream(req.user, req.body || {}) })));
+  app.get('/api/dreams/:id', (req, res) => {
+    const v = dreams.dreamView(Number(req.params.id), req.user);
+    if (!v) return res.status(404).json({ error: 'Not found' });
+    const mine = new Map(q.myWatchKeys.all(req.user).map(w => [w.key, w.my_bid]));
+    for (const l of [...v.lots, ...v.maybes]) { l.starred = mine.has(l.key); l.myBid = mine.get(l.key) ?? null; }
+    res.json(v);
+  });
+  app.patch('/api/dreams/:id', ok(req => { dreams.updateDream(Number(req.params.id), req.body || {}); }));
+  app.delete('/api/dreams/:id', ok(req => { dreams.deleteDream(Number(req.params.id)); }));
+  app.post('/api/dreams-import', ok(req => {
+    const tz = /^[A-Za-z]+\/[A-Za-z_]+$/.test(req.body?.tz || '') ? req.body.tz : config.digestTz;
+    return dreams.importPaste(req.user, req.body?.text, { tz });
+  }));
+  app.post('/api/dreams-market/:id/hide', ok(req => { dreams.hideListing(Number(req.params.id), req.body?.hidden !== false); }));
+  app.post('/api/dreams-note/:key', ok(req => { dreams.setLotNote(req.params.key, req.user, req.body || {}); }));
   app.get('/api/export/bought.csv', (_req, res) => sendCsv(res, `kamrads-bought-${new Date().toISOString().slice(0, 10)}.csv`, purchases.exportRows()));
   app.use(express.static(path.join(here, '..', 'public')));
 

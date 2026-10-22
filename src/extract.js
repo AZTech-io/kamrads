@@ -17,6 +17,7 @@ const LOC_KEYS = ['location', 'auccity', 'locationname', 'branch', 'branchname',
 const STATE_KEYS = ['state', 'aucstate', 'statecode', 'locationstate', 'region'];
 const BUYMETHOD_KEYS = ['buymethod', 'sellingmethod', 'sellingmethodname', 'saletype', 'saleschannel', 'channel', 'auctiontype'];
 const SALE_KEYS = ['salename', 'auctionname', 'eventname', 'saletitle', 'eventtitle'];
+const BODY_KEYS = ['bodytype', 'bodystyle', 'bodytypename', 'bodytypedescription', 'body', 'bodyname'];
 const CAT_KEYS = ['category', 'producttype', 'producttypetitle', 'itemtype', 'assettype', 'vehicletype', 'lineofbusiness'];
 
 const isBidKey = k => k.includes('bid') && /current|highest|high|top|leading|winning|latest|amount|value|price/.test(k)
@@ -191,6 +192,7 @@ export function lotFromObject(obj, now = Date.now()) {
     buy_method: (v => (typeof v === 'string' ? v : null))(firstOf(f, BUYMETHOD_KEYS)),
     sale_name: (v => (typeof v === 'string' ? v : null))(firstOf(f, SALE_KEYS)),
     category: typeof cat === 'string' ? cat : null,
+    body: (v => (typeof v === 'string' && v.trim() && v.length <= 40 && !/[<{]/.test(v) ? v.trim() : null))(firstOf(f, BODY_KEYS)),
     lot_no: (v => (v == null || typeof v === 'object' ? null : String(v)))(firstOf(f, LOTNO_KEYS)),
     bid: (b => (b > 0 ? b : null))(parseMoney(bidRaw)), // 0 means "no bids yet" (or hidden), not a $0 bid
     bid_count: parseInt0(firstWhere(f, isBidCountKey)),
@@ -258,6 +260,9 @@ export function factsFromText(text, now = Date.now()) {
       if (rel) out.end_at = relativeSydney(rel[1], +rel[2], +rel[3], rel[4], now);
     }
   }
+  // "Body Type: Curtainsider" / "Body\nPantech" (trucks: what's on the back)
+  const body = /\bbody\s*(?:type|style)?\s*:?\s*\n?\s*(curtain\s?sider|tautliner|pantech|refrigerated(?:\s+pantech)?|tipper|table\s?top|tray(?:\s?back)?|tilt\s?tray|cab\s?chassis|crane|service\s+(?:truck|body)|ute|utility|wagon|van|bus)\b/i.exec(t);
+  if (body) out.body = body[1].replace(/\s+/g, ' ');
   const loc = /([A-Z][A-Za-z .'-]{2,30}),\s*(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b/.exec(t);
   if (loc) { out.location = `${loc[1].trim()}, ${loc[2]}`; out.state = loc[2]; }
   // The result once it's over: "Sold for $11,299" / "Sold price: $11,299" / "Winning bid $11,299" (beats any earlier bid on the page)

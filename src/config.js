@@ -158,6 +158,14 @@ export const config = {
     ebay: { clientId: env.EBAY_CLIENT_ID || '', clientSecret: env.EBAY_CLIENT_SECRET || '' },
   },
 
+  // Dreams (/dreams): extra searches so every D-Max and Isuzu truck is seen, live lanes included
+  dreams: {
+    pickles: list('DREAM_PICKLES_SEARCHES', [
+      'https://www.pickles.com.au/used/search/cars/isuzu/d-max',
+      'https://www.pickles.com.au/used/search/trucks/isuzu',
+    ]),
+  },
+
   sites: {
     pickles: {
       enabled: bool('PICKLES_ENABLED', true),

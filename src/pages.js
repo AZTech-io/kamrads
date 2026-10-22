@@ -23,7 +23,7 @@ export function sendPage(res, name, user) {
   res.type('html').set('cache-control', 'no-store').send(read(name).replace('</head>', `<script>window.__PREFS=${json};</script>\n</head>`));
 }
 
-const KEY = /^k[2fb]_[A-Za-z]{1,24}$/;
+const KEY = /^k[2fbd]_[A-Za-z]{1,24}$/;
 const MAX_ONE = 4000, MAX_ALL = 40000;
 /** Save (or with value null, forget) one setting for this person. */
 export function savePref(user, key, value) {

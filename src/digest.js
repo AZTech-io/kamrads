@@ -7,6 +7,7 @@ import * as settings from './settings.js';
 import { estimateOf } from './alerts.js';
 import { compile, matches } from './searches.js';
 import { log } from './log.js';
+import { dreamDigest } from './dreams/index.js';
 
 const money = n => (n == null ? '?' : '$' + Math.round(n).toLocaleString('en-AU'));
 const localParts = (tz, t = Date.now()) => {
@@ -47,6 +48,8 @@ export function buildDigest(user, now = Date.now()) {
     lines.push('😬 Missed yesterday:');
     for (const { l, est } of missed) lines.push(`• ${l.title} went for ${money(l.final_bid)} (est ${money(est)})`);
   }
+  // 5. dreams selling today
+  try { lines.push(...dreamDigest(user, now)); } catch (e) { log.warn('dreams', e.message); }
   return lines.length ? lines.join('\n') : null;
 }
 

@@ -35,7 +35,8 @@ const withPaging = (url, page, size) => {
 
 /** Scan the configured search pages. */
 export async function discover() {
-  const { searches, maxPages, pageSize } = config.sites.pickles;
+  const { maxPages, pageSize } = config.sites.pickles;
+  const searches = [...new Set([...config.sites.pickles.searches, ...(config.dreams?.pickles || [])])];
   const all = new Map();
   for (const search of searches) {
     for (let p = 1; p <= maxPages; p++) {
