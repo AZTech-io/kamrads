@@ -260,6 +260,9 @@ export function factsFromText(text, now = Date.now()) {
   }
   const loc = /([A-Z][A-Za-z .'-]{2,30}),\s*(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b/.exec(t);
   if (loc) { out.location = `${loc[1].trim()}, ${loc[2]}`; out.state = loc[2]; }
+  // The result once it's over: "Sold for $11,299" / "Sold price: $11,299" / "Winning bid $11,299" (beats any earlier bid on the page)
+  const sold = /\b(?:sold\s+(?:for|price:?)|winning\s+bid:?|final\s+(?:bid|price):?|hammer\s+price:?)\s*(?:AU)?\$\s?([\d,]+(?:\.\d+)?)/i.exec(t);
+  if (sold) { out.bid = parseFloat(sold[1].replace(/,/g, '')); out.closed = true; }
   // Bidding over ("Bidding closed", "Auction has ended", "This lot has closed")
   if (/\bbidding\s+(?:has\s+)?(?:closed|ended)\b|\bauction\s+(?:has\s+)?(?:closed|ended)\b|\b(?:this\s+)?lot\s+(?:has\s+|is\s+)?closed\b|\bclosed\s+for\s+bidding\b/i.test(t)) out.closed = true;
   // Lot already gone before its listed close (sold early / withdrawn): Pickles shows "SOLD - No longer available"

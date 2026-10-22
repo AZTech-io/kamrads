@@ -126,3 +126,10 @@ test('Grays premium bands: each lot\'s own table, priced from the right band; "E
   const now = Date.now();
   assert.ok(Math.abs(factsFromText('Ending in: 26m 19s', now).end_at - (now + 1579000)) < 2000);
 });
+
+test('a finished Grays lot: "Sold for $11,299" is the final price, and it is closed', async () => {
+  const { factsFromText } = await import('../src/extract.js');
+  const f = factsFromText('2007 Mitsubishi Fighter FM 600 4x2 Curtainsider Closed: 22 Oct 2026 AEDT Sold for $11,299 The auction has ended. See similar items. Bids (153 bids) Reserve met');
+  assert.equal(f.bid, 11299); assert.equal(f.closed, true); assert.equal(f.bid_count, 153);
+  assert.equal(factsFromText('Current Bid (27 bids) $1,809').closed, undefined);
+});
