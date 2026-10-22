@@ -24,7 +24,7 @@ CREATE INDEX IF NOT EXISTS bids_key ON bids(key, at);
 CREATE TABLE IF NOT EXISTS alerts (key TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL, message TEXT, PRIMARY KEY(key, kind));
 CREATE TABLE IF NOT EXISTS site_status (site TEXT PRIMARY KEY, last_ok INTEGER, last_count INTEGER, last_error TEXT, last_error_at INTEGER, logged_in INTEGER);
 `);
-for (const col of ['final_seen_at INTEGER', 'est_avg REAL', 'est_comps TEXT', 'est_method TEXT', 'buyer_premium REAL', 'gst_extra INTEGER', 'check_verdict TEXT', 'check_note TEXT', 'check_at INTEGER', 'opens_at INTEGER', 'reserve TEXT', 'ended_early INTEGER', 'market TEXT', 'premium_tiers TEXT', 'body TEXT']) { try { db.exec(`ALTER TABLE lots ADD COLUMN ${col}`); } catch { /* exists */ } }
+for (const col of ['final_seen_at INTEGER', 'est_avg REAL', 'est_comps TEXT', 'est_method TEXT', 'buyer_premium REAL', 'gst_extra INTEGER', 'check_verdict TEXT', 'check_note TEXT', 'check_at INTEGER', 'opens_at INTEGER', 'reserve TEXT', 'ended_early INTEGER', 'market TEXT', 'premium_tiers TEXT', 'body TEXT', 'spec TEXT', 'condition TEXT']) { try { db.exec(`ALTER TABLE lots ADD COLUMN ${col}`); } catch { /* exists */ } }
 db.exec(`UPDATE lots SET title = NULL WHERE title IS NOT NULL AND (trim(title) = '' OR title LIKE '%{{%')`);
 db.exec(`UPDATE lots SET bid_count = NULL WHERE bid_count > 500`); // bad counts read from site-wide text
 // v1.1 cleanup: drop duplicate Pickles records created from internal ids
@@ -80,7 +80,7 @@ if (db.prepare('PRAGMA user_version').get().user_version < 16) {
 }
 
 const FIELDS = ['url', 'title', 'category', 'year', 'make', 'model', 'odometer', 'wovr', 'location', 'state', 'image',
-  'buy_method', 'sale_name', 'lot_no', 'bid', 'bid_count', 'buy_now', 'start_price', 'end_at', 'buyer_premium', 'gst_extra', 'opens_at', 'reserve', 'market', 'premium_tiers', 'body'];
+  'buy_method', 'sale_name', 'lot_no', 'bid', 'bid_count', 'buy_now', 'start_price', 'end_at', 'buyer_premium', 'gst_extra', 'opens_at', 'reserve', 'market', 'premium_tiers', 'body', 'spec', 'condition'];
 
 const upsertStmt = db.prepare(`
 INSERT INTO lots (key, site, ext_id, ${FIELDS.join(', ')}, first_seen, last_seen, last_checked)
@@ -185,7 +185,8 @@ export const q = {
   addUserAlert: db.prepare('INSERT OR IGNORE INTO user_alerts (user, key, kind, at) VALUES (?, ?, ?, ?)'),
   clearUserAlert: db.prepare('DELETE FROM user_alerts WHERE user = ? AND key = ? AND kind = ?'),
   // --- history ---
-  missed: db.prepare(`SELECT * FROM lots WHERE status = 'closed' AND closed_at > ? AND final_bid IS NOT NULL ORDER BY end_at DESC LIMIT 5000`),
+  // (a lot that closed under its reserve was passed in, not sold: its last bid is no price anyone could buy at)
+  missed: db.prepare(`SELECT * FROM lots WHERE status = 'closed' AND closed_at > ? AND final_bid IS NOT NULL AND COALESCE(reserve, '') != 'not met' ORDER BY end_at DESC LIMIT 5000`),
   exportClosed: db.prepare(`SELECT site, ext_id, title, category, year, make, model, odometer, wovr, location, state, sale_name, lot_no,
     final_bid, bid_count, start_price, buy_now, manual_estimate, est_low, est_high, est_avg, end_at, final_seen_at, first_seen, url
     FROM lots WHERE status = 'closed' AND closed_at > ? ORDER BY end_at`),
@@ -195,7 +196,7 @@ export const q = {
   historyRows: db.prepare(`SELECT key, site, title, year, odometer, wovr, category, url, sale_name, buy_method, market, final_bid, end_at FROM lots
     WHERE status = 'closed' AND final_bid IS NOT NULL AND final_bid > 0 AND end_at > ? AND final_seen_at IS NOT NULL AND end_at - final_seen_at <= 900000
       -- Grays runs on past its listed close (soft close): only a price read after the close is a result
-      AND (site != 'grays' OR final_seen_at >= end_at)`),
+      AND (site != 'grays' OR final_seen_at >= end_at) AND COALESCE(reserve, '') != 'not met'`),
   setCheck: db.prepare('UPDATE lots SET check_verdict = ?, check_note = ?, check_at = ? WHERE key = ?'),
   checkQueue: db.prepare(`SELECT l.* FROM lots l WHERE l.status = 'open' AND l.check_at IS NULL AND l.end_at > ?
     AND EXISTS (SELECT 1 FROM watches w WHERE w.key = l.key AND w.my_bid IS NOT NULL) ORDER BY l.end_at LIMIT 5`),

@@ -81,6 +81,33 @@ test('parse: Carsales results - spec line under the title, excl-govt price, demo
   assert.equal(detectSource(seed('trucksales-isuzu-curtainsider-p1.txt')), 'trucksales');
 });
 
+test('parse: an auction result page (Grays): sold or referred, km, drive and cab, place from the postcode, what the listing says is wrong', () => {
+  const sold = parsePaste(seed('grays-result-2019-dmax-lsm-jandakot.txt'));
+  assert.equal(sold.source, 'result');
+  const [l] = sold.listings;
+  assert.deepEqual([l.site, l.extId, l.title, l.price, l.sold, l.km, l.location, l.state, l.bidCount, l.reserve],
+    ['grays', '0040-23502706', '2019 Isuzu D-MAX LS-M Diesel', 17600, true, 81884, 'Jandakot, WA', 'WA', 141, 'met']);
+  assert.equal(new Date(l.closedAt).toISOString(), '2026-10-21T11:30:00.000Z', '22:30 AEDT');
+  assert.equal(l.url, 'https://www.grays.com/lot/0040-23502706/commercial-vehicles/2019-isuzu-d-max-ls-m-diesel');
+  assert.deepEqual([l.features.trim, l.features.drive, l.features.cab], ['ls-m', '4x4', 'crew']);
+  assert.equal(l.condition, 'engine runs rough, DPF warning, warning light on');
+  const ute = parsePaste(seed('grays-result-2020-dmax-sx-dandenong.txt')).listings[0];
+  assert.deepEqual([ute.price, ute.location, ute.spec, ute.condition, ute.reserve], [13900, 'Dandenong South, VIC', '4x2 space cab', null, 'none'], 'scratches and torn seats are not problems');
+  const ref = parsePaste(seed('grays-result-2014-dmax-sx-pinkenba.txt')).listings[0];
+  assert.deepEqual([ref.sold, ref.passed, ref.price, ref.reserve, ref.state, ref.spec], [false, true, 6000, 'not met', 'QLD', '4x4 crew cab']);
+  assert.equal(ref.condition, 'transmission needs attention, major rust');
+  assert.deepEqual(damageOf({ title: ref.title, condition: ref.condition }).kinds, ['mechanical', 'rust']);
+});
+
+test('extract: postcode -> state, "Referred" is passed in, drive type and condition read off lot pages', async () => {
+  const { placeFromAddress, stateFromPostcode } = await import('../src/extract.js');
+  assert.deepEqual(placeFromAddress('140-152 National Drive, Dandenong South, 3175'), { location: 'Dandenong South, VIC', state: 'VIC' });
+  assert.deepEqual([stateFromPostcode('2609'), stateFromPostcode('2620'), stateFromPostcode('0870'), stateFromPostcode('6164')], ['ACT', 'NSW', 'NT', 'WA']);
+  const f = factsFromText('Drive Type: Four Wheel Drive\nEngine Turns Over: No\nSpare Key: No\nKey: Yes\nThe auction has ended.\nReferred\nBids (53 bids)');
+  assert.deepEqual([f.spec, f.condition, f.reserve, f.closed], ['4x4', 'no start', 'not met', true]);
+  assert.equal(factsFromText('Key: No\nScratches And Dents Visible Around Vehicle, Seat Torn').condition, 'no keys');
+});
+
 test('parse: CSV and source detection', () => {
   const r = parsePaste('title,price,km,state,seller\n"2021 Isuzu D-Max SX 4x4 Crew Cab","$39,990",85000,NSW,Dealer\n2019 Isuzu D-Max LS-U 4x4,31500,140000,QLD,private\n');
   assert.equal(r.source, 'csv');
@@ -170,10 +197,21 @@ test('seed + API: two dreams, retail listings and Pickles lots in; every curtain
   assert.equal(v.model.rates.fitted, true);
   const dmax = (await api('GET', `/api/dreams/${list.dreams[0].id}`)).json;
   assert.ok(dmax.model.retailN >= 150, 'Carsales X-Terrain / Blade pages seeded');
-  assert.deepEqual([dmax.dream.settings.trims, dmax.dream.settings.yearMin], [['x-terrain', 'blade'], 2023], 'the spec searched for');
+  const st = dmax.dream.settings;
+  assert.deepEqual([st.trims, st.yearMin, st.kmMax, st.budget], [[], null, 100000, 20000], 'under 100k km, under $20k, any trim');
   assert.ok(dmax.lots.every(l => l.item.dmax && !l.item.mux));
-  for (const l of dmax.lots.filter(x => x.inCriteria)) assert.ok(['x-terrain', 'blade'].includes(l.item.trim) && l.item.year >= 2023 && l.retail.confidence !== 'rough', l.title);
-  assert.ok(dmax.lots.filter(x => x.item.trim === 'sx').every(x => !x.inCriteria && /not a trim you want/.test(x.misses.join())));
+  for (const l of dmax.lots) {
+    if (l.km > 100000) assert.ok(!l.inCriteria && /over 100k km/.test(l.misses.join()), l.title);
+    if (l.farOverBudget) assert.ok(l.retail.confidence !== 'rough' && l.atExpected.onRoadTotal > 30000, `${l.title}: left out of pushes only on a solid valuation`);
+    if (l.maxBid) assert.ok(l.maxBid < 20000, 'max bid inside the $20k budget');
+  }
+  // the three Grays results pasted on 23 Oct: two sales on the Sold tab, the referred one apart and never a price
+  assert.ok(dmax.sold.some(x => x.key === 'grays:0040-23502706' && x.price === 17600 && x.condition === 'engine runs rough, DPF warning, warning light on'));
+  assert.ok(dmax.sold.some(x => x.key === 'grays:0051-23502676' && x.price === 13900 && x.damage.level === 'clean'));
+  assert.ok(!dmax.sold.some(x => x.key === 'grays:0027-23502644'));
+  assert.deepEqual(dmax.passed.map(x => [x.key, x.topBid]), [['grays:0027-23502644', 6000]]);
+  assert.ok(!q.historyRows.all(0).some(r => r.key === 'grays:0027-23502644'), 'passed in: not a price for valuations');
+  assert.ok(q.historyRows.all(0).some(r => r.key === 'grays:0040-23502706'));
 });
 
 test('import endpoint: a pasted Carsales page values the D-Maxes; re-pasting updates, not duplicates', async () => {
@@ -192,6 +230,7 @@ test('import endpoint: a pasted Carsales page values the D-Maxes; re-pasting upd
   assert.deepEqual([again.json.added, again.json.updated], [0, 5]);
   assert.equal((await api('POST', '/api/dreams-import', { text: 'hello' })).status, 400);
   const id = (await api('GET', '/api/dreams')).json.dreams.find(d => d.kind === 'dmax').id;
+  await api('PATCH', `/api/dreams/${id}`, { budget: '' });   // valuation without the $20k cap first
   const v = (await api('GET', `/api/dreams/${id}`)).json;
   assert.ok(v.model.retailN >= 155);
   const m = v.market.find(x => x.price === 40990);
@@ -291,3 +330,66 @@ test('custom dream from search words; maybe-bodies; body type read from lot page
 });
 
 test.after(() => setTimeout(() => process.exit(0), 50));
+
+test('budget: a likely price over budget stays on the board (they go cheap); final-minutes push only while the all-in is inside it', async () => {
+  const pushes = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => {
+    if (String(url).startsWith('https://ntfy.example')) { pushes.push(opts.body); return { ok: true, status: 200 }; }
+    return realFetch(url, opts);
+  };
+  try {
+    const id = (await api('GET', '/api/dreams')).json.dreams.find(d => d.kind === 'dmax').id;
+    await api('PATCH', `/api/dreams/${id}`, { status: 'hunting', budget: 20000, kmMax: 100000 });
+    const now = Date.now();
+    upsertLot({ site: 'lloyds', ext_id: 'B1', url: 'https://www.lloydsonline.com.au/LotDetails.aspx?lid=B1', title: '2023 Isuzu D-MAX X-TERRAIN Utility Crew Cab 4x4 3.0DT',
+      year: 2023, odometer: 60000, bid: 12000, end_at: now + 5 * 60000, state: 'WA', location: 'Welshpool, WA' }, { checked: true });
+    await dreams.runDreams({ quiet: true });
+    let l = (await api('GET', `/api/dreams/${id}`)).json.lots.find(x => x.key === 'lloyds:B1');
+    assert.ok(l.overBudget, 'likely ~$40k+ against a $20k budget');
+    assert.ok(l.inCriteria && l.farOverBudget, 'more than 1.5x over on a solid valuation: still listed, left out of pushes');
+    await api('PATCH', `/api/dreams/${id}`, { budget: 35000 });
+    l = (await api('GET', `/api/dreams/${id}`)).json.lots.find(x => x.key === 'lloyds:B1');
+    assert.ok(l.inCriteria && l.overBudget && !l.farOverBudget, 'within 1.5x: in, flagged');
+    assert.ok(l.maxBid > 0 && l.maxBid < 35000);
+    await dreams.dreamFinalAlert(q.lot.get('lloyds:B1'), now);
+    assert.equal(pushes.length, 1, '$12k bid, inside the budget, well under worth');
+    upsertLot({ site: 'lloyds', ext_id: 'B2', url: 'https://www.lloydsonline.com.au/LotDetails.aspx?lid=B2', title: '2023 Isuzu D-MAX X-TERRAIN Utility Crew Cab 4x4 3.0DT',
+      year: 2023, odometer: 60000, bid: 33000, end_at: now + 5 * 60000, state: 'WA' }, { checked: true });
+    await dreams.runDreams({ quiet: true });
+    await dreams.dreamFinalAlert(q.lot.get('lloyds:B2'), now);
+    const b2 = (await api('GET', `/api/dreams/${id}`)).json.lots.find(x => x.key === 'lloyds:B2');
+    assert.ok(b2.now.onRoadTotal > 35000 && b2.verdictNow !== 'market', `on the road ${b2.now.onRoadTotal}, still under worth`);
+    assert.equal(pushes.length, 1, 'all-in over the budget: no push even though it is under worth');
+    await api('PATCH', `/api/dreams/${id}`, { budget: '' });
+  } finally { globalThis.fetch = realFetch; }
+});
+
+test('spec update: the X-Terrain/Blade guess becomes under 100k km / $20k; settings someone changed are left alone', async () => {
+  const { dq } = await import('../src/dreams/store.js');
+  const t = Date.now();
+  const guess = dq.add.get('Isuzu D-Max — Katara 3 upgrade', 'dmax', 'aaron', 'hunting', JSON.stringify({ ...dreams.defaults('dmax'), trims: ['x-terrain', 'blade'], yearMin: 2023 }), t, t).id;
+  const mine = dq.add.get('Isuzu D-Max — Katara 3 upgrade', 'dmax', 'aaron', 'hunting', JSON.stringify({ ...dreams.defaults('dmax'), trims: ['x-terrain', 'blade'], yearMin: 2023, kmMax: 150000 }), t, t).id;
+  dq.setMeta.run('dmax-spec-2', '');
+  dreams.seed();
+  const a = dreams.settingsOf(dq.one.get(guess)), b = dreams.settingsOf(dq.one.get(mine));
+  assert.deepEqual([a.trims, a.yearMin, a.kmMax, a.budget], [[], null, 100000, 20000]);
+  assert.deepEqual([b.trims, b.yearMin, b.kmMax, b.budget], [['x-terrain', 'blade'], 2023, 150000, null]);
+  dreams.deleteDream(guess); dreams.deleteDream(mine);
+});
+
+test('the Jandakot LS-M (sold $17,600): on a rough value it is still pushed, and at $17,600 it is inside a $20k on-road budget', async () => {
+  const { dq } = await import('../src/dreams/store.js');
+  const { analyze } = await import('../src/dreams/value.js');
+  const d = dreams.allDreams().find(x => x.kind === 'dmax');
+  // (from Karnup, Jandakot is a pick-up: no transport. This test's only home base is Canberra, so leave transport out.)
+  dreams.updateDream(d.id, { budget: 20000, kmMax: 100000, trims: [], yearMin: '', transport: false });
+  const lot = q.lot.get('grays:0040-23502706');
+  const live = { ...lot, status: 'open', bid: 17600, last_checked: lot.end_at - 600000 };
+  const a = analyze(live, dreams.context(dq.one.get(d.id)));
+  assert.ok(a.inCriteria && !a.farOverBudget, a.misses.join() || 'far over on a rough value');
+  assert.ok(a.withinBudgetNow, `on the road ${a.now.onRoadTotal}`);
+  assert.ok(a.maxBid >= 17000 && a.maxBid < 20000, `bid up to ${a.maxBid}`);
+  assert.ok(a.damage.repair > 0 && /mechanical/.test(a.damage.label), 'DPF / rough idle: repair allowance in the deal maths');
+  dreams.updateDream(d.id, { transport: true });
+});

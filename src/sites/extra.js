@@ -28,7 +28,7 @@ export const grays = makeSite({
     const opens = /opens:?\s*\(?\s*(\d{1,2}\s+[A-Za-z]+\.?\s+(?:\d{4}\s+)?\d{1,2}[:.]\d{2}\s*(?:am|pm)?\s*(?:AEDT|AEST|ACDT|ACST|AWST)?)/i.exec(t);
     if (opens) out.opens_at = parseDayMonthTime(opens[1]);
     // "Location 140 National Drive Dandenong South VIC 3125" -> Dandenong South, VIC
-    const loc = /\blocation:?\s+(.{2,120}?\s+(?:NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b)/i.exec(t);
+    const loc = /\blocation:?\s+(.{2,120}?(?:\s+(?:NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b|,\s*\d{4}\b))/i.exec(t);
     const pl = loc && placeFromAddress(loc[1]);
     if (pl) Object.assign(out, pl);
     // Buyer's premium table: "ANY 20%", or bands ("$0 - $5,500 25%", "$5,501 - $27,500 16.5%", "$44,001+ 9%")

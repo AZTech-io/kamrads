@@ -69,9 +69,15 @@ export const dq = {
   openAll: db.prepare(`SELECT * FROM lots WHERE status = 'open' AND (end_at IS NULL OR end_at > ?) AND title IS NOT NULL`),
   // Sold results we trust (read within 15 minutes of the close; Grays only after it), Isuzu only for the built-in dreams
   soldIsuzu: db.prepare(`SELECT * FROM lots WHERE status = 'closed' AND final_bid > 0 AND end_at > ? AND final_seen_at IS NOT NULL AND end_at - final_seen_at <= 900000
-    AND (site != 'grays' OR final_seen_at >= end_at) AND (lower(COALESCE(title, '')) LIKE '%isuzu%' OR lower(COALESCE(make, '')) = 'isuzu') ORDER BY end_at DESC LIMIT 3000`),
+    AND (site != 'grays' OR final_seen_at >= end_at) AND COALESCE(reserve, '') != 'not met' AND (lower(COALESCE(title, '')) LIKE '%isuzu%' OR lower(COALESCE(make, '')) = 'isuzu') ORDER BY end_at DESC LIMIT 3000`),
   soldAll: db.prepare(`SELECT * FROM lots WHERE status = 'closed' AND final_bid > 0 AND end_at > ? AND final_seen_at IS NOT NULL AND end_at - final_seen_at <= 900000
-    AND (site != 'grays' OR final_seen_at >= end_at) ORDER BY end_at DESC LIMIT 20000`),
+    AND (site != 'grays' OR final_seen_at >= end_at) AND COALESCE(reserve, '') != 'not met' ORDER BY end_at DESC LIMIT 20000`),
+  // Passed in (closed under the reserve): the top bid wasn't enough for the seller - shown, never used as a price
+  passedIsuzu: db.prepare(`SELECT * FROM lots WHERE status = 'closed' AND reserve = 'not met' AND final_bid > 0 AND end_at > ?
+    AND (lower(COALESCE(title, '')) LIKE '%isuzu%' OR lower(COALESCE(make, '')) = 'isuzu') ORDER BY end_at DESC LIMIT 300`),
+  passedAll: db.prepare(`SELECT * FROM lots WHERE status = 'closed' AND reserve = 'not met' AND final_bid > 0 AND end_at > ? ORDER BY end_at DESC LIMIT 1000`),
+  // a result read off a pasted lot page ("Sold for $13,900" / "Referred"): closed, with a price we trust
+  markResult: db.prepare(`UPDATE lots SET status = 'closed', final_bid = ?, final_seen_at = ?, closed_at = COALESCE(closed_at, ?), end_at = COALESCE(?, end_at) WHERE key = ?`),
   // Closed lots that were dream hits but never got a trusted price (shown greyed, so nothing silently disappears)
   closedHits: db.prepare(`SELECT l.* FROM dream_hits h JOIN lots l ON l.key = h.key WHERE h.dream_id = ? AND l.status = 'closed' AND l.closed_at > ? ORDER BY l.end_at DESC LIMIT 300`),
 

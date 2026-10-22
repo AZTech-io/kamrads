@@ -226,6 +226,31 @@ export function lotsFromJson(json, now = Date.now()) {
   return [...found.values()].sort((a, b) => richness(b) - richness(a));
 }
 
+// What a lot page's condition notes say that changes what it's worth (not scratches and stains):
+// "Transmission Requires Attention", "Dpf Warning Light, Engine Rough Idle", "Engine Turns Over: No"...
+const CONDITION = [
+  ['no start', /engine\s+turns\s+over:\s*no\b|won'?t\s+start|does\s*n[o']t\s+start|not\s+starting|non[\s-]?runner|not\s+running\b/i],
+  ['transmission needs attention', /(?:transmission|gearbox|clutch)\s+(?:requires?\s+attention|needs?\s+attention|fault|issue|problem|slipping|noise|not\s+engaging)/i],
+  ['engine runs rough', /rough\s+idle|engine\s+(?:requires?\s+attention|runs?\s+rough|knock|noise|fault|issue|problem|misfir)|misfir/i],
+  ['DPF warning', /\bdpf\b[^.\n]{0,25}(?:warning|light|fault|blocked|issue)|(?:warning|light|fault|blocked)[^.\n]{0,15}\bdpf\b/i],
+  ['warning light on', /warning\s+light(?:\(s\))?\s+(?:is\s+)?on|check\s+engine\s+light|engine\s+(?:warning\s+)?light\s+on/i],
+  ['overheating', /overheat/i],
+  ['smoking', /(?:blowing|excessive|white|blue|black)\s+smoke/i],
+  ['major rust', /major\s+(?:corrosion|rust)|rust\s+holes?|structural\s+(?:rust|corrosion)|rusted\s+through/i],
+  ['airbags deployed', /airbags?\s+(?:have\s+been\s+)?deployed/i],
+  ['hail damage', /hail\s+damage/i],
+  ['flood damage', /flood\s+damage|water\s+damage|been\s+submerged/i],
+  ['fire damage', /fire\s+damage|burnt\s+out/i],
+  ['accident damage', /(?:accident|collision|impact|structural)\s+damage/i],
+  ['no keys', /(?<!spare\s)\bkeys?:\s*no\b|\bno\s+keys\b/i],
+];
+/** Short list of what's wrong ("transmission needs attention, major rust"), or null. */
+export function conditionFlags(text) {
+  const t = String(text || '');
+  const hits = CONDITION.filter(([, re]) => re.test(t)).map(([k]) => k);
+  return hits.length ? hits.join(', ') : null;
+}
+
 /** Pull bid / close / odometer / WOVR out of a detail page's visible text. */
 export function factsFromText(text, now = Date.now()) {
   const t = String(text || '').replace(/ /g, ' ');
@@ -268,12 +293,18 @@ export function factsFromText(text, now = Date.now()) {
   // The result once it's over: "Sold for $11,299" / "Sold price: $11,299" / "Winning bid $11,299" (beats any earlier bid on the page)
   const sold = /\b(?:sold\s+(?:for|price:?)|winning\s+bid:?|final\s+(?:bid|price):?|hammer\s+price:?)\s*(?:AU)?\$\s?([\d,]+(?:\.\d+)?)/i.exec(t);
   if (sold) { out.bid = parseFloat(sold[1].replace(/,/g, '')); out.closed = true; }
+  // "Drive Type: Four Wheel Drive" (Grays), "Drive Type: Rear Wheel Drive"
+  const dr = /\bdrive\s*type\s*:?\s*\n?\s*(four\s+wheel\s+drive|all\s+wheel\s+drive|4\s?wd|4x4|awd|rear\s+wheel\s+drive|front\s+wheel\s+drive|2\s?wd|4x2|rwd|fwd)\b/i.exec(t);
+  if (dr) out.spec = /four|all|4\s?wd|4x4|awd/i.test(dr[1]) ? '4x4' : '4x2';
+  out.condition = conditionFlags(t);
+  // Passed in: Grays shows "Referred" once a lot closes under its reserve
+  if (/^\s*(?:referred|passed\s+in)\s*$/im.test(t)) { out.reserve = 'not met'; out.closed = true; }
   // Bidding over ("Bidding closed", "Auction has ended", "This lot has closed")
   if (/\bbidding\s+(?:has\s+)?(?:closed|ended)\b|\bauction\s+(?:has\s+)?(?:closed|ended)\b|\b(?:this\s+)?lot\s+(?:has\s+|is\s+)?closed\b|\bclosed\s+for\s+bidding\b/i.test(t)) out.closed = true;
   // Lot already gone before its listed close (sold early / withdrawn): Pickles shows "SOLD - No longer available"
   if (/no longer available|this (?:item|lot|vehicle) (?:has been|is) (?:sold|withdrawn)|lot (?:has been )?withdrawn|item withdrawn/i.test(t)) out.gone = true;
   // Reserve: "Reserve not met" / "No Reserve" / "Reserve met" (not the "once the reserve is met..." help text)
-  if (/\breserve\s+not\s+(?:yet\s+)?met\b/i.test(t)) out.reserve = 'not met';
+  if (out.reserve === 'not met' || /\breserve\s+not\s+(?:yet\s+)?met\b/i.test(t)) out.reserve = 'not met';
   else if (/\bno\s+reserve\b|\bunreserved\b|\babsolute\s+sale\b/i.test(t)) out.reserve = 'none';
   else if (/\breserve\s+(?:has\s+been\s+)?(?:met|reached)\b(?!,)/i.test(t) && !/once the reserve/i.test(t)) out.reserve = 'met';
   // "Buyer's Premium: 16.5% GST Inclusive"
@@ -322,13 +353,26 @@ export function premiumTiers(text) {
 }
 
 /** "140 National Drive Dandenong South VIC 3125" / "Unit 3/12 Smith St, Fyshwick ACT 2609" -> { location: "Dandenong South, VIC", state: "VIC" } */
+/** Australian postcode -> state ("3175" -> VIC, "2609" -> ACT). */
+export function stateFromPostcode(pc) {
+  const n = Number(pc);
+  if (!Number.isInteger(n) || String(pc).length !== 4) return null;
+  if ((n >= 800 && n <= 999)) return 'NT';
+  if ((n >= 2600 && n <= 2618) || (n >= 2900 && n <= 2920)) return 'ACT';
+  return { 1: 'NSW', 2: 'NSW', 3: 'VIC', 4: 'QLD', 5: 'SA', 6: 'WA', 7: 'TAS', 8: 'VIC', 9: 'QLD' }[Math.floor(n / 1000)] || null;
+}
+
 export function placeFromAddress(addr) {
-  const m = /^(.{2,120}?),?\s+(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b/i.exec(String(addr || '').replace(/\s+/g, ' ').trim());
+  const a = String(addr || '').replace(/\s+/g, ' ').trim();
+  let m = /^(.{2,120}?),?\s+(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b/i.exec(a);
+  // Grays: "140-152 National Drive, Dandenong South, 3175" (no state, just the postcode)
+  if (!m) { const p = /^(.{2,120}?),\s*(\d{4})\s*$/.exec(a); const st = p && stateFromPostcode(p[2]); if (st) m = [p[0], p[1], st]; }
   if (!m) return null;
   const sub = m[1].replace(/^.*\b(?:drive|dr|road|rd|street|st|avenue|ave|highway|hwy|court|ct|crescent|cres|place|pl|parade|pde|way|lane|ln|close|circuit|cct|boulevard|blvd|terrace|tce|grove|gr)\b\.?,?\s*/i, '')
     .replace(/^[\d/ -]+/, '').replace(/,\s*$/, '').trim();
   if (!sub || sub.length > 40) return null;
-  return { location: `${sub}, ${m[2].toUpperCase()}`, state: m[2].toUpperCase() };
+  const last = sub.split(',').pop().trim();
+  return { location: `${last}, ${m[2].toUpperCase()}`, state: m[2].toUpperCase() };
 }
 
 /** "27 October 20:00 AEDT" (no year): the next such date, in the zone given (Sydney if none). */

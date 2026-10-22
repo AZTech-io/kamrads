@@ -121,7 +121,7 @@ export async function runDreams({ quiet = false, only = null, now = Date.now() }
 
 async function announceNew(d, s, lots) {
   const ctx = context(d);
-  let rows = lots.map(l => ({ l, a: analyze(l, ctx) })).filter(x => x.a.inCriteria && x.a.verdict !== 'avoid');
+  let rows = lots.map(l => ({ l, a: analyze(l, ctx) })).filter(x => x.a.inCriteria && !x.a.farOverBudget && x.a.verdict !== 'avoid');
   if (s.newListings === 'deals') rows = rows.filter(x => levelRank(x.a.verdict) >= levelRank(s.alertLevel === 'off' ? 'good' : s.alertLevel));
   if (!rows.length) return;
   rows.sort((a, b) => (b.a.score ?? -9) - (a.a.score ?? -9));
@@ -196,7 +196,7 @@ function lotView(l, a, extra = {}, lean = false) {
     key: l.key, site: l.site, url: l.url, title: l.title, photo: SITE_PHOTO(l), location: l.location, state: l.state, body: l.body || null,
     year: a.item.year, km: a.item.km, wovr: l.wovr, buyMethod: l.buy_method, liveSale: isLiveSale(l), opensAt: l.opens_at ?? null, endAt: l.end_at,
     bid: l.bid, bidCount: l.bid_count, startPrice: l.start_price, buyNow: l.buy_now, reserve: l.reserve, lastChecked: l.last_checked, status: l.status,
-    finalBid: l.final_bid ?? null, purchaseId: purchaseForLot(l.key)?.id ?? null, ...a, ...extra,
+    finalBid: l.final_bid ?? null, purchaseId: purchaseForLot(l.key)?.id ?? null, condition: l.condition || null, ...a, ...extra,
   };
 }
 
@@ -213,14 +213,19 @@ export function dreamView(id, user, now = Date.now()) {
     if (a.damage.level === 'statutory' && !config.includeStatutory) continue;
     (h.match === 'maybe' ? maybes : lots).push(lotView(h, a, { match: h.match, firstSeen: h.hit_at }));
   }
-  const order = (x, y) => (y.inCriteria - x.inCriteria) || ((y.score ?? -9) - (x.score ?? -9)) || ((x.endAt ?? Infinity) - (y.endAt ?? Infinity));
+  const fits = l => (l.inCriteria && !l.farOverBudget ? 1 : 0);
+  const order = (x, y) => (fits(y) - fits(x)) || ((y.score ?? -9) - (x.score ?? -9)) || ((x.endAt ?? Infinity) - (y.endAt ?? Infinity));
   lots.sort(order); maybes.sort((x, y) => (x.endAt ?? Infinity) - (y.endAt ?? Infinity));
   // sold at auction: what each went for, against what it was worth
   const sold = ctx.sold.slice(0, 400).map(l => {
     const a = analyze(l, ctx);
     return lotView(l, a, { soldAt: l.end_at, price: l.final_bid, ofRetail: a.retail ? l.final_bid / a.retail.value : null, winnerPct: a.now?.pct ?? null }, true);
   });
-  const pricedKeys = new Set(sold.map(x => x.key));
+  // passed in (closed under the reserve): what the top bid was, never used as a price
+  const passed = (d.kind === 'custom' ? dq.passedAll.all(now - 365 * 864e5) : dq.passedIsuzu.all(now - 365 * 864e5))
+    .filter(l => matchLot(d, l, d.kind === 'custom' ? compile(s.terms) : null) === 'yes').slice(0, 100)
+    .map(l => { const a = analyze(l, ctx); return { key: l.key, site: l.site, url: l.url, title: l.title, endAt: l.end_at, topBid: l.final_bid, state: l.state, location: l.location, km: a.item.km, damage: a.damage, effective: a.effective }; });
+  const pricedKeys = new Set([...sold.map(x => x.key), ...passed.map(x => x.key)]);
   const unpriced = dq.closedHits.all(d.id, now - 90 * 864e5).filter(l => !pricedKeys.has(l.key)).slice(0, 60)
     .map(l => ({ key: l.key, site: l.site, url: l.url, title: l.title, endAt: l.end_at, lastBid: l.final_bid ?? l.bid ?? null, state: l.state, km: l.odometer }));
   // retail: each listing against the others (a dealer ad 20% under the rest is a deal too)
@@ -241,7 +246,7 @@ export function dreamView(id, user, now = Date.now()) {
     trims: d.kind === 'dmax' ? Object.fromEntries(Object.entries(TRIMS).map(([k, v]) => [k, v.label])) : null,
     model: { rates: ctx.rates, cal: ctx.cal, retailN: ctx.retailPool.length, soldN: ctx.auctionClean.length + ctx.auctionDamaged.length,
       soldOfRetail: ratios.length ? ratios[ratios.length >> 1] : null, base: ctx.base?.name || null },
-    lots, maybes, sold, unpriced, market, found, bought,
+    lots, maybes, sold, passed, unpriced, market, found, bought,
   };
 }
 
@@ -252,7 +257,7 @@ export function summary(user) {
     let best = null;
     try {
       const ctx = context(d, user);
-      for (const h of open) { const a = analyze(h, ctx); if (a.inCriteria && a.verdict !== 'avoid' && (best == null || (a.score ?? -9) > best.score)) best = { key: h.key, title: h.title, score: a.score, verdict: a.verdict }; }
+      for (const h of open) { const a = analyze(h, ctx); if (a.inCriteria && !a.farOverBudget && a.verdict !== 'avoid' && (best == null || (a.score ?? -9) > best.score)) best = { key: h.key, title: h.title, score: a.score, verdict: a.verdict }; }
     } catch (e) { log.warn('dreams', e.message); }
     return { id: d.id, name: d.name, kind: d.kind, icon: KINDS[d.kind]?.icon || '⭐', status: d.status, user: d.user, open: open.length,
       maybes: hits.filter(h => h.status === 'open' && h.match === 'maybe').length, best };
@@ -276,7 +281,20 @@ export function importPaste(user, text, { tz = 'Australia/Sydney', now = Date.no
   if (!listings.length) throw new Error('No listings found in that. Copy the whole results page (Ctrl+A, Ctrl+C) and paste it here.');
   const { id: importId } = dq.addImport.get(String(user || '').toLowerCase(), now, src, listings.length, 0, 0, 0, null);
   let added = 0, updated = 0, lots = 0, skipped = 0;
+  const results = [];
   for (const l of listings) {
+    if (src === 'result') {
+      // an auction result (one lot's page after it closed): stored as a closed lot with a price we trust,
+      // merged with the scraper's record of the same lot if it has one
+      const site = l.site !== 'other' ? l.site : 'pasted';
+      const extId = l.extId || `${l.title}-${l.closedAt || now}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 80);
+      const end = l.closedAt || now;
+      const key = upsertLot({ site, ext_id: extId, url: l.url, title: l.title, year: l.year, odometer: l.km, location: l.location, state: l.state, sale_name: l.sale,
+        category: l.category, body: l.body, spec: l.spec, condition: l.condition, wovr: l.wovr, reserve: l.reserve, bid: l.price, bid_count: l.bidCount, end_at: end });
+      dq.markResult.run(l.price, end + 60000, now, end, key);
+      results.push({ key, title: l.title, price: l.price, sold: l.sold, passed: l.passed, at: end, condition: l.condition });
+      continue;
+    }
     if (src === 'pickles') {
       // auction lots: into the board like any other lot (the scraper fills in the rest)
       const end = l.endsAt || (l.startsAt ? sydneyEndOfDay(l.startsAt) : null);
@@ -300,7 +318,7 @@ export function importPaste(user, text, { tz = 'Australia/Sydney', now = Date.no
   runDreams({ quiet }).catch(e => log.warn('dreams', e.message));
   const dmax = listings.filter(l => l.features.dmax).length, curtain = listings.filter(l => l.features.isuzu && l.features.curtain).length;
   log.info('dreams', `import from ${src}: ${listings.length} found, ${added} new, ${updated} updated, ${lots} auction lots${skipped ? `, ${skipped} already sold` : ''}`);
-  return { source: src, found: listings.length, added, updated, lots, skipped, dmax, curtain, other: listings.length - dmax - curtain };
+  return { source: src, found: listings.length, added, updated, lots, skipped, dmax, curtain, other: listings.length - dmax - curtain, results };
 }
 
 export const hideListing = (id, hidden = true) => { dq.marketHide.run(hidden ? 1 : 0, id); forget(); };
@@ -324,7 +342,7 @@ export async function dreamFinalAlert(lot, now = Date.now()) {
     if (d.status !== 'hunting' || s.alertLevel === 'off' || d.match !== 'yes') continue;
     if (dq.alertSent.get(d.id, lot.key, 'final')) continue;
     const a = analyze(lot, context(d));
-    if (!a.inCriteria || a.verdictNow === 'avoid' || levelRank(a.verdictNow) < levelRank(s.alertLevel)) continue;
+    if (!a.inCriteria || !a.withinBudgetNow || a.verdictNow === 'avoid' || levelRank(a.verdictNow) < levelRank(s.alertLevel)) continue;
     dq.addAlert.run(d.id, lot.key, 'final', now);
     const mins = Math.max(1, Math.round((lot.end_at - now) / 60000));
     await push({ to: d.user, priority: 'urgent', tags: 'gem', url: lot.url,
@@ -348,7 +366,7 @@ export async function dreamLiveAlerts(now = Date.now()) {
       ctx ||= context(d);
       const a = analyze(h, ctx);
       dq.addAlert.run(d.id, h.key, 'live', now);
-      if (a.inCriteria && a.verdict !== 'avoid' && a.maxBid > 0) due.push({ h, a, start });
+      if (a.inCriteria && !a.farOverBudget && a.verdict !== 'avoid' && a.maxBid > 0) due.push({ h, a, start });
     }
     if (!due.length) continue;
     due.sort((x, y) => x.start - y.start);
@@ -365,7 +383,7 @@ export function dreamDigest(user, now = Date.now()) {
   for (const d of allDreams().filter(x => x.user === user && x.status === 'hunting')) {
     const ctx = context(d, user);
     const today = dq.hitsOf.all(d.id).filter(h => h.status === 'open' && h.match === 'yes' && h.end_at && h.end_at > now && h.end_at < now + 24 * 3600000)
-      .map(h => ({ h, a: analyze(h, ctx) })).filter(x => x.a.inCriteria && x.a.verdict !== 'avoid');
+      .map(h => ({ h, a: analyze(h, ctx) })).filter(x => x.a.inCriteria && !x.a.farOverBudget && x.a.verdict !== 'avoid');
     if (!today.length) continue;
     today.sort((x, y) => (y.a.score ?? -9) - (x.a.score ?? -9));
     const b = today[0];
@@ -386,13 +404,16 @@ export function seed(now = Date.now()) {
     dq.add.get('Isuzu curtainsider', 'curtainsider', user, 'hunting', JSON.stringify(defaults('curtainsider')), t, t);
   }
   dq.setMeta.run('seeded', dq.meta.get('seeded')?.v || String(now));
-  // the D-Max Aaron searched Carsales for (22 Oct 2026): X-Terrain or Blade, 2023 on. Only if still untouched.
-  if (!dq.meta.get('dmax-spec')?.v) {
+  // The D-Max Aaron is after (23 Oct 2026): under 100,000 km and under $20k all-in, any trim or year. Applied once,
+  // and only over settings nobody has changed (the defaults, or the X-Terrain/Blade 2023+ guess from his Carsales search).
+  if (!dq.meta.get('dmax-spec-2')?.v) {
     for (const d of allDreams().filter(x => x.kind === 'dmax' && x.name === 'Isuzu D-Max — Katara 3 upgrade')) {
       const s = settingsOf(d);
-      if (!s.trims.length && s.yearMin == null) dq.update.run(d.name, d.status, JSON.stringify({ ...s, trims: ['x-terrain', 'blade'], yearMin: 2023 }), d.found_key, Date.now(), d.id);
+      const guess = JSON.stringify(s.trims) === '["x-terrain","blade"]' && s.yearMin === 2023;
+      const untouched = s.kmMax == null && s.budget == null && s.yearMax == null && ((!s.trims.length && s.yearMin == null) || guess);
+      if (untouched) dq.update.run(d.name, d.status, JSON.stringify({ ...s, trims: [], yearMin: null, kmMax: 100000, budget: 20000 }), d.found_key, Date.now(), d.id);
     }
-    dq.setMeta.run('dmax-spec', String(now));
+    dq.setMeta.run('dmax-spec-2', String(now));
   }
   const dir = path.join(here, '..', '..', 'seed', 'dreams');
   let files = [];

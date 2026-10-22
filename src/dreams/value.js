@@ -111,7 +111,7 @@ export function calibrate(sold, retailPool, { kind, rates }) {
 }
 
 export const asItem = (l, extra = {}) => {
-  const f = features(`${l.title || ''} ${l.body || ''}`);
+  const f = features(`${l.title || ''} ${l.body || ''} ${l.spec || ''}`);
   // the site's own category says truck (Pickles /used/details/trucks/...) even when the title has no model code
   if (!f.truck && f.isuzu && !f.dmax && !f.mux && /\btrucks?\b/i.test(`${l.category || ''} ${(l.url || '').replace(/[/_-]/g, ' ')}`)) f.truck = true;
   return { key: l.key, title: l.title, year: l.year || Number((/\b(19[5-9]\d|20[0-3]\d)\b/.exec(l.title || '') || [])[1]) || null, km: l.odometer ?? l.km ?? null, f, ...extra };
@@ -169,18 +169,21 @@ export function analyze(lot, ctx) {
     if (price == null) return null;
     const c = allIn(lot, ctx.base, price, { transport });
     const total = Math.round(c.total + repair + onRoad);
-    return { price, fees: c.fees, gst: c.gst, transport: c.transport, transportHow: c.how, km: c.km, repair, onRoad, total,
+    // what the budget is measured against: bid + fees + transport + rego/roadworthy (repairs are in the deal maths, not the budget)
+    const onRoadTotal = Math.round(c.total + onRoad);
+    return { price, fees: c.fees, gst: c.gst, transport: c.transport, transportHow: c.how, km: c.km, repair, onRoad, total, onRoadTotal,
       saving: effective != null ? effective - total : null, pct: effective ? (effective - total) / effective : null };
   };
   const now = costAt(current);
   const atExpected = costAt(expected);
   // the most you can bid and still land it target% under what it's worth (and within the budget)
+  // the most you can bid: still target% under what it's worth once repaired and on the road, and inside the budget
   let maxBid = null;
   if (effective != null) {
-    let room = effective * (1 - s.target);
-    if (s.budget > 0) room = Math.min(room, s.budget);
-    room -= repair + onRoad;
-    maxBid = room > 0 ? round(maxBidFor(lot, ctx.base, room, { transport }), 50) : 0;
+    const room = effective * (1 - s.target) - repair - onRoad;
+    let mb = room > 0 ? maxBidFor(lot, ctx.base, room, { transport }) : 0;
+    if (s.budget > 0) mb = Math.min(mb, s.budget - onRoad > 0 ? maxBidFor(lot, ctx.base, s.budget - onRoad, { transport }) : 0);
+    maxBid = round(mb, 50);
   }
   const verdict = dmg.avoid ? 'avoid' : verdictOf(atExpected?.pct ?? null, s.target);
   const verdictNow = dmg.avoid ? 'avoid' : verdictOf(now?.pct ?? null, s.target);
@@ -197,13 +200,18 @@ export function analyze(lot, ctx) {
   if (dmg.level === 'statutory') misses.push('statutory write-off');
   if (dmg.level === 'repairable' && !s.allowRepairable) misses.push('repairable write-off');
   if (dmg.level === 'damaged' && !s.allowDamaged) misses.push('damaged');
-  if (s.budget > 0 && atExpected && atExpected.total > s.budget) misses.push(`likely over your $${Math.round(s.budget / 1000)}k budget`);
+  // Over budget at its likely price: still listed, still watched (they do go cheap) - only one far over is left out
+  // Over budget at its likely price: still listed and watched (they do go cheap). Only when a solid valuation puts it
+  // far over is it left out of the new-listing and live-lane pushes - never on a rough guess.
+  const overBudget = !!(s.budget > 0 && atExpected && atExpected.onRoadTotal > s.budget);
+  const farOverBudget = overBudget && atExpected.onRoadTotal > s.budget * 1.5 && !!retail && retail.confidence !== 'rough';
 
   return {
     item: { year: item.year, km: item.km, ...item.f },
     damage: { ...dmg, repair, repairFrom: note?.repair != null ? 'yours' : dmg.allowancePct ? `${Math.round(dmg.allowancePct * 100)}% allowance` : null, note: note?.note || null },
     retail, effective, auction: auction && auction.n >= 2 && auction.gap <= 3 ? auction : null, factor: ctx.cal.factor,
     expected, expectedFrom, current, now, atExpected, maxBid, onRoad, transportOn: transport,
-    verdict, verdictNow, score: atExpected?.pct ?? null, inCriteria: !misses.length, misses,
+    verdict, verdictNow, score: atExpected?.pct ?? null, inCriteria: !misses.length, misses, overBudget, farOverBudget,
+    withinBudgetNow: !(s.budget > 0) || (now ? now.onRoadTotal <= s.budget : true),
   };
 }

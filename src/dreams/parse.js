@@ -3,6 +3,7 @@
 // pages (which show the body type: "Curtainsider Day Cab") and simple CSV with a header row.
 // Nothing here touches the database.
 import { features } from './model.js';
+import { factsFromText, parseAuDate, placeFromAddress } from '../extract.js';
 
 const STATES = 'NSW|VIC|QLD|WA|SA|TAS|ACT|NT';
 const STATE_RE = new RegExp(`\\b(${STATES})\\b`);
@@ -21,6 +22,8 @@ function clean(line) {
 
 export function detectSource(text) {
   const t = String(text).slice(0, 200000);
+  // one lot's page after it closed: "Sold for $13,900" / "Referred" + "The auction has ended"
+  if (/\bSold for\s*\$\s?[\d,]+|^\s*(?:Referred|Passed in)\s*$/im.test(t) && /auction has ended|bidding (?:has )?(?:closed|ended)|^\s*Closed:/im.test(t)) return 'result';
   if (/MyPickles|Pickles Live|Pickles Online|pickles\.com\.au|\bStock \d{6,9}\b/i.test(t)) return 'pickles';
   // each site's footer names the other, so go by the page's own title first
   const own = /-\s*(trucksales|carsales)\.com\.au\s*$/im.exec(t);
@@ -190,11 +193,49 @@ function parseCsv(text) {
   });
 }
 
+// ---- one lot's page after it closed (Grays and the like): the result, with what the lot was ----
+const SITES = [['grays', /grays\.com|Slattery Grays|\bGrays\b/i], ['pickles', /pickles/i], ['manheim', /manheim/i], ['lloyds', /lloyds/i], ['allbids', /allbids|carbids/i], ['slattery', /slattery/i]];
+function parseResult(text) {
+  const t = String(text).replace(/\u00a0/g, ' ');
+  const lines = t.split('\n').map(x => clean(x).text).filter(Boolean);
+  // the title: under the "Description" heading (not the tab of the same name), else the line repeated most
+  const di = lines.findIndex((x, i) => /^Description$/i.test(x) && lines.slice(i + 1, i + 3).some(y => TITLE_RE.test(y)));
+  let title = di >= 0 ? lines.slice(di + 1, di + 4).find(x => TITLE_RE.test(x)) : null;
+  if (!title) { const n = new Map(); for (const x of lines) if (TITLE_RE.test(x)) n.set(x, (n.get(x) || 0) + 1); title = [...n.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]; }
+  if (!title) return [];
+  const field = re => (re.exec(t) || [])[1]?.trim() || null;
+  const site = (SITES.find(([, re]) => re.test(t)) || ['other'])[0];
+  const lotId = field(/\bLot ID\s*:?\s*(\d{2,6}-\d{5,})/i);
+  const category = field(/^Category\s*:?\s*(.+)$/im);
+  const place = placeFromAddress(field(/^Location\s*:?\s*(.+)$/im));
+  const closedAt = (c => (c ? parseAuDate(c) : null))(field(/\bClosed:\s*([^\n]+)/i));
+  const sold = field(/\bSold for\s*\$\s?([\d,]+)/i);
+  const passed = !sold && /^\s*(?:Referred|Passed in)\s*$/im.test(t);
+  // the top bid from the bidding history ("AU $6,000"), for a lot that was passed in
+  const hist = t.slice(Math.max(0, t.search(/bidding history/i)));
+  const top = Math.max(0, ...[...hist.matchAll(/AU\s*\$\s?([\d,]+)/g)].map(m => Number(m[1].replace(/,/g, ''))));
+  const price = sold ? Number(sold.replace(/,/g, '')) : top || null;
+  if (!price) return [];
+  const facts = factsFromText(t);
+  // cab and drive from the description line: "2014 ISUZU UTE D-MAX SX AUTO 4WD DIESEL CREW CAB - CAB CHASSIS"
+  const desc = di >= 0 ? lines.slice(di + 1, di + 6).join(' ') : '';
+  const cab = (/\b(crew|dual|double|space|extended|king|freestyle|single|one and a half)\s+cab\b/i.exec(desc) || [])[1]
+    || (/\b4dr\b/i.test(desc) && /\b5\s?seat/i.test(desc) ? 'crew' : /\b2dr\b/i.test(desc) ? 'single' : undefined);
+  const spec = [facts.spec || (/\b(?:4wd|awd|4x4)\b/i.test(desc) ? '4x4' : /\b(?:rwd|2wd|4x2|fwd)\b/i.test(desc) ? '4x2' : null),
+    cab ? `${/one and a half|space|extended|king|freestyle/i.test(cab) ? 'space' : /single/i.test(cab) ? 'single' : 'crew'} cab` : null].filter(Boolean).join(' ') || null;
+  const slugOf = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const url = site === 'grays' && lotId ? `https://www.grays.com/lot/${lotId}/${slugOf(category || 'commercial-vehicles')}/${slugOf(title)}` : null;
+  return [{ source: 'result', site, title, year: +TITLE_RE.exec(title)[1], extId: lotId, url, category, location: place?.location || null, state: place?.state || null,
+    sale: field(/^Part of Sale\s*:?\s*(.+)$/im), closedAt, price, sold: !!sold, passed, bidCount: facts.bid_count ?? null,
+    km: facts.odometer ?? null, body: facts.body || null, spec, condition: facts.condition || null, wovr: facts.wovr || null,
+    reserve: passed ? 'not met' : facts.reserve || null }];
+}
+
 /** Pasted page(s) -> { source, listings: [...] } (Pickles cards come back as auction lots, the rest as market listings). */
 export function parsePaste(text, { now = Date.now(), tz = 'Australia/Sydney', source } = {}) {
   const src = source || detectSource(text);
   const lines = String(text || '').replace(/\r/g, '').split('\n');
-  let listings = src === 'pickles' ? parsePickles(lines, { now, tz }) : src === 'csv' ? parseCsv(String(text)) : parseClassifieds(lines, src === 'other' ? 'other' : src);
+  let listings = src === 'result' ? parseResult(String(text || '').replace(/\r/g, '')) : src === 'pickles' ? parsePickles(lines, { now, tz }) : src === 'csv' ? parseCsv(String(text)) : parseClassifieds(lines, src === 'other' ? 'other' : src);
   // the same ad often shows twice (featured spot + its place in the list)
   const seen = new Set();
   listings = listings.filter(l => {
@@ -203,6 +244,6 @@ export function parsePaste(text, { now = Date.now(), tz = 'Australia/Sydney', so
     seen.add(k);
     return true;
   });
-  for (const l of listings) Object.assign(l, { features: features(`${l.title} ${l.body || ''} ${l.gvm ? l.gvm + ' kg' : ''}`) });
+  for (const l of listings) Object.assign(l, { features: features(`${l.title} ${l.body || ''} ${l.spec || ''} ${l.gvm ? l.gvm + ' kg' : ''}`) });
   return { source: src, listings };
 }

@@ -85,21 +85,28 @@ const DAMAGE = [
   ['fire', /fire\s*damage|burnt|\bfire\b/, 0.5, true],
   ['flood', /flood|water\s*damage|submerged/, 0.4, true],
   ['rollover', /roll[\s-]?over|rolled/, 0.35],
-  ['mechanical', /non[\s-]?runner|not\s*running|won'?t\s*start|does\s*not\s*start|engine\s*(?:fault|damage|seized|failure|issue)|gearbox|transmission\s*fault|no\s*drive/, 0.18],
+  ['non-runner', /non[\s-]?runner|not\s*running|won'?t\s*start|does\s*not\s*start|no start|engine\s*(?:damage|seized|failure)|no\s*drive/, 0.18],
+  // from the lot page's condition notes: "transmission needs attention", "DPF warning", "engine runs rough"...
+  ['mechanical', /engine\s*(?:fault|issue|runs rough)|gearbox|transmission\s*(?:fault|needs attention)|dpf warning|warning light on|overheating|smoking/, 0.1],
+  ['rust', /major rust/, 0.06],
+  ['airbags', /airbags deployed/, 0.15],
   ['accident', /accident|collision|impact|front\s*damage|rear\s*damage|side\s*damage|panel\s*damage|structural|smash/, 0.15],
   ['theft', /theft|stolen|recovered|stripped|vandal/, 0.12],
   ['hail', /\bhail\b/, 0.08],
   ['minor', /minor\s*damage|cosmetic|scratch|dent/, 0.05],
+  ['no keys', /no keys/, 0.02],
 ];
 
 /** { level: clean|repairable|damaged|statutory, kinds[], allowancePct, stigmaPct, avoid, label } */
 export function damageOf(lot, { stigma = 0.15 } = {}) {
   const w = String(lot.wovr || '').toLowerCase();
   const text = `${lot.title || ''} ${lot.sale_name || ''} ${lot.category || ''} ${lot.damage || ''} ${lot.check_flags || ''}`.toLowerCase();
-  const kinds = DAMAGE.filter(([, re]) => re.test(text));
+  // condition notes read off the lot page are a short list of real problems (never scratches and stains)
+  const cond = String(lot.condition || '').toLowerCase();
+  const kinds = DAMAGE.filter(([k, re]) => re.test(text) || (cond && k !== 'minor' && re.test(cond)));
   const statutory = /statutory/.test(w);
   const repairable = !statutory && /repairable|inspection passed/.test(w);
-  const salvage = lot.market === 'salvage' || /salvage|insurance|damaged/.test(`${lot.sale_name || ''} ${lot.category || ''} ${lot.url || ''}`.toLowerCase());
+  const salvage = lot.market === 'salvage' || /salvage|insurance|damaged|non[\s-]?runner/.test(`${lot.sale_name || ''} ${lot.category || ''} ${lot.url || ''}`.toLowerCase());
   const level = statutory ? 'statutory' : repairable ? 'repairable' : kinds.length || salvage ? 'damaged' : 'clean';
   let allowancePct = kinds.reduce((m, k) => Math.max(m, k[2]), 0);
   if (!allowancePct && (repairable || salvage)) allowancePct = 0.15;   // written off / salvage but we can't tell why

@@ -222,7 +222,7 @@ dialog.box textarea.paste { width: 100%; min-height: 220px; background: var(--bg
 <dialog id="pasteBox" class="box">
   <form method="dialog" id="pasteForm">
     <h2>Paste listings</h2>
-    <p>On <b>Trucksales</b>, <b>Carsales</b> or a <b>Pickles</b> search: run your search, press <b>Ctrl+A</b> then <b>Ctrl+C</b>, and paste here. One page at a time is fine — paste, add, next page. Trucksales/Carsales prices become the market we value against; Pickles pages add their lots to the board with their body type.</p>
+    <p>On <b>Trucksales</b>, <b>Carsales</b> or a <b>Pickles</b> search: run your search, press <b>Ctrl+A</b> then <b>Ctrl+C</b>, and paste here. One page at a time is fine — paste, add, next page. Trucksales/Carsales prices become the market we value against; Pickles pages add their lots to the board with their body type. A lot's page after it closes (<b>Sold for $…</b> or <b>Referred</b>) is saved as an auction result.</p>
     <textarea class="paste" id="pasteText" placeholder="Paste the whole results page here…"></textarea>
     <div class="inline"><input type="file" id="pasteFiles" accept=".txt,.csv,.md,text/plain,text/csv" multiple aria-label="Or choose saved pages"></div>
     <div class="end"><span class="msg" id="pasteMsg"></span><button type="button" class="btn" id="pasteClose">Close</button><button class="btn primary" id="pasteGo">Add</button></div>
@@ -276,6 +276,8 @@ function left(l) {
 }
 const TRIM = { sx: 'SX', 'ls-m': 'LS-M', 'ls-u': 'LS-U', 'ls-u+': 'LS-U+', 'x-rider': 'X-Rider', 'x-runner': 'X-Runner', 'x-terrain': 'X-Terrain', blade: 'Blade' };
 const specOf = l => [TRIM[l.item?.trim], l.item?.drive, l.item?.cab ? `${l.item.cab} cab` : null, l.item?.body && l.item.body !== 'curtainsider' ? l.item.body : null, l.item?.code ? l.item.code.toUpperCase() : null].filter(Boolean).join(' · ');
+const fits = l => l.inCriteria !== false && !l.farOverBudget;
+const budgetChip = l => l.overBudget ? `<span class="dmg rep" title="Its likely price is over your budget. Still watched - they do go cheap.">likely over budget</span>` : '';
 const dmgChip = d => !d || d.level === 'clean' ? '' : `<span class="dmg ${d.level === 'repairable' ? 'rep' : ''}" title="${esc(d.label)}">${esc(d.level === 'repairable' ? 'Repairable WO' : d.level === 'statutory' ? 'Statutory WO' : d.kinds.length ? d.kinds.join(', ') : 'Salvage')}</span>`;
 
 // ---- spec filter (truck class / drive & cab) ----
@@ -295,12 +297,12 @@ function specOk(it) {
 const text = l => `${l.title} ${l.location || ''} ${l.state || ''} ${l.body || ''} ${l.item?.code || ''} ${l.site || l.source || ''}`.toLowerCase();
 function filtered(rows) {
   const q = $('#q').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  return rows.filter(l => specOk(l.item || { cls: l.cls, drive: l.drive, cab: l.cab, trim: l.trim }) && q.every(w => text(l).includes(w)) && (!$('#onlyFit').checked || l.inCriteria !== false));
+  return rows.filter(l => specOk(l.item || { cls: l.cls, drive: l.drive, cab: l.cab, trim: l.trim }) && q.every(w => text(l).includes(w)) && (!$('#onlyFit').checked || fits(l)));
 }
 function sorted(rows) {
   const s = $('#sort').value;
   const by = {
-    deal: (a, b) => (b.inCriteria - a.inCriteria) || ((b.score ?? -9) - (a.score ?? -9)),
+    deal: (a, b) => (fits(b) - fits(a)) || ((b.score ?? -9) - (a.score ?? -9)),
     ending: (a, b) => (a.endAt ?? 9e15) - (b.endAt ?? 9e15),
     near: (a, b) => (a.atExpected?.km ?? a.now?.km ?? 9e9) - (b.atExpected?.km ?? b.now?.km ?? 9e9),
     cheap: (a, b) => (a.expected ?? 9e9) - (b.expected ?? 9e9),
@@ -322,7 +324,7 @@ function renderSide() {
 
 function kpis() {
   if (!view) { $('#desk').innerHTML = ''; return; }
-  const v = view, fit = v.lots.filter(l => l.inCriteria);
+  const v = view, fit = v.lots.filter(fits);
   const best = fit.filter(l => l.score != null && l.verdict !== 'avoid').sort((a, b) => b.score - a.score)[0];
   const k = (val, l, cls = '') => `<div class="kpi"><div class="v num ${cls}">${val}</div><div class="l">${l}</div></div>`;
   const cal = v.model.cal;
@@ -360,11 +362,11 @@ function callouts() {
 
 // the board: every lot at auction now
 function lotRows(rows, maybe = false) {
-  return rows.map(l => `<tr class="row ${l.inCriteria === false ? 'out' : ''} ${openKey === l.key ? 'open' : ''}" data-key="${esc(l.key)}">
+  return rows.map(l => `<tr class="row ${!fits(l) ? 'out' : ''} ${openKey === l.key ? 'open' : ''}" data-key="${esc(l.key)}">
     <td class="c-main"><div class="lot"><div class="thumb" ${l.photo ? `style="background-image:url('${esc(l.photo)}')"` : ''}>${l.photo ? '' : esc(view.dream.icon)}</div><div style="min-width:0">
       <div class="it-t">${esc(l.title)}</div>
-      <div class="it-m"><span class="site">${esc(SITE[l.site] || l.site)}</span>${l.location || l.state ? `<span>${esc(l.location || l.state)}</span>` : ''}${l.km ? `<span class="num">${kmTxt(l.km)}</span>` : ''}${specOf(l) ? `<span>${esc(specOf(l))}</span>` : ''}${dmgChip(l.damage)}${l.atExpected?.km ? `<span class="num">📍${Math.round(l.atExpected.km).toLocaleString('en-AU')} km away</span>` : ''}</div>
-      ${l.inCriteria === false ? `<div class="why">Outside your limits: ${esc(l.misses.join(', '))}</div>` : ''}${maybe ? '<div class="why">Body not stated — open the listing to check</div>' : ''}
+      <div class="it-m"><span class="site">${esc(SITE[l.site] || l.site)}</span>${l.location || l.state ? `<span>${esc(l.location || l.state)}</span>` : ''}${l.km ? `<span class="num">${kmTxt(l.km)}</span>` : ''}${specOf(l) ? `<span>${esc(specOf(l))}</span>` : ''}${dmgChip(l.damage)}${budgetChip(l)}${l.atExpected?.km ? `<span class="num">📍${Math.round(l.atExpected.km).toLocaleString('en-AU')} km away</span>` : ''}</div>
+      ${l.inCriteria === false ? `<div class="why">Outside your limits: ${esc(l.misses.join(', '))}</div>` : l.farOverBudget ? `<div class="why">Likely to go well over your budget (still watched in case it goes cheap)</div>` : ''}${maybe ? '<div class="why">Body not stated — open the listing to check</div>' : ''}
     </div></div></td>
     <td class="r"><div class="money num">${l.current != null ? money(l.current) : l.buyNow ? money(l.buyNow) : '<span class="dim">no bid</span>'}</div><div class="sub">${esc(left(l))}${l.bidCount ? ` · ${l.bidCount} bids` : ''}</div></td>
     <td class="r col-exp hide-m"><div class="num">${money(l.expected)}</div><div class="sub">likely price</div></td>
@@ -398,12 +400,12 @@ function detailHtml(l) {
   const comps = r?.comps?.length ? `<table class="mini"><thead><tr><th>Comparable</th><th class="r">Asked / sold</th><th class="r">As this one</th></tr></thead><tbody>${r.comps.map(x => `<tr><td>${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.title)}</a>` : esc(x.title)}<div class="sub">${[x.km ? kmTxt(x.km) : null, x.seller, x.state, SITE[x.source] || x.source].filter(Boolean).map(esc).join(' · ')}</div></td><td class="r num">${money(x.price)}</td><td class="r num">${money(x.adj)}</td></tr>`).join('')}</tbody></table>
     <div class="note">${r.otherTrim ? `<b>${r.otherTrim} of these are a different trim</b>, re-priced by the usual gap between trims — paste listings of this trim for a firmer figure. ` : ''}${r.confidence === 'from auction' ? `No retail listings like it yet: worked back from what similar ones sold for at auction (÷ ${pct(l.factor)}).` : `Each listing is re-priced to this one's year and km: ${pct(rates.year)} a year, ${pct(rates.km)} per 100,000 km${rates.fitted ? `, learned from ${rates.n} listings` : ' (starting guess)'}. Private asks count 7% higher (dealer-equivalent). Range ${money(r.low)}–${money(r.high)}.`}${l.damage.stigmaPct ? ` Less ${pct(l.damage.stigmaPct)} for the write-off history.` : ''}</div>` : '<div class="note">No comparable prices yet — paste some listings.</div>';
   const line = (k, v, sub = '') => `<tr><td>${k}${sub ? `<div class="sub">${esc(sub)}</div>` : ''}</td><td class="r num">${v}</td></tr>`;
-  const cost = c ? `<table class="mini">${line(l.buyNow && !l.bid && !l.endAt ? 'Buy now price' : 'Likely hammer', money(c.price), l.expectedFrom || '')}${line("Buyer's fees" + (c.gst ? ' + GST' : ''), money(c.fees))}${line('Transport home', c.transport == null ? '—' : money(c.transport), c.transport != null ? `${c.transportHow || ''}${c.km ? `, ${Math.round(c.km).toLocaleString('en-AU')} km` : ''}` : 'turned off for this dream')}${line('Repairs', money(c.repair), l.damage.repairFrom || 'none listed')}${line('Roadworthy, rego & service', money(c.onRoad))}<tr class="tot"><td>All-in</td><td class="r num">${money(c.total)}</td></tr><tr><td>Worth</td><td class="r num">${money(l.effective)}</td></tr><tr class="tot"><td>Saving</td><td class="r num ${c.saving >= 0 ? 'gain' : 'loss'}">${money(c.saving)} · ${pct(c.pct)}</td></tr></table>` : '<div class="note">No price to work from yet.</div>';
+  const cost = c ? `<table class="mini">${line(l.buyNow && !l.bid && !l.endAt ? 'Buy now price' : 'Likely hammer', money(c.price), l.expectedFrom || '')}${line("Buyer's fees" + (c.gst ? ' + GST' : ''), money(c.fees))}${line('Transport home', c.transport == null ? '—' : money(c.transport), c.transport != null ? `${c.transportHow || ''}${c.km ? `, ${Math.round(c.km).toLocaleString('en-AU')} km` : ''}` : 'turned off for this dream')}${line('Repairs', money(c.repair), l.damage.repairFrom || 'none listed')}${line('Roadworthy, rego & service', money(c.onRoad))}<tr class="tot"><td>All-in</td><td class="r num">${money(c.total)}</td></tr>${view.dream.settings.budget ? `<tr><td>On the road (vs your ${money(view.dream.settings.budget)} budget)</td><td class="r num ${c.onRoadTotal > view.dream.settings.budget ? 'loss' : ''}">${money(c.onRoadTotal)}</td></tr>` : ''}<tr><td>Worth</td><td class="r num">${money(l.effective)}</td></tr><tr class="tot"><td>Saving</td><td class="r num ${c.saving >= 0 ? 'gain' : 'loss'}">${money(c.saving)} · ${pct(c.pct)}</td></tr></table>` : '<div class="note">No price to work from yet.</div>';
   const auction = l.auction ? `<div class="note">${l.auction.n} similar sold at auction: around ${money(l.auction.value)} (${money(l.auction.low)}–${money(l.auction.high)}).</div>` : '';
   return `<tr class="detail"><td colspan="8"><div class="dgrid">
     <div><h4>What it's worth${r ? ` · ${money(l.effective)}` : ''}</h4>${comps}</div>
-    <div><h4>What you'd pay</h4>${cost}${auction}${l.maxBid ? `<div class="note">Bid up to <b class="warn">${money(l.maxBid)}</b> to land it ${pct(view.dream.settings.target)} under what it's worth.</div>` : ''}</div>
-    <div><h4>Condition</h4><div>${esc(l.damage.label)}</div>${l.wovr ? `<div class="sub">${esc(l.wovr)}</div>` : ''}
+    <div><h4>What you'd pay</h4>${cost}${auction}${l.maxBid ? `<div class="note">Bid up to <b class="warn">${money(l.maxBid)}</b> to land it ${pct(view.dream.settings.target)} under what it's worth${view.dream.settings.budget ? ` and keep it under ${money(view.dream.settings.budget)} on the road` : ''}.</div>` : ''}</div>
+    <div><h4>Condition</h4><div>${esc(l.damage.label)}</div>${l.condition ? `<div class="sub" style="white-space:normal">Listing says: ${esc(l.condition)}</div>` : ''}${l.wovr ? `<div class="sub">${esc(l.wovr)}</div>` : ''}
       <h4>Your repair estimate</h4>
       <div class="inline"><input data-repair="${esc(l.key)}" inputmode="decimal" placeholder="${l.damage.repairFrom === 'yours' ? '' : `allowance ${money(l.damage.repair)}`}" value="${l.damage.repairFrom === 'yours' ? esc(l.damage.repair) : ''}" aria-label="Repair estimate"></div>
       <div class="inline"><input data-note="${esc(l.key)}" placeholder="Note (what you saw)" value="${esc(l.damage.note || '')}" aria-label="Note"><button class="btn sm" data-savenote="${esc(l.key)}">Save</button></div>
@@ -475,7 +477,8 @@ function sold() {
       <td class="r"><div class="money num">${money(l.price)}</div></td><td class="r num">${money(l.effective)}</td><td class="r num">${pct(l.ofRetail)}</td>
       <td class="r num ${l.winnerPct > 0 ? 'gain' : ''}">${l.winnerPct != null ? pct(l.winnerPct) : '—'}</td></tr>`).join('')}</tbody></table>`
       : `<div class="empty"><b>No results yet.</b><br>Each time a ${esc(view.dream.name)} closes at auction KAMRADS reads what it went for and it lands here.</div>`)
-    + `</div>` + (view.unpriced.length ? `<div class="panel"><div class="panel-h"><h2>Closed, price not caught</h2><span class="sub">Sold in a live lane or before we could read the result.</span></div><table class="grid"><tbody>${view.unpriced.map(l => `<tr class="row" data-href="${esc(l.url || '')}"><td class="c-main"><div class="it-t">${esc(l.title)}</div><div class="it-m"><span class="site">${esc(SITE[l.site] || l.site)}</span><span>${esc(day(l.endAt))}</span>${l.km ? `<span>${kmTxt(l.km)}</span>` : ''}</div></td><td class="r sub">${l.lastBid ? `last seen ${money(l.lastBid)}` : ''}</td></tr>`).join('')}</tbody></table></div>` : '');
+    + `</div>` + (view.passed?.length ? `<div class="panel"><div class="panel-h"><h2>Didn't sell (passed in)</h2><span class="sub">Closed under the reserve. The top bid wasn't enough for the seller, so it's never used as a price — but it tells you where bidders stopped. These sometimes come back up.</span></div><table class="grid"><tbody>${view.passed.map(l => `<tr class="row" data-href="${esc(l.url || '')}"><td class="c-main"><div class="it-t">${esc(l.title)}</div><div class="it-m"><span class="site">${esc(SITE[l.site] || l.site)}</span><span>${esc(day(l.endAt))}</span>${l.km ? `<span class="num">${kmTxt(l.km)}</span>` : ''}${l.location || l.state ? `<span>${esc(l.location || l.state)}</span>` : ''}${dmgChip(l.damage)}</div></td><td class="r"><div class="money num">${money(l.topBid)}</div><div class="sub">top bid · reserve not met</div></td><td class="r num hide-m">${money(l.effective)}<div class="sub">worth</div></td></tr>`).join('')}</tbody></table></div>` : '')
+    + (view.unpriced.length ? `<div class="panel"><div class="panel-h"><h2>Closed, price not caught</h2><span class="sub">Sold in a live lane or before we could read the result.</span></div><table class="grid"><tbody>${view.unpriced.map(l => `<tr class="row" data-href="${esc(l.url || '')}"><td class="c-main"><div class="it-t">${esc(l.title)}</div><div class="it-m"><span class="site">${esc(SITE[l.site] || l.site)}</span><span>${esc(day(l.endAt))}</span>${l.km ? `<span>${kmTxt(l.km)}</span>` : ''}</div></td><td class="r sub">${l.lastBid ? `last seen ${money(l.lastBid)}` : ''}</td></tr>`).join('')}</tbody></table></div>` : '');
 }
 
 // retail market
@@ -505,7 +508,7 @@ function settingsTab() {
     <label>Deal = at least this much under what it's worth<input name="target" inputmode="decimal" value="${Math.round(s.target * 100)}%"></label>
     ${sel('alertLevel', 'Push me in the final minutes when it\'s', [['diamond', '💎 Diamond only'], ['good', 'Good buy or better'], ['fair', 'Fair or better'], ['off', 'Never']])}
     ${sel('newListings', 'When a new one is listed', [['all', 'Push every one that fits'], ['deals', 'Only if it looks like a deal'], ['off', "Don't push"]])}
-    ${inp('budget', 'Most I\'ll spend all-in ($)', 'no limit')}
+    ${inp('budget', 'Most I\'ll pay to get it on the road ($): bid + fees + transport + rego', 'no limit')}
     ${inp('kmMax', 'Max kilometres', 'any')}
     ${inp('yearMin', 'Year from', 'any')}${inp('yearMax', 'Year to', 'any')}
     ${view.trims ? `<div class="full"><div class="muted" style="font-size:12px;margin-bottom:4px">Trims I want (none ticked = any)</div><div class="classes">${Object.entries(view.trims).map(([k, v]) => `<label class="row"><input type="checkbox" name="trim" value="${k}" ${s.trims.includes(k) ? 'checked' : ''}> ${esc(v)}</label>`).join('')}</div></div>` : ''}
@@ -569,7 +572,7 @@ async function addText(text) {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return post('/api/dreams-import', { text, tz });
 }
-const say = r => `${SITE[r.source] || r.source}: ${r.found} found — ${r.added} new, ${r.updated} updated${r.lots ? `, ${r.lots} auction lots added to the board` : ''}${r.skipped ? ` (${r.skipped} already sold)` : ''}.`;
+const say = r => r.source === 'result' ? r.results.map(x => `${x.title}: ${x.sold ? `sold for ${money(x.price)}` : `passed in at ${money(x.price)} (not counted as a sale)`} — saved to Sold at auction.`).join(' ') : `${SITE[r.source] || r.source}: ${r.found} found — ${r.added} new, ${r.updated} updated${r.lots ? `, ${r.lots} auction lots added to the board` : ''}${r.skipped ? ` (${r.skipped} already sold)` : ''}.`;
 $('#pasteForm').addEventListener('submit', async e => {
   e.preventDefault();
   const msgs = [];
