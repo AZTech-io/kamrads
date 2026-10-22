@@ -247,7 +247,7 @@ export function factsFromText(text, now = Date.now()) {
   out.wovr = w ? normaliseWovr(w[1]) : null;
   // Close time: a countdown first, then an explicit date.
   // (Grays' final phase reads "Going, going, gone: 4m 9s")
-  const cd = /(?:ends?|closes?|closing|time\s*left|time\s*remaining|remaining|going,?\s*going,?\s*gone!?)\s*(?:in)?\s*:?\s*((?:\d+\s*d(?:ays?)?\s*)?\d{1,2}:\d{2}:\d{2}|(?:\d+\s*(?:d|days?|h|hrs?|hours?|m|mins?|minutes?|s|secs?|seconds?)\s*){1,4})/i.exec(t);
+  const cd = /(?:ends?|closes?|closing|time\s*left|time\s*remaining|remaining|ending\s+in|going,?\s*going,?\s*gone!?)\s*(?:in)?\s*:?\s*((?:\d+\s*d(?:ays?)?\s*)?\d{1,2}:\d{2}:\d{2}|(?:\d+\s*(?:d|days?|h|hrs?|hours?|m|mins?|minutes?|s|secs?|seconds?)\s*){1,4})/i.exec(t);
   const cdMs = cd ? parseCountdown(cd[1]) : null;
   if (cdMs != null) out.end_at = now + cdMs;
   else {
@@ -289,6 +289,28 @@ export function timeFromHtml(html, now = Date.now()) {
     if (Number.isFinite(t) && t > now - 864e5 && t < now + 60 * 864e5) return t;
   }
   return null;
+}
+
+/**
+ * A lot's own buyer's premium table -> tiers ("5500:25%,27500:16.5%,44000:11.5%,*:9%" or "2000:495,5000:650,*:5%"),
+ * from rows like "$0 - $5,500 25%", "$5,501 - $27,500 16.5%", "$44,001+ 9%", "$0 - $2,000 $495", "ANY 20%".
+ * Each band's rate applies to the whole price in that band. null if there's no table.
+ */
+export function premiumTiers(text) {
+  const t = String(text || '').replace(/\s+/g, ' ');
+  const at = t.search(/buyers?'?\s*premium/i);
+  if (at < 0) return null;
+  const seg = t.slice(at, at + 900);
+  const fee = f => (/%$/.test(f) ? `${parseFloat(f)}%` : String(Math.round(Number(f.replace(/[$,\s]/g, '')))));
+  const rows = [];
+  for (const m of seg.matchAll(/\$\s?([\d,]+)\s*[-–]\s*\$\s?([\d,]+)\s*(\d{1,2}(?:\.\d+)?\s*%|\$\s?[\d,]+(?:\.\d+)?)/g)) rows.push([Number(m[2].replace(/,/g, '')), fee(m[3].replace(/\s/g, ''))]);
+  const top = /\$\s?([\d,]+)\s*\+\s*(\d{1,2}(?:\.\d+)?\s*%|\$\s?[\d,]+)/.exec(seg) || /\bany\s+(\d{1,2}(?:\.\d+)?\s*%)/i.exec(seg);
+  if (!rows.length) return top && /any/i.test(top[0]) ? `*:${fee(top[1].replace(/\s/g, ''))}` : null;
+  rows.sort((a, b) => a[0] - b[0]);
+  const last = top ? fee((top[2] || top[1]).replace(/\s/g, '')) : null;
+  const parts = rows.map(([lim, f]) => `${lim}:${f}`);
+  parts.push(`*:${last ?? rows[rows.length - 1][1]}`);
+  return parts.join(',');
 }
 
 /** "140 National Drive Dandenong South VIC 3125" / "Unit 3/12 Smith St, Fyshwick ACT 2609" -> { location: "Dandenong South, VIC", state: "VIC" } */

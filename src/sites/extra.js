@@ -2,7 +2,7 @@
 // first thing to check (npm run probe -- <a lot url> shows what the page returns).
 import { makeSite } from './generic.js';
 import { config } from '../config.js';
-import { placeFromAddress, parseDayMonthTime } from '../extract.js';
+import { placeFromAddress, parseDayMonthTime, premiumTiers } from '../extract.js';
 
 const lastNum = u => { const m = String(u || '').split(/[?#]/)[0].match(/\d{3,}/g); return m ? m[m.length - 1] : null; };
 
@@ -31,9 +31,10 @@ export const grays = makeSite({
     const loc = /\blocation:?\s+(.{2,120}?\s+(?:NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b)/i.exec(t);
     const pl = loc && placeFromAddress(loc[1]);
     if (pl) Object.assign(out, pl);
-    // Buyer's premium table: "Final Bid Price Buyers Premium ANY 20%" (or tiers; the first rate is used)
-    const bp = /buyers?'?\s*premium[\s\S]{0,120}?\b(?:any|\$?0\b[^%]{0,20}?)\s*(\d{1,2}(?:\.\d{1,2})?)\s*%/i.exec(t);
-    if (bp && +bp[1] <= 30) out.buyer_premium = +bp[1];
+    // Buyer's premium table: "ANY 20%", or bands ("$0 - $5,500 25%", "$5,501 - $27,500 16.5%", "$44,001+ 9%")
+    const tiers = premiumTiers(t);
+    if (tiers && /^\*:(\d+(?:\.\d+)?)%$/.test(tiers)) out.buyer_premium = parseFloat(tiers.slice(2));
+    else if (tiers) out.premium_tiers = tiers;
     for (const k of Object.keys(out)) if (out[k] == null) delete out[k];
     return out;
   },

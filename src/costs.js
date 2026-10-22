@@ -14,6 +14,15 @@ export function tierFee(spec, price) {
   return 0;
 }
 
+/** The band's percentage for a price ("5500:25%,27500:16.5%,*:9%", 15000 -> 16.5), or null for a $ fee. */
+export function tierPct(spec, price) {
+  for (const part of String(spec || '').split(',')) {
+    const [lim, fee] = part.split(':').map(s => s.trim());
+    if (lim === '*' || price <= Number(lim)) return /%$/.test(fee) ? parseFloat(fee) : null;
+  }
+  return null;
+}
+
 const heavy = l => /\btrucks?\b|prime mover|tipper|trailer|excavat|loader|tractor|bus\b|machinery|plant/i.test(`${l.category || ''} ${l.title || ''} ${l.url || ''}`);
 
 export function transportCost(lot, base) {
@@ -52,17 +61,18 @@ function scheduleFor(lot) {
 export function allIn(lot, base, price = lot.bid ?? lot.start_price, { transport = false } = {}) {
   if (price == null) return null;
   const sch = scheduleFor(lot);
-  // a lot's own "Buyer's Premium x%" (read from its page) wins over the schedule
-  const pct = lot.buyer_premium ?? (sch.tiers ? 0 : sch.pct ?? 0);
-  const premium = pct ? Math.round(price * pct / 100) : 0;
-  const fee = lot.buyer_premium == null && sch.tiers ? tierFee(sch.tiers, price) : 0;
+  // a lot's own premium table (bands by price, read from its page) wins, then its own flat "x%", then the schedule
+  const own = lot.premium_tiers || null;
+  const pct = own ? 0 : lot.buyer_premium ?? (sch.tiers ? 0 : sch.pct ?? 0);
+  const premium = own ? tierFee(own, price) : pct ? Math.round(price * pct / 100) : 0;
+  const fee = !own && lot.buyer_premium == null && sch.tiers ? tierFee(sch.tiers, price) : 0;
   const processing = Number(sch.processing) || 0;
   const gst = lot.gst_extra ? Math.round(price * 0.1) : 0;
   const tr = base ? transportCost(lot, base) : { cost: null };
   const freight = transport ? tr.cost : null;
   const fees = premium + fee + processing + gst;
   return {
-    price, premiumPct: pct || null, premium, fee, processing, gst, fees, feeLine: sch.line || null,
+    price, premiumPct: (own ? tierPct(own, price) : pct) || null, premium, fee, processing, gst, fees, feeLine: sch.line || null,
     transport: freight, transportOn: !!transport, km: tr.km ?? null, kmApprox: tr.approx, how: transport ? tr.how || null : null,
     total: price + fees + (freight || 0),
     landed: price + fees, // what you pay the auction house

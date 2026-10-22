@@ -107,3 +107,22 @@ test('titles: a photo caption ("- Image 1") is not part of the title', async () 
   upsertLot({ site: 'slattery', ext_id: '140852', title: '2023 Isuzu D-MAX X-RIDER - Image 1', url: 'https://slatteryauctions.com.au/assets/140852' });
   assert.equal(q.lot.get('slattery:140852').title, '2023 Isuzu D-MAX X-RIDER');
 });
+
+test('Grays premium bands: each lot\'s own table, priced from the right band; "Ending in" countdown', async () => {
+  const { premiumTiers, factsFromText } = await import('../src/extract.js');
+  const { allIn } = await import('../src/costs.js');
+  const { grays } = await import('../src/sites/extra.js');
+  const page = 'Buyers premium Variable BUYERS PREMIUM Final Bid Price Buyers Premium $0 - $5,500 25% $5,501 - $27,500 16.5% $27,501 - $44,000 11.5% $44,001+ 9%';
+  assert.equal(premiumTiers(page), '5500:25%,27500:16.5%,44000:11.5%,*:9%');
+  assert.equal(premiumTiers('Buyers Premium $0 - $2,000 $495 $2,001 - $5,000 $650 $5,001 - $10,000 $710 $10,001 - $30,000 7% $30,001 - $40,000 6% $40,001+ 5%'), '2000:495,5000:650,10000:710,30000:7%,40000:6%,*:5%');
+  assert.equal(premiumTiers('Final Bid Price Buyers Premium ANY 20%'), '*:20%');
+  const f = grays.pageFacts(page);
+  assert.equal(f.premium_tiers, '5500:25%,27500:16.5%,44000:11.5%,*:9%'); assert.equal(f.buyer_premium, undefined);
+  assert.equal(grays.pageFacts('Final Bid Price Buyers Premium ANY 20%').buyer_premium, 20);
+  const truck = { site: 'grays', title: '2007 Mitsubishi Fighter FM Curtainsider', category: 'trucks', premium_tiers: f.premium_tiers, buyer_premium: 25 };
+  const c = allIn(truck, null, 15000);
+  assert.equal(c.premium, 2475, '16.5% of $15,000, not 25%'); assert.equal(c.premiumPct, 16.5); assert.equal(c.fee, 0);
+  assert.equal(allIn(truck, null, 4000).premium, 1000, '25% under $5,500');
+  const now = Date.now();
+  assert.ok(Math.abs(factsFromText('Ending in: 26m 19s', now).end_at - (now + 1579000)) < 2000);
+});
