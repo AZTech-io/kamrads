@@ -20,6 +20,7 @@ import { checkPending } from './inspect.js';
 import { prunePhotos } from './photos.js';
 import { freightLoop } from './freight/loop.js';
 import { pushLoop } from './freight/push.js';
+import { findsLoop } from './finds/loop.js';
 import { isPaused, pause, ok as pauseOk, isRateLimit } from './pause.js';
 import { sectorOf } from './categories.js';
 
@@ -282,4 +283,5 @@ export async function startScheduler() {
   choresLoop();
   freightLoop();
   pushLoop();
+  findsLoop();
 }

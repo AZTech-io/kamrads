@@ -319,6 +319,30 @@ test('Loadshift freight: table rows with their own links', { skip: !chromeOk }, 
   assert.equal(jobs.find(j => j.ext_id === '40778632').from_text, null, '"Australia" is not a pickup place');
 });
 
+test('Finds: Facebook Marketplace (logged out, login box closed) and Gumtree result pages -> listings', { skip: !chromeOk }, async () => {
+  const { findSources } = await import('../src/finds/sources.js');
+  const card = (id, price, title, place, extra = '') => `<div class="x9f619"><a href="/marketplace/item/${id}/?ref=search"><img src="https://scontent.xx/${id}.jpg"><div><span>${price}</span></div><div><span>${title}</span></div><div><span>${place}</span></div>${extra}</a></div>`;
+  await fakeSite('facebook', 'https://www.facebook.com', {
+    '/marketplace/canberra/search/': u => html(`<div role="dialog"><div aria-label="Close" role="button" onclick="this.parentNode.remove()">x</div>See more on Facebook. Log in</div><div id="feed">`
+      + card('2051798579036344', 'A$1,200', 'Vending machine - snacks and drinks', 'Fyshwick, ACT')
+      + card('2051798579036345', 'Free', 'Old drink machine', 'Queanbeyan, NSW')
+      + `</div>`, ''),
+  });
+  const fb = await findSources.facebook.search('vending machine', { area: 'canberra' });
+  assert.deepEqual(fb.map(i => i.ext_id), ['2051798579036344', '2051798579036345']);
+  assert.equal(fb[0].price, 1200); assert.equal(fb[0].title, 'Vending machine - snacks and drinks'); assert.equal(fb[0].location, 'Fyshwick, ACT');
+  assert.equal(fb[0].url, 'https://www.facebook.com/marketplace/item/2051798579036344/'); assert.equal(fb[1].price, 0);
+  await fakeSite('gumtree', 'https://www.gumtree.com.au', {
+    '/s-vending+machine/k0': html(`<ul><li class="user-ad"><a href="/s-ad/fyshwick/vending-machines/snack-vending-machine/1336829999"><img src="https://gumtree.test/1.jpg"><p>Snack vending machine</p><p>$650</p><p>Fyshwick, ACT</p><p>3 hours ago</p></a></li>
+      <li class="user-ad"><a href="/s-ad/goulburn/vending-machines/coke-machine/1336820000"><p>Coke machine</p><p>$300</p><p>Goulburn, NSW</p><p>2 days ago</p></a></li></ul>`),
+  });
+  const gt = await findSources.gumtree.search('vending machine');
+  assert.deepEqual(gt.map(i => i.ext_id).sort(), ['1336820000', '1336829999']);
+  const snack = gt.find(i => i.ext_id === '1336829999');
+  assert.equal(snack.price, 650); assert.equal(snack.title, 'Snack vending machine'); assert.equal(snack.location, 'Fyshwick, ACT');
+  assert.ok(Date.now() - snack.posted_at > 2.9 * 3600000 && Date.now() - snack.posted_at < 3.1 * 3600000);
+});
+
 test('login check: a "My Pickles" menu link alone is not a logged-in session', { skip: !chromeOk }, async () => {
   const { ensureLogin } = await import('../src/login.js');
   assert.equal(await ensureLogin('pickles', 'https://www.pickles.com.au/'), false);

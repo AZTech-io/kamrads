@@ -16,6 +16,7 @@ import * as purchases from './purchases.js';
 import { freightRoutes } from './freight/routes.js';
 import { apiRoutes } from './freight/api.js';
 import { sendPage, savePref } from './pages.js';
+import { findsRoutes } from './finds/routes.js';
 import { isVehicle } from './extract.js';
 import { push } from './notify.js';
 import { watchUrl } from './scheduler.js';
@@ -97,6 +98,7 @@ export function startServer() {
     } catch (e) { res.status(400).json({ error: e.message }); }
   });
   freightRoutes(app);
+  findsRoutes(app);
   // ---- Bought: items we've won, every cost logged, what each one owes us ----
   app.get('/bought', (req, res) => sendPage(res, 'bought.html', req.user));
   app.get('/api/purchases', (_req, res) => res.json(purchases.list()));

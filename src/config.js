@@ -149,6 +149,15 @@ export const config = {
     katFreightUrl: env.KATARA_FREIGHT_URL || 'https://katarafreight.com.au',
   },
 
+  // Finds (/finds): Swoopa-style searches over Facebook Marketplace, Gumtree and eBay
+  finds: {
+    everyMin: num('FINDS_EVERY_MIN', 15),
+    keepDays: num('FINDS_KEEP_DAYS', 3),        // a listing not seen this long has sold / been taken down
+    facebook: { enabled: bool('FACEBOOK_ENABLED', true) },
+    gumtree: { enabled: bool('GUMTREE_ENABLED', true) },
+    ebay: { clientId: env.EBAY_CLIENT_ID || '', clientSecret: env.EBAY_CLIENT_SECRET || '' },
+  },
+
   sites: {
     pickles: {
       enabled: bool('PICKLES_ENABLED', true),

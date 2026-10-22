@@ -56,6 +56,18 @@ Every lot gets one last read just after it closes, so the **Sold** tab shows wha
 
 Server: RackNerd 2 GB KVM, `198.84.85.8`, Ubuntu 24.04.
 
+## Finds (`/finds`)
+
+Swoopa-style saved searches over **Facebook Marketplace**, **Gumtree** and **eBay**: words (commas for alternatives,
+`-word` to leave out), a place and distance, a price range and which sites. New listings that match push to your phone
+once each (what's already listed when you make a search is recorded quietly). Each search also shows matching lots
+from every auction site KAMRADS reads. A "Vending machines" search is set up on first visit.
+
+- **eBay** uses eBay's official search: add `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET` (free keyset from developer.ebay.com).
+- **Gumtree** reads the public search pages, newest first.
+- **Facebook** reads Marketplace logged out (best effort: Facebook shows a limited set). For an exact area, paste a
+  Marketplace link for your area into the search; otherwise the nearest big city is used.
+
 ## Install (one time, about 15 minutes)
 
 **1. On the server**, as root:

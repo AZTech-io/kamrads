@@ -116,6 +116,7 @@ export function upsertLot(lot, { checked = false } = {}) {
 
 export const q = {
   lot: db.prepare('SELECT * FROM lots WHERE key = ?'),
+  noEndOpen: db.prepare(`SELECT * FROM lots WHERE status = 'open' AND end_at IS NULL ORDER BY first_seen DESC LIMIT 3000`),
   openWindow: db.prepare(`SELECT * FROM lots WHERE status = 'open' AND end_at IS NOT NULL AND end_at BETWEEN ? AND ? ORDER BY end_at`),
   // Lots with no known close time only show in the widest view (they'd crowd "next 3 hours" otherwise).
   dashboard: db.prepare(`SELECT * FROM lots WHERE status = 'open' AND ((end_at > ? AND end_at < ?) OR (end_at IS NULL AND ? = 1)) ORDER BY end_at IS NULL, end_at LIMIT ?`),
