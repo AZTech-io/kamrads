@@ -13,6 +13,7 @@ import { buildDigest } from './digest.js';
 import { sectorOf, SECTORS } from './categories.js';
 import { photo } from './photos.js';
 import { isLiveSale } from './live.js';
+import { parseVelocicast, importVelocicast } from './results.js';
 import * as purchases from './purchases.js';
 import { freightRoutes } from './freight/routes.js';
 import { apiRoutes } from './freight/api.js';
@@ -136,6 +137,8 @@ export function startServer() {
   });
   app.patch('/api/dreams/:id', ok(req => { dreams.updateDream(Number(req.params.id), req.body || {}); }));
   app.delete('/api/dreams/:id', ok(req => { dreams.deleteDream(Number(req.params.id)); }));
+  // Pickles live-lane results: a Velocicast page saved (or copied) by the person from their own session
+  app.post('/api/results/velocicast', ok(req => importVelocicast(parseVelocicast(String(req.body?.text || '')))));
   app.post('/api/dreams-import', ok(req => {
     const tz = /^[A-Za-z]+\/[A-Za-z_]+$/.test(req.body?.tz || '') ? req.body.tz : config.digestTz;
     return dreams.importPaste(req.user, req.body?.text, { tz });

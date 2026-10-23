@@ -24,7 +24,7 @@ CREATE INDEX IF NOT EXISTS bids_key ON bids(key, at);
 CREATE TABLE IF NOT EXISTS alerts (key TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL, message TEXT, PRIMARY KEY(key, kind));
 CREATE TABLE IF NOT EXISTS site_status (site TEXT PRIMARY KEY, last_ok INTEGER, last_count INTEGER, last_error TEXT, last_error_at INTEGER, logged_in INTEGER);
 `);
-for (const col of ['final_seen_at INTEGER', 'est_avg REAL', 'est_comps TEXT', 'est_method TEXT', 'buyer_premium REAL', 'gst_extra INTEGER', 'check_verdict TEXT', 'check_note TEXT', 'check_at INTEGER', 'opens_at INTEGER', 'reserve TEXT', 'ended_early INTEGER', 'market TEXT', 'premium_tiers TEXT', 'body TEXT', 'spec TEXT', 'condition TEXT']) { try { db.exec(`ALTER TABLE lots ADD COLUMN ${col}`); } catch { /* exists */ } }
+for (const col of ['final_seen_at INTEGER', 'est_avg REAL', 'est_comps TEXT', 'est_method TEXT', 'buyer_premium REAL', 'gst_extra INTEGER', 'check_verdict TEXT', 'check_note TEXT', 'check_at INTEGER', 'opens_at INTEGER', 'reserve TEXT', 'ended_early INTEGER', 'market TEXT', 'premium_tiers TEXT', 'body TEXT', 'spec TEXT', 'condition TEXT', 'result_src TEXT']) { try { db.exec(`ALTER TABLE lots ADD COLUMN ${col}`); } catch { /* exists */ } }
 db.exec(`UPDATE lots SET title = NULL WHERE title IS NOT NULL AND (trim(title) = '' OR title LIKE '%{{%')`);
 db.exec(`UPDATE lots SET bid_count = NULL WHERE bid_count > 500`); // bad counts read from site-wide text
 // v1.1 cleanup: drop duplicate Pickles records created from internal ids
@@ -82,14 +82,20 @@ if (db.prepare('PRAGMA user_version').get().user_version < 16) {
 const FIELDS = ['url', 'title', 'category', 'year', 'make', 'model', 'odometer', 'wovr', 'location', 'state', 'image',
   'buy_method', 'sale_name', 'lot_no', 'bid', 'bid_count', 'buy_now', 'start_price', 'end_at', 'buyer_premium', 'gst_extra', 'opens_at', 'reserve', 'market', 'premium_tiers', 'body', 'spec', 'condition'];
 
+// A closed lot listed again with a close still to come opens again. One whose result came from a live sale's
+// results (result_src) only does for a later sale, not because the site still shows today's placeholder close.
+const REOPEN = `lots.status = 'closed' AND excluded.end_at > :now AND (lots.result_src IS NULL OR excluded.end_at > COALESCE(lots.closed_at, 0) + 86400000)`;
 const upsertStmt = db.prepare(`
 INSERT INTO lots (key, site, ext_id, ${FIELDS.join(', ')}, first_seen, last_seen, last_checked)
 VALUES (:key, :site, :ext_id, ${FIELDS.map(f => ':' + f).join(', ')}, :now, :now, :checked)
 ON CONFLICT(key) DO UPDATE SET
-  ${FIELDS.map(f => `${f} = COALESCE(excluded.${f}, lots.${f})`).join(',\n  ')},
+  ${FIELDS.map(f => f === 'end_at' ? `end_at = CASE WHEN lots.result_src IS NOT NULL AND NOT (${REOPEN}) THEN lots.end_at ELSE COALESCE(excluded.end_at, lots.end_at) END`
+    : `${f} = COALESCE(excluded.${f}, lots.${f})`).join(',\n  ')},
   last_seen = excluded.last_seen,
   last_checked = COALESCE(excluded.last_checked, lots.last_checked),
-  status = CASE WHEN lots.status = 'closed' AND excluded.end_at > :now THEN 'open' ELSE lots.status END
+  result_src = CASE WHEN ${REOPEN} THEN NULL ELSE lots.result_src END,
+  final_bid = CASE WHEN lots.result_src IS NOT NULL AND ${REOPEN} THEN NULL ELSE lots.final_bid END,
+  status = CASE WHEN ${REOPEN} THEN 'open' ELSE lots.status END
 `);
 const getBidStmt = db.prepare('SELECT bid FROM lots WHERE key = ?');
 const addBidStmt = db.prepare('INSERT INTO bids (key, at, bid) VALUES (?, ?, ?)');
@@ -133,7 +139,7 @@ export const q = {
     WHERE status = 'open' AND end_at < ? AND (last_checked >= end_at OR end_at < ?) RETURNING key`),
   // Lots marked sold at their listed time without a read after it (before that rule): open them again for one.
   reopenUnconfirmed: db.prepare(`UPDATE lots SET status = 'open', closed_at = NULL, final_bid = NULL, final_seen_at = NULL
-    WHERE status = 'closed' AND COALESCE(ended_early, 0) = 0 AND end_at > ? AND (last_checked IS NULL OR last_checked < end_at) AND site IN (SELECT value FROM json_each(?)) RETURNING key`),
+    WHERE status = 'closed' AND result_src IS NULL AND COALESCE(ended_early, 0) = 0 AND end_at > ? AND (last_checked IS NULL OR last_checked < end_at) AND site IN (SELECT value FROM json_each(?)) RETURNING key`),
   star: db.prepare('UPDATE lots SET starred = ? WHERE key = ?'),
   watchedOpen: db.prepare(`SELECT * FROM lots WHERE starred = 1 AND status = 'open' ORDER BY end_at IS NULL, end_at`),
   watchlist: db.prepare(`SELECT * FROM lots WHERE starred = 1 AND (status = 'open' OR closed_at > ?) ORDER BY status = 'closed', end_at IS NULL, end_at`),
@@ -194,9 +200,11 @@ export const q = {
   bidRows: db.prepare('SELECT count(*) AS n FROM bids'),
   // only results read within 15 min of the close count as real prices
   historyRows: db.prepare(`SELECT key, site, title, year, odometer, wovr, category, url, sale_name, buy_method, market, final_bid, end_at FROM lots
-    WHERE status = 'closed' AND final_bid IS NOT NULL AND final_bid > 0 AND end_at > ? AND final_seen_at IS NOT NULL AND end_at - final_seen_at <= 900000
+    WHERE status = 'closed' AND final_bid IS NOT NULL AND final_bid > 0 AND end_at > ? AND COALESCE(reserve, '') != 'not met'
+      -- (or a hammer price from a live sale's results)
+      AND (result_src IS NOT NULL OR (final_seen_at IS NOT NULL AND end_at - final_seen_at <= 900000
       -- Grays runs on past its listed close (soft close): only a price read after the close is a result
-      AND (site != 'grays' OR final_seen_at >= end_at) AND COALESCE(reserve, '') != 'not met'`),
+      AND (site != 'grays' OR final_seen_at >= end_at)))`),
   setCheck: db.prepare('UPDATE lots SET check_verdict = ?, check_note = ?, check_at = ? WHERE key = ?'),
   checkQueue: db.prepare(`SELECT l.* FROM lots l WHERE l.status = 'open' AND l.check_at IS NULL AND l.end_at > ?
     AND EXISTS (SELECT 1 FROM watches w WHERE w.key = l.key AND w.my_bid IS NOT NULL) ORDER BY l.end_at LIMIT 5`),

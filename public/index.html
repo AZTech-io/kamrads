@@ -289,6 +289,7 @@ html { color-scheme: dark; }
     <div id="sites"></div>
     <div class="side-foot">
       <div id="stored"></div>
+      <a href="#" id="liveResBtn">Add live sale results (Velocicast)</a><br>
       <a href="/api/export/closed.csv?days=3650">Download all results (CSV)</a><br>
       <a href="#" id="testAlert">Send a test alert</a><br>
       <span id="updated"></span>
@@ -349,6 +350,16 @@ html { color-scheme: dark; }
   <div class="row end"><button type="button" class="btn" id="closeAlerts">Close</button></div>
 </dialog>
 
+<dialog id="liveRes" class="box">
+  <form method="dialog" id="liveResForm">
+    <h2>Add live sale results</h2>
+    <p class="lead">Pickles live-lane sales close in the lane, not online, so their prices only reach us this way. During or after a sale, open it in Velocicast, save the page (Ctrl+S or Cmd+S, "Webpage, HTML only") and choose the file here. Or select all the page's text, copy it and paste it below.</p>
+    <label class="f">Saved page <input type="file" id="liveResFile" accept=".html,.htm,.txt,text/html,text/plain"></label>
+    <label class="f">Or paste the page's text <textarea id="liveResText" rows="4" style="display:block;width:100%;margin-top:6px;font:inherit;font-size:13px;background:transparent;color:inherit;border:1px solid var(--line, #334);border-radius:8px;padding:8px;box-sizing:border-box" placeholder="#2 - CP: 07/2022,Toyota,Kluger,... SOLD $33,750"></textarea></label>
+    <div class="bidcalc" id="liveResOut"></div>
+    <div class="row end"><button type="button" class="btn" id="liveResCancel">Close</button><button class="btn primary" id="liveResGo">Add results</button></div>
+  </form>
+</dialog>
 <dialog id="bidBox" class="box">
   <form method="dialog" id="bidForm">
     <h2>I'm bidding on this</h2>
@@ -938,6 +949,26 @@ $('#bidMax').addEventListener('input', () => { clearTimeout(bidTimer); bidTimer 
 $('#bidBudget').addEventListener('input', () => { clearTimeout(bidTimer); bidTimer = setTimeout(calcBudget, 250); });
 $('#bidBudgetOut').addEventListener('click', async e => { if (e.target.id !== 'useBudget') return; e.preventDefault(); const c = await bidCost({ budget: n0($('#bidBudget').value) }); $('#bidMax').value = c.maxForBudget; calcBid(); });
 $('#bidCancel').addEventListener('click', () => $('#bidBox').close());
+$('#liveResBtn').addEventListener('click', e => { e.preventDefault(); $('#liveResOut').textContent = ''; $('#liveResFile').value = ''; $('#liveResText').value = ''; $('#liveRes').showModal(); });
+$('#liveResCancel').addEventListener('click', () => $('#liveRes').close());
+$('#liveResGo').addEventListener('click', async e => {
+  e.preventDefault();
+  const f = $('#liveResFile').files[0];
+  const text = f ? await f.text() : $('#liveResText').value;
+  const out = $('#liveResOut');
+  if (!text.trim()) { out.textContent = 'Choose the saved page, or paste its text.'; return; }
+  out.textContent = 'Reading…';
+  try {
+    const r = await fetch('/api/results/velocicast', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Could not read that page');
+    const sold = j.items.filter(i => i.result === 'sold').sort((a, b) => a.run - b.run);
+    out.innerHTML = `<b>${esc(j.sale)}</b>: ${j.sold} sold, ${j.passed} passed in${j.upcoming ? `, ${j.upcoming} still to run (add the page again later for those)` : ''}.<br>`
+      + `${j.matched} were lots we were watching; ${j.added} sold ones were new to us and now count in the values.`
+      + (sold.length ? `<div style="margin-top:8px;max-height:220px;overflow:auto;font-size:12.5px">${sold.map(i => `#${i.run} ${esc(i.title.replace(/\s+\d+ seats.*$/, ''))} <b class="num">${money(i.price)}</b>`).join('<br>')}</div>` : '');
+    load();
+  } catch (err) { out.textContent = err.message; }
+});
 async function saveBid(value) {
   const r = await post(`/api/lots/${encodeURIComponent(bidKey)}/mybid`, { value });
   const j = await r.json().catch(() => ({}));
