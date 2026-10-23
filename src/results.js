@@ -117,3 +117,83 @@ export function importVelocicast(parsed, now = Date.now()) {
   log.info('results', `Velocicast ${sale.name}: ${out.sold} sold, ${out.passed} passed in (${out.matched} matched our lots, ${out.added} added), ${out.upcoming} still to run`);
   return out;
 }
+
+// ---- The bid stream (socket messages from a HAR of the same page) ----
+// Each "EventStats" message carries the lot on the block: Pickles stock number (our ext_id), the RESERVE, the
+// seller's leeway, kilometres, location and the bids so far. Sales aren't called here, only bidding: the page
+// (above) says who sold. Nothing from the message's login/badge side is kept.
+const LEEWAY = /\bLee:\s*\$?([\d,]+)/i;
+export function parseVelocicastStream(messages) {
+  const items = new Map();
+  let sale = null;
+  for (const raw of messages || []) {
+    const m = /^42\d*(\[[\s\S]*)$/.exec(String(raw));
+    if (!m) continue;
+    let j;
+    try { j = JSON.parse(m[1]); } catch { continue; }
+    const msg = Array.isArray(j) ? j[1] : null;
+    if (!msg || msg.type !== 'EventStats' || !msg.doc?.Stats) continue;
+    const s = msg.doc.Stats;
+    if (!sale && s.EventDesc) {
+      const d = /(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)/i.exec(s.EventDesc);
+      sale = { name: s.EventDesc.replace(/\s+at\s+\d.*$/i, '').trim(), at: s.EventStart ? Date.parse(s.EventStart) : null,
+        date: d ? `${d[3]}-${d[2].padStart(2, '0')}-${d[1].padStart(2, '0')}` : (s.EventStart || '').slice(0, 10) };
+    }
+    const it = s.CurrentItem;
+    const id = it?.ID ?? s.CurrentItemID;
+    if (id == null) continue;
+    const prev = items.get(id) || { id };
+    if (it) {
+      Object.assign(prev, {
+        run: Number(it.ItemNum) || null, stock: it.StockNumber ? String(it.StockNumber) : null,
+        title: tidyTitle('CP: ' + String(it.Description || '').replace(/^CP\s*:\s*/i, '')),
+        reserve: it.ReserveAmt != null ? Number(it.ReserveAmt) : null, leeway: Number((LEEWAY.exec(it.SellerNote || '') || [])[1]?.replace(/,/g, '')) || null,
+        odometer: it.Miles != null ? Number(it.Miles) : null, location: it.DisplayLocation || null, state: (ST.exec(it.DisplayLocation || '') || [])[1] || null,
+        url: it.ItemLink || null, wovr: it.WOVRStatus || null, note: it.SellerNote || null,
+      });
+    }
+    if (s.CurrentBidAmount != null) { prev.lastBid = Number(s.CurrentBidAmount); prev.maxBid = Math.max(prev.maxBid || 0, Number(s.CurrentBidAmount)); }
+    if (Array.isArray(s.Bids)) prev.bidCount = Math.max(prev.bidCount || 0, s.Bids.filter(b => b.BidType !== 'ASK').length);
+    items.set(id, prev);
+  }
+  return { sale, items: [...items.values()].filter(i => i.title || i.stock).sort((a, b) => (a.run ?? 9e9) - (b.run ?? 9e9)) };
+}
+
+const stockLot = db.prepare(`SELECT key, status, result_src, final_bid, reserve FROM lots WHERE site = 'pickles' AND ext_id = ?`);
+const setReserve = db.prepare(`UPDATE lots SET reserve_amt = ? WHERE key = ?`);
+// a lot we only know from the stream: on record with its reserve, but no result until the page says sold
+const closeNoResult = db.prepare(`UPDATE lots SET status = 'closed', closed_at = ?, result_src = 'stream' WHERE key = ? AND result_src IS NULL`);
+const setLiveBid = db.prepare(`UPDATE lots SET bid = ?, bid_count = COALESCE(?, bid_count) WHERE key = ? AND status = 'open'`);
+
+/** Record what the stream showed: the reserve on each lot (ours by stock number, else added), and the bid reached. */
+export function importVelocicastStream(parsed, now = Date.now()) {
+  const { sale, items } = parsed;
+  if (!items.length) throw new Error('No lots in that bid stream.');
+  const out = { sale: sale?.name || 'Pickles live sale', matched: 0, added: 0, reserves: 0, items: [] };
+  db.exec('BEGIN');
+  try {
+    for (const i of items) {
+      const ext = i.stock || (sale ? `vc-${sale.date}-${i.run}` : null);
+      if (!ext) continue;
+      let row = stockLot.get(ext);
+      if (!row && i.stock && sale?.date) row = stockLot.get(`vc-${sale.date}-${i.run}`);   // added earlier from the saved page
+      let added = false;
+      if (row) out.matched++;
+      else {
+        added = true;
+        const when = sale?.at ? sale.at + ((i.run || 1) - 1) * 90000 : now;
+        upsertLot({ site: 'pickles', ext_id: ext, title: i.title, odometer: i.odometer, location: i.location, state: i.state, category: 'cars', buy_method: 'Live',
+          sale_name: sale?.name || null, lot_no: i.run != null ? String(i.run) : null, end_at: when, url: i.url || `https://www.pickles.com.au/used/details/cars/x/${ext}`, market: 'retail', wovr: i.wovr });
+        row = stockLot.get(ext); out.added++;
+      }
+      if (i.lastBid != null) setLiveBid.run(i.lastBid, i.bidCount ?? null, row.key);
+      // the lot's own result (sold / passed in) comes from the page; the reserve is new information either way
+      if (i.reserve != null) { setReserve.run(i.reserve, row.key); out.reserves++; }
+      if (added) closeNoResult.run(now, row.key);
+      out.items.push({ run: i.run, title: i.title, key: row.key, reserve: i.reserve, lastBid: i.lastBid ?? null, leeway: i.leeway, matched: row.result_src != null });
+    }
+    db.exec('COMMIT');
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
+  log.info('results', `Velocicast stream ${out.sale}: ${items.length} lots, ${out.reserves} reserves, ${out.added} added`);
+  return out;
+}

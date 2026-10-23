@@ -13,7 +13,7 @@ import { buildDigest } from './digest.js';
 import { sectorOf, SECTORS } from './categories.js';
 import { photo } from './photos.js';
 import { isLiveSale } from './live.js';
-import { parseVelocicast, importVelocicast } from './results.js';
+import { parseVelocicast, importVelocicast, parseVelocicastStream, importVelocicastStream } from './results.js';
 import * as purchases from './purchases.js';
 import { freightRoutes } from './freight/routes.js';
 import { apiRoutes } from './freight/api.js';
@@ -66,7 +66,7 @@ const shape = (l, alertKinds, view = null) => {
     year: l.year, odometer: l.odometer, wovr: l.wovr, location: l.location, state: l.state,
     buyMethod: l.buy_method, sale: l.sale_name, lotNo: l.lot_no, liveSale: isLiveSale(l),
     bid: l.bid, bidCount: l.bid_count, startPrice: l.start_price, buyNow: l.buy_now,
-    endAt: l.end_at, opensAt: l.opens_at ?? null, reserve: l.reserve ?? null, lastChecked: l.last_checked, starred: !!l.starred,
+    endAt: l.end_at, opensAt: l.opens_at ?? null, reserve: l.reserve ?? null, reserveAmt: l.reserve_amt ?? null, lastChecked: l.last_checked, starred: !!l.starred,
     estLow: l.est_low, estHigh: l.est_high, estNote: l.est_note, manualEstimate: l.manual_estimate,
     estimate: est, estSource: est ? estimateSource(l) : null,
     // judged on what you'd pay the auction house; profit also takes off transport home
@@ -139,6 +139,8 @@ export function startServer() {
   app.delete('/api/dreams/:id', ok(req => { dreams.deleteDream(Number(req.params.id)); }));
   // Pickles live-lane results: a Velocicast page saved (or copied) by the person from their own session
   app.post('/api/results/velocicast', ok(req => importVelocicast(parseVelocicast(String(req.body?.text || '')))));
+  // ...and the bid stream from a saved HAR of that page (the browser sends only the socket messages, never the file)
+  app.post('/api/results/velocicast-stream', ok(req => importVelocicastStream(parseVelocicastStream(req.body?.messages || []))));
   app.post('/api/dreams-import', ok(req => {
     const tz = /^[A-Za-z]+\/[A-Za-z_]+$/.test(req.body?.tz || '') ? req.body.tz : config.digestTz;
     return dreams.importPaste(req.user, req.body?.text, { tz });

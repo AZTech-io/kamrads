@@ -54,3 +54,21 @@ test('import: our lots close with the hammer price (passed in = not sold), new s
   const h = soldLike({ key: 'x', title: '2022 Toyota Kluger GX', odometer: 100000 }, { minN: 1 });
   assert.equal(h.median, 33750);
 });
+
+test('bid stream (HAR socket messages): reserve and bidding reached, matched by Pickles stock number; stream-only lots carry no result', async () => {
+  const { parseVelocicastStream, importVelocicastStream } = await import('../src/results.js');
+  const stats = (item, bid, extra = {}) => '42["message",' + JSON.stringify({ type: 'EventStats', doc: { Stats: { EventDesc: 'National Corporate, Fleet and Finance Vehicle Auction at 23/10/2026 10:00 AM AEDT', EventStart: '2026-10-22T23:00:00.000Z', CurrentItemID: item.ID, CurrentBidAmount: bid, Status: 'RUNNING', Bids: [], ...extra, CurrentItem: item } } }) + ']';
+  const camry = { ID: 951036, ItemNum: '82', StockNumber: '62419073', Description: 'CP: 03/2019,Toyota,Camry,AXVH71R Ascent Sport,Sedan,5 seats,4 doors', ReserveAmt: 13250, Miles: 213763, DisplayLocation: 'Brendale, QLD', ItemLink: 'https://www.pickles.com.au/used/details/cars/Toyota-Camry-2019/62419073', SellerNote: 'Prev: 1, GST: GST_INCL' };
+  const jolion = { ...camry, ID: 950978, ItemNum: '94', StockNumber: '62421381', Description: 'CP: 02/2024,GWM,Haval Jolion,A01 Lux,Wagon,5 seats,5 doors', ReserveAmt: 14000, Miles: 34150, SellerNote: 'Prev: 0, Lee: $1000, GST: GST_INCL' };
+  upsertLot({ site: 'pickles', ext_id: '62419073', title: '2019 Toyota Camry Ascent Sport', bid: 11000, end_at: Date.now() + 36e5, url: 'https://www.pickles.com.au/used/details/cars/Toyota-Camry-2019/62419073' });
+  const p = parseVelocicastStream([stats(camry, 12000), stats(camry, 12500), '42["message",{"type":"EventStats","doc":{"Stats":{"CurrentItemID":951036,"CurrentBidAmount":12250,"Status":"RUNNING"}}}]', stats(jolion, null), stats(jolion, 13300), '2', 'garbage']);
+  assert.equal(p.sale.name, 'National Corporate, Fleet and Finance Vehicle Auction');
+  assert.deepEqual(p.items.map(i => [i.run, i.stock, i.reserve, i.lastBid, i.leeway]), [[82, '62419073', 13250, 12250, null], [94, '62421381', 14000, 13300, 1000]]);
+  const r = importVelocicastStream(p);
+  assert.equal(r.matched, 1); assert.equal(r.added, 1); assert.equal(r.reserves, 2);
+  const c = q.lot.get('pickles:62419073');
+  assert.equal(c.reserve_amt, 13250); assert.equal(c.bid, 12250); assert.equal(c.status, 'open');
+  const j = q.lot.get('pickles:62421381');
+  assert.equal(j.reserve_amt, 14000); assert.equal(j.status, 'closed'); assert.equal(j.final_bid, null); assert.equal(j.result_src, 'stream');
+  assert.match(j.title, /^2024 GWM Haval Jolion/);
+});

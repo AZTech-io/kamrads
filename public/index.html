@@ -353,8 +353,8 @@ html { color-scheme: dark; }
 <dialog id="liveRes" class="box">
   <form method="dialog" id="liveResForm">
     <h2>Add live sale results</h2>
-    <p class="lead">Pickles live-lane sales close in the lane, not online, so their prices only reach us this way. During or after a sale, open it in Velocicast, save the page (Ctrl+S or Cmd+S, "Webpage, HTML only") and choose the file here. Or select all the page's text, copy it and paste it below.</p>
-    <label class="f">Saved page <input type="file" id="liveResFile" accept=".html,.htm,.txt,text/html,text/plain"></label>
+    <p class="lead">Pickles live-lane sales close in the lane, not online, so their prices only reach us this way. During or after a sale, open it in Velocicast, save the page (Ctrl+S or Cmd+S, "Webpage, HTML only") and choose the file here. Or select all the page's text, copy it and paste it below.<br>A saved <b>.har</b> of the same page (browser dev tools → Network → export) works too: its bid stream carries each lot's <b>reserve</b>, which the page never shows. Only the bid messages are sent to KAMRADS; your login stays in the file.</p>
+    <label class="f">Saved page <input type="file" id="liveResFile" accept=".html,.htm,.txt,.har,text/html,text/plain,application/json"></label>
     <label class="f">Or paste the page's text <textarea id="liveResText" rows="4" style="display:block;width:100%;margin-top:6px;font:inherit;font-size:13px;background:transparent;color:inherit;border:1px solid var(--line, #334);border-radius:8px;padding:8px;box-sizing:border-box" placeholder="#2 - CP: 07/2022,Toyota,Kluger,... SOLD $33,750"></textarea></label>
     <div class="bidcalc" id="liveResOut"></div>
     <div class="row end"><button type="button" class="btn" id="liveResCancel">Close</button><button class="btn primary" id="liveResGo">Add results</button></div>
@@ -557,7 +557,7 @@ function wovrTag(w) {
   return `<span class="tag">${esc(w)}</span>`;
 }
 const liveTag = l => l.liveSale ? `<span class="tag live" title="Sold by an auctioneer in a live lane on the day: no timed close, no countdown">Live auction${l.sale ? ' · ' + esc(l.sale) : ''}</span>` : '';
-const reserveTag = r => r === 'none' ? '<span class="tag g">No reserve</span>' : r === 'not met' ? '<span class="tag a">Reserve not met</span>' : r === 'met' ? '<span class="tag g">Reserve met</span>' : '';
+const reserveTag = (r, amt) => amt ? `<span class="tag ${r === 'met' ? 'g' : 'a'}" title="The reserve, from the live sale's bid stream">Reserve ${money(amt)}</span>` : r === 'none' ? '<span class="tag g">No reserve</span>' : r === 'not met' ? '<span class="tag a">Reserve not met</span>' : r === 'met' ? '<span class="tag g">Reserve met</span>' : '';
 const checkTag = c => !c || c.verdict === 'error' ? '' : `<span class="tag ${c.verdict === 'good' ? 'g' : c.verdict === 'avoid' ? 'r' : 'a'}" title="${esc(c.summary || '')}">${{ good: 'Listing OK', caution: 'Check listing', avoid: 'Red flags' }[c.verdict] || ''}</span>`;
 const slugName = u => { const w = String(u || '').split(/[?#]/)[0].replace(/\/$/, '').split('/').pop().replace(/-?\d{5,}$/, '').split('-').filter(Boolean); return w.length > 1 ? w.map(x => x[0].toUpperCase() + x.slice(1)).join(' ') : ''; };
 const photo = l => `<span class="ph">${l.photo ? `<img src="${esc(l.photo)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}</span>`;
@@ -601,7 +601,7 @@ function rowHtml(l, now) {
     <td class="col-photo">${photo(l)}</td>
     <td class="c-lot">${lotLink(l)}<div class="lot-m"><span class="site">${esc(SITE_NAMES[l.site] || l.site)}</span>
       ${l.location || l.state ? `<span>${esc([l.location, l.location?.includes(l.state) ? '' : l.state].filter(Boolean).join(' '))}${l.distanceKm != null ? ` · ${distTxt(l)}` : ''}</span>` : ''}
-      ${kmTag(l)}${liveTag(l)}${wovrTag(l.wovr)}${reserveTag(l.reserve)}${checkTag(l.check)}
+      ${kmTag(l)}${liveTag(l)}${wovrTag(l.wovr)}${reserveTag(l.reserve, l.reserveAmt)}${checkTag(l.check)}
       ${mode === 'missed' ? `<span class="tag g">${esc(l.why)}</span>` : ''}${l.alerts?.length ? `<span class="tag r">Alert: ${esc(l.alerts.join(', '))}</span>` : ''}</div></td>
     <td class="c-clock">${clockCell(l, now)}</td>
     <td class="c-bid r"><div class="money num">${money(p)}</div><div class="sub">${sub}</div></td>
@@ -648,7 +648,7 @@ function renderWatch() {
       const moved = !closed && lastBid[l.key] != null && l.bid != null && l.bid > lastBid[l.key];
       return `<tr class="row ${closed ? 'sold' : ''} ${l.bidStatus || ''}" data-key="${esc(l.key)}">
         <td class="col-photo">${photo(l)}</td>
-        <td class="c-lot">${lotLink(l)}<div class="lot-m"><span class="site">${esc(SITE_NAMES[l.site] || l.site)}</span>${placeOf(l) ? `<span class="place">${esc(placeOf(l))}${l.distanceKm != null ? ` <span class="dim">· ${distTxt(l)}</span>` : ''}</span>` : ''}${kmTag(l)}${liveTag(l)}${wovrTag(l.wovr)}${reserveTag(l.reserve)}${checkTag(l.check)}<span>${closed ? '' : ago(l.lastChecked)}</span></div>
+        <td class="c-lot">${lotLink(l)}<div class="lot-m"><span class="site">${esc(SITE_NAMES[l.site] || l.site)}</span>${placeOf(l) ? `<span class="place">${esc(placeOf(l))}${l.distanceKm != null ? ` <span class="dim">· ${distTxt(l)}</span>` : ''}</span>` : ''}${kmTag(l)}${liveTag(l)}${wovrTag(l.wovr)}${reserveTag(l.reserve, l.reserveAmt)}${checkTag(l.check)}<span>${closed ? '' : ago(l.lastChecked)}</span></div>
           ${(l.rivals || []).length ? `<div class="rival">⚠ ${esc(l.rivals.map(r => `${r.user} has bid too (max ${money(r.myBid)})`).join(', '))}: you're bidding against each other</div>` : (l.others || []).length ? `<div class="sub">also watched by ${esc(l.others.join(', '))}</div>` : ''}</td>
         <td class="c-clock">${clockCell(l, now)}</td>
         <td class="c-bid r"><div class="money num">${money(price)}</div><div class="sub">${closed ? 'final' : [l.bidCount != null ? `${l.bidCount} bid${l.bidCount === 1 ? '' : 's'}` : '', moved ? `<span class="loss">▲ from ${money(lastBid[l.key])}</span>` : ''].filter(Boolean).join(' · ')}</div></td>
@@ -959,6 +959,19 @@ $('#liveResGo').addEventListener('click', async e => {
   if (!text.trim()) { out.textContent = 'Choose the saved page, or paste its text.'; return; }
   out.textContent = 'Reading…';
   try {
+    if (/\.har$/i.test(f?.name || '') || /^\s*\{\s*"log"/.test(text)) {
+      // a HAR: pick out the sale's socket messages here, so the file (and the login in it) never leaves this browser
+      const har = JSON.parse(text);
+      const messages = (har.log?.entries || []).flatMap(e => e._webSocketMessages || []).filter(m => m.type === 'receive' && /^42\d*\[/.test(m.data)).map(m => m.data);
+      if (!messages.length) throw new Error('No Velocicast bid messages in that file. Record it with the sale open and bidding running.');
+      const r = await fetch('/api/results/velocicast-stream', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ messages }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Could not read that file');
+      out.innerHTML = `<b>${esc(j.sale)}</b>: ${j.items.length} lots in the stream, ${j.matched} matched lots we had, ${j.added} added. Reserves recorded for ${j.reserves}.<br>`
+        + `<div style="margin-top:8px;max-height:220px;overflow:auto;font-size:12.5px">${j.items.map(i => `#${i.run} ${esc(i.title.replace(/\s+\d+ seats.*$/, ''))} · reserve <b class="num">${money(i.reserve)}</b>${i.lastBid != null ? ` · bidding reached ${money(i.lastBid)}${i.reserve ? (i.lastBid >= i.reserve ? ' <span class="tag g">over reserve</span>' : ` <span class="tag a">${money(i.reserve - i.lastBid)} short</span>`) : ''}` : ' · no bids seen'}`).join('<br>')}</div>`;
+      load();
+      return;
+    }
     const r = await fetch('/api/results/velocicast', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }) });
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || 'Could not read that page');
