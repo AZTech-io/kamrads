@@ -170,10 +170,18 @@ async function hotCycle() {
       // Read after its listed close but the bid is still moving and the page doesn't say closed: it was
       // extended (soft close). Look again in 3 minutes rather than calling it sold.
       const t = Date.now();
-      if (lot.end_at && lot.end_at <= t && !(fresh.end_at > t) && !saysClosed && !fresh.gone && fresh.bid != null && lot.bid != null && fresh.bid !== lot.bid) {
+      const soft = !!adapters[lot.site].softClose;
+      const moved = fresh.bid != null && lot.bid != null && fresh.bid !== lot.bid;
+      // (On a soft-close site like Grays the page only says "Sold for" / "ended" once it's really over, so
+      // until it does the sale is still running - whether or not the bid moved since our last look - for up
+      // to SOFT_CLOSE_MAX_H past the listed close.)
+      if (lot.end_at && lot.end_at <= t && !(fresh.end_at > t) && !saysClosed && !fresh.gone
+        && (moved || (soft && t - (lot.closes_listed ?? lot.end_at) < config.softCloseMaxH * 3600000))) {
         fresh.end_at = t + 3 * 60000;
-        log.info('hot', `${lot.key} ${lot.title?.slice(0, 40)} still taking bids after its close ($${lot.bid} → $${fresh.bid}): extended`);
+        q.listedClose.run(lot.end_at, lot.key);
+        if (moved) log.info('hot', `${lot.key} ${lot.title?.slice(0, 40)} still taking bids after its close ($${lot.bid} → $${fresh.bid}): extended`);
       }
+      if (saysClosed) q.saidClosed.run(lot.key);
       // Detail pages often carry worse titles ("CP: 01/2014,Hino,...") - only take live fields,
       // and descriptive ones only where we had nothing.
       const update = { site: lot.site, ext_id: lot.ext_id };
@@ -200,6 +208,7 @@ async function hotCycle() {
     }
   });
   if (viaFeed) log.info('hot', `${viaFeed} lots re-read via fast price feed`);
+  await settleResults().catch(e => log.warn('hot', e.message));
   const took = Math.round((Date.now() - now) / 1000);
   if (took > 90) log.warn('hot', `re-check cycle took ${took}s for ${due.length} lots - watchlist may be falling behind`);
   // Alerts run on everything in the alert window, refreshed or not.
@@ -208,6 +217,44 @@ async function hotCycle() {
     await searchFinalAlert(lot).catch(e => log.warn('search', e.message));
     await dreamFinalAlert(lot).catch(e => log.warn('dreams', e.message));
   }
+}
+
+/**
+ * Soft-close sites (Grays): a lot we called closed before its page said so gets looked at again every couple of
+ * hours for three days. If the page now says sold / passed in, that's the result; if the sale is still running,
+ * the lot goes back on the board.
+ */
+const SETTLE_EVERY_MS = 2 * 3600000;
+export async function settleResults(now = Date.now()) {
+  const sites = Object.values(adapters).filter(a => a.softClose && config.sites[a.site]?.enabled && !isPaused(a.site, now)).map(a => a.site);
+  if (!sites.length) return 0;
+  const rows = q.unconfirmedResults.all(JSON.stringify(sites), now - 3 * 864e5, now - SETTLE_EVERY_MS, 4);
+  let n = 0;
+  for (const lot of rows) {
+    if (isPaused(lot.site)) break;
+    try {
+      const fresh = await withTimeout(adapters[lot.site].refresh(lot), REFRESH_TIMEOUT_MS, 're-check took too long');
+      pauseOk(lot.site);
+      const t = Date.now();
+      if (fresh.closed || fresh.gone) {
+        q.settleResult.run(fresh.closed && fresh.bid != null ? fresh.bid : null, fresh.bid ?? null, fresh.reserve ?? null, t, fresh.end_at && fresh.end_at <= t ? fresh.end_at : null, lot.key);
+        if (fresh.bid != null && fresh.bid !== lot.final_bid) { n++; log.info('hot', `${lot.key} ${lot.title?.slice(0, 40)} result corrected: $${lot.final_bid ?? '?'} → $${fresh.bid}${fresh.reserve === 'not met' ? ' (reserve not met)' : ''}`); }
+        upsertLot({ site: lot.site, ext_id: lot.ext_id }, { checked: true });
+        const row = q.lot.get(lot.key);
+        if (row?.starred && fresh.bid != null && fresh.bid !== lot.final_bid) await announceResult(row).catch(e => log.warn('alert', e.message));
+      } else {
+        // still running (or showing a later close): back on the board for the real result
+        q.reopenRunning.run(fresh.end_at > t ? fresh.end_at : t + 3 * 60000, lot.key);
+        upsertLot({ site: lot.site, ext_id: lot.ext_id, bid: fresh.bid ?? null, bid_count: fresh.bid_count ?? null }, { checked: true });
+        log.info('hot', `${lot.key} ${lot.title?.slice(0, 40)} was still running when we'd called it sold: reopened`);
+      }
+    } catch (e) {
+      if (isRateLimit(e.message)) { pause(lot.site, e.message.slice(0, 60)); break; }
+      upsertLot({ site: lot.site, ext_id: lot.ext_id }, { checked: true });
+      log.warn('hot', `${lot.key}: ${e.message}`);
+    }
+  }
+  return n;
 }
 
 async function hotLoop() {

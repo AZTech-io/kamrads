@@ -24,7 +24,7 @@ CREATE INDEX IF NOT EXISTS bids_key ON bids(key, at);
 CREATE TABLE IF NOT EXISTS alerts (key TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL, message TEXT, PRIMARY KEY(key, kind));
 CREATE TABLE IF NOT EXISTS site_status (site TEXT PRIMARY KEY, last_ok INTEGER, last_count INTEGER, last_error TEXT, last_error_at INTEGER, logged_in INTEGER);
 `);
-for (const col of ['final_seen_at INTEGER', 'est_avg REAL', 'est_comps TEXT', 'est_method TEXT', 'buyer_premium REAL', 'gst_extra INTEGER', 'check_verdict TEXT', 'check_note TEXT', 'check_at INTEGER', 'opens_at INTEGER', 'reserve TEXT', 'ended_early INTEGER', 'market TEXT', 'premium_tiers TEXT', 'body TEXT', 'spec TEXT', 'condition TEXT', 'result_src TEXT']) { try { db.exec(`ALTER TABLE lots ADD COLUMN ${col}`); } catch { /* exists */ } }
+for (const col of ['final_seen_at INTEGER', 'est_avg REAL', 'est_comps TEXT', 'est_method TEXT', 'buyer_premium REAL', 'gst_extra INTEGER', 'check_verdict TEXT', 'check_note TEXT', 'check_at INTEGER', 'opens_at INTEGER', 'reserve TEXT', 'ended_early INTEGER', 'market TEXT', 'premium_tiers TEXT', 'body TEXT', 'spec TEXT', 'condition TEXT', 'result_src TEXT', 'said_closed INTEGER', 'closes_listed INTEGER']) { try { db.exec(`ALTER TABLE lots ADD COLUMN ${col}`); } catch { /* exists */ } }
 db.exec(`UPDATE lots SET title = NULL WHERE title IS NOT NULL AND (trim(title) = '' OR title LIKE '%{{%')`);
 db.exec(`UPDATE lots SET bid_count = NULL WHERE bid_count > 500`); // bad counts read from site-wide text
 // v1.1 cleanup: drop duplicate Pickles records created from internal ids
@@ -140,6 +140,17 @@ export const q = {
   // Lots marked sold at their listed time without a read after it (before that rule): open them again for one.
   reopenUnconfirmed: db.prepare(`UPDATE lots SET status = 'open', closed_at = NULL, final_bid = NULL, final_seen_at = NULL
     WHERE status = 'closed' AND result_src IS NULL AND COALESCE(ended_early, 0) = 0 AND end_at > ? AND (last_checked IS NULL OR last_checked < end_at) AND site IN (SELECT value FROM json_each(?)) RETURNING key`),
+  // Soft-close sites: closed lots whose page never said so yet (the sale may have run on for hours): re-read
+  // now and then until it does, so the stored price is the real hammer price
+  unconfirmedResults: db.prepare(`SELECT * FROM lots WHERE status = 'closed' AND site IN (SELECT value FROM json_each(?)) AND said_closed IS NULL
+    AND result_src IS NULL AND closed_at > ? AND (last_checked IS NULL OR last_checked < ?) ORDER BY starred DESC, closed_at DESC LIMIT ?`),
+  saidClosed: db.prepare('UPDATE lots SET said_closed = 1 WHERE key = ?'),
+  // the close the site listed, kept while we push end_at out for a soft close
+  listedClose: db.prepare('UPDATE lots SET closes_listed = COALESCE(closes_listed, ?) WHERE key = ?'),
+  // a later read shows the sale ran on past where we called it: open it again for the real result
+  reopenRunning: db.prepare(`UPDATE lots SET status = 'open', closed_at = NULL, final_bid = NULL, final_seen_at = NULL, end_at = ? WHERE key = ? AND status = 'closed'`),
+  // the page finally says closed: take its price (or that the reserve wasn't met)
+  settleResult: db.prepare(`UPDATE lots SET final_bid = COALESCE(?, final_bid), bid = COALESCE(?, bid), reserve = COALESCE(?, reserve), final_seen_at = ?, said_closed = 1, end_at = COALESCE(?, end_at) WHERE key = ?`),
   star: db.prepare('UPDATE lots SET starred = ? WHERE key = ?'),
   watchedOpen: db.prepare(`SELECT * FROM lots WHERE starred = 1 AND status = 'open' ORDER BY end_at IS NULL, end_at`),
   watchlist: db.prepare(`SELECT * FROM lots WHERE starred = 1 AND (status = 'open' OR closed_at > ?) ORDER BY status = 'closed', end_at IS NULL, end_at`),

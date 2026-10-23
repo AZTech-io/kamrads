@@ -84,6 +84,7 @@ export const config = {
   hotBatch: num('HOT_BATCH', 4),
   finalBatch: num('FINAL_BATCH', 10),         // slow-site lots past their close: read this many a cycle to confirm (or catch an extension)
   closeWithoutReadMin: num('CLOSE_WITHOUT_READ_MIN', 120), // give up waiting for that read after this long
+  softCloseMaxH: num('SOFT_CLOSE_MAX_H', 12),          // a Grays sale can run on this long past its listed close before we stop waiting for "sold"
   fillTimesPerScan: num('FILL_TIMES_PER_SCAN', 40),  // lot pages read per scan where lists show no close time (Grays)
   fastBatch: num('FAST_BATCH', 80),
   // Most reads per re-check cycle for one site (a big sale closing lot by lot can otherwise mean hundreds a

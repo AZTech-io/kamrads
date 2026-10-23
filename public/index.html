@@ -564,7 +564,7 @@ const photo = l => `<span class="ph">${l.photo ? `<img src="${esc(l.photo)}" alt
 const lotLink = l => `<a class="lot-t" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc(l.title || '')}">${esc(l.title || slugName(l.url) || 'Untitled lot')}</a>`;
 
 function clockCell(l, now) {
-  if (closedMode() || l.status === 'closed') return `<div class="clock"><div class="t">Sold</div><div class="d">${l.endAt ? esc(fmtDay(l.endAt)) : ''}</div></div>`;
+  if (closedMode() || l.status === 'closed') return `<div class="clock"><div class="t">${l.reserve === 'not met' ? 'Passed in' : l.finalBid == null && l.bid == null ? 'Closed' : 'Sold'}</div><div class="d">${l.endAt ? esc(fmtDay(l.endAt)) : ''}</div></div>`;
   if (l.opensAt && l.opensAt > now) return `<div class="clock"><div class="t warn">Not open yet</div><div class="d">opens ${esc(fmtDay(l.opensAt))}</div></div>`;
   if (l.liveSale) return `<div class="clock" title="Sold by an auctioneer in a live lane on the day; there's no timed close"><div class="t">Live auction</div><div class="d">${l.endAt ? esc(new Date(l.endAt).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Australia/Perth' })) : ''}</div></div>`;
   const ms = l.endAt ? l.endAt - now : null;
