@@ -1,3 +1,4 @@
+import zlib from 'node:zlib';
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -81,6 +82,18 @@ const shape = (l, alertKinds, view = null) => {
 
 export function startServer() {
   const app = express();
+  // Big JSON answers (the board is a few MB) go compressed: about a tenth of the size over a phone connection
+  app.use((req, res, next) => {
+    if (!/\bgzip\b/.test(req.headers['accept-encoding'] || '')) return next();
+    const json = res.json.bind(res);
+    res.json = body => {
+      const text = JSON.stringify(body);
+      if (text.length < 20000 || res.get('content-encoding')) return json(body);
+      res.set({ 'content-type': 'application/json; charset=utf-8', 'content-encoding': 'gzip', vary: 'Accept-Encoding' });
+      return res.send(zlib.gzipSync(text, { level: 5 }));
+    };
+    next();
+  });
   app.use(express.json({ limit: '6mb' }));   // pasted results pages (Dreams) can be large
   // Private tool: never pass our address on to the auction sites, never get indexed.
   app.use((_req, res, next) => { res.set({ 'Referrer-Policy': 'no-referrer', 'X-Robots-Tag': 'noindex, nofollow', 'X-Frame-Options': 'DENY' }); next(); });

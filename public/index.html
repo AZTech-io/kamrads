@@ -471,6 +471,23 @@ function matcher(terms) {
 }
 
 const n0 = v => { const x = Number(String(v ?? '').replace(/[$,\s]/g, '')); return v === '' || v == null || !Number.isFinite(x) ? null : x; };
+// When your own filters hide everything: say which ones, with a one-tap way back
+function emptyWhy() {
+  const parts = [];
+  const sitesHidden = [...siteOff].filter(x => SITE_NAMES[x]);
+  if (sitesHidden.length) parts.push(sitesHidden.length >= Object.keys(SITE_NAMES).length - 1 ? `<b>${sitesHidden.length === Object.keys(SITE_NAMES).length ? 'Every site is' : 'Almost every site is'} switched off</b> in the sidebar` : `${sitesHidden.map(x => SITE_NAMES[x]).join(', ')} switched off`);
+  if (moreActive()) parts.push(`${moreActive()} filter${moreActive() === 1 ? '' : 's'} on`);
+  if (sector !== 'core' && sector !== 'all') parts.push('one sector picked');
+  const btns = [sitesHidden.length ? '<button class="btn sm" data-fix="sites">Show every site</button>' : '', moreActive() ? '<button class="btn sm" data-fix="more">Clear filters</button>' : '', sector !== 'core' && sector !== 'all' ? '<button class="btn sm" data-fix="sector">All main sectors</button>' : ''].filter(Boolean).join(' ');
+  return parts.length ? `Nothing to show: ${parts.join(', ')}.<div style="margin-top:10px">${btns}</div>` : 'Nothing in this time range yet. Try a longer one.';
+}
+document.addEventListener('click', e => {
+  const f = e.target.closest('[data-fix]'); if (!f) return;
+  if (f.dataset.fix === 'sites') { siteOff.clear(); save('siteOff', []); }
+  if (f.dataset.fix === 'more') { more = {}; save('more', more); syncMore(); }
+  if (f.dataset.fix === 'sector') { sector = 'core'; save('sector', sector); }
+  render();
+});
 const moreActive = () => ['min', 'max', 'year', 'km', 'dist', 'wovr', 'res', 'bids', 'ends', 'sale'].filter(k => more[k] != null && more[k] !== '').length + ((more.states || []).length ? 1 : 0);
 function passMore(l, now) {
   const p = closedMode() ? l.finalBid : l.bid ?? l.startPrice;
@@ -708,7 +725,7 @@ function render() {
     const why = mode === 'missed' && !lots.length ? '<b>No missed bargains yet.</b><br>As lots close, the ones that went cheap show up here.'
       : !lots.length ? '<b>Scanning the auction sites…</b><br>The first full pass takes a few minutes. This page refreshes on its own.'
       : sector === 'core' && pool.some(l => l.sector === 'general') ? 'Nothing in the main sectors matches. <a href="#" data-sector-go="general">Look in general goods</a> or clear the filters.'
-      : 'Nothing matches these filters.';
+      : emptyWhy();
     $('#list').innerHTML = `<div class="empty">${why}</div>`;
     return;
   }

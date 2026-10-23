@@ -43,8 +43,17 @@ const median = a => { const s = [...a].sort((x, y) => x - y); const m = s.length
  * Similar sold lots: { n, median, low, high, label, examples[] } or null when we have fewer than minN.
  * The closest matches by year and kilometres count most (a 90,000 km van is valued against other low-km ones).
  */
-export function soldLike(lot, { minN = 2, k = 9 } = {}) {
+export function soldLike(lot, opts = {}) {
   if (Date.now() - builtAt > MAX_AGE_MS) build();
+  if (!lot.key) return soldLikeNow(lot, opts);
+  // the board asks for every lot each load: remember the answer until the history is rebuilt (every 10 min)
+  const mk = `s|${lot.key}|${opts.minN ?? 2}|${opts.k ?? 9}|${lot.title}|${lot.odometer}|${lot.wovr}|${lot.market}|${lot.category}`;
+  if (memo.has(mk)) return memo.get(mk);
+  const out = soldLikeNow(lot, opts);
+  memo.set(mk, out);
+  return out;
+}
+function soldLikeNow(lot, { minN = 2, k = 9 } = {}) {
   if (!isVehicle(lot)) return null;
   const id = identify(lot);
   if (!id) return null;
@@ -84,7 +93,8 @@ const TYPE_NAME = { cars: 'cars', vans: 'vans', trucks: 'trucks', trailers: 'tra
 export function typeLike(lot, { minN = 5, k = 12 } = {}) {
   if (Date.now() - builtAt > MAX_AGE_MS) build();
   if (!isVehicle(lot)) return null;
-  if (memo.has(lot.key)) return memo.get(lot.key);
+  const mk = `t|${lot.key}|${lot.title}|${lot.odometer}|${lot.wovr}|${lot.market}|${lot.category}`;
+  if (memo.has(mk)) return memo.get(mk);
   const id = identify(lot);
   let out = null;
   if (id?.year) {
@@ -110,7 +120,7 @@ export function typeLike(lot, { minN = 5, k = 12 } = {}) {
       };
     }
   }
-  memo.set(lot.key, out);
+  memo.set(mk, out);
   return out;
 }
 export const typeEstimate = lot => (lot.key ? typeLike(lot)?.median ?? null : null);
