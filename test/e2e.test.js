@@ -19,6 +19,7 @@ if (!process.env.CHROME_PATH && fs.existsSync('/opt/google/chrome/chrome')) proc
 process.env.AIRTASKER_CATEGORIES = 'delivery';
 process.env.AIRTASKER_CITIES = 'canberra';
 process.env.LLOYDS_MAX_PAGES = '2';
+process.env.CRUISE_GAP_MS = '10'; process.env.CRUISE_MAX_PAGES = '3';
 process.env.LLOYDS_PAGE_SIZE = '3';
 const { getContext, closeBrowser } = await import('../src/browser.js');
 const lloyds = await import('../src/sites/lloyds.js');
@@ -341,6 +342,39 @@ test('Finds: Facebook Marketplace (logged out, login box closed) and Gumtree res
   const snack = gt.find(i => i.ext_id === '1336829999');
   assert.equal(snack.price, 650); assert.equal(snack.title, 'Snack vending machine'); assert.equal(snack.location, 'Fyshwick, ACT');
   assert.ok(Date.now() - snack.posted_at > 2.9 * 3600000 && Date.now() - snack.posted_at < 3.1 * 3600000);
+});
+
+test('Cruises: an OzCruising port page (data + cards + "Load more", sorted cheapest first) -> cruises; a missing port is a problem', { skip: !chromeOk }, async () => {
+  const { readPort, scanCruises } = await import('../src/cruises/loop.js');
+  const { cz } = await import('../src/cruises/store.js');
+  const day = n => new Date(Date.now() + n * 864e5);
+  const long = n => day(n).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const card = (code, title, ship, tag, d, nights, fares) => `<div class="cruise-card"><a href="/cruise/${code}"><h3>${title}</h3></a><div>${ship}</div><div>${tag}</div><div>${long(d)}</div><div>from Sydney</div><div>${nights} nights</div>${fares.map(f => `<div>${f}</div>`).join('')}<a href="/cruise/${code}" class="btn">View Cruise</a></div>`;
+  await fakeSite('ozcruising', 'https://www.ozcruising.com.au', {
+    '/departing/sydney/cruises': html(`<select id="sort"><option value="date">Departure date</option><option value="price">Price (Low to High)</option></select><div id="list"></div><button id="more" style="display:none">Load more cruises</button>`,
+      `const show = d => { document.getElementById('list').innerHTML = d.cruises.map(c => c.html).join(''); document.getElementById('more').style.display = ''; };
+       let sort = 'date';
+       document.getElementById('sort').addEventListener('change', e => { sort = e.target.value; fetch('/api/cruises?port=639&sort=' + sort).then(r => r.json()).then(show); });
+       fetch('/api/cruises?port=639&sort=date').then(r => r.json()).then(show);
+       document.getElementById('more').addEventListener('click', () => { document.getElementById('list').insertAdjacentHTML('beforeend', ${JSON.stringify(card('rc27-q999', 'Tasmania', 'Quantum of the Seas', '', 45, 6, ['Inside from $1,650pp']))}); document.getElementById('more').remove(); });`),
+    '/api/cruises': u => JSON.stringify({ cruises: (u.searchParams.get('sort') === 'price' ? [
+      { html: card('pa27-x111', 'Moreton Island', 'Carnival Encounter', "Australia's Favourite Cruise", 20, 3, ['Discounted Fares', 'Twin From $129 pp', 'Quad From $99 pp']) },
+      { html: card('pc27-2702', 'Sydney to Fremantle', 'Coral Princess', 'Premium Cruise Line', 60, 17, ['Sale Fare', 'Twin From $6,934 pp', 'Triple From $5,253 pp']) },
+    ] : [{ html: card('pc27-2702', 'Sydney to Fremantle', 'Coral Princess', 'Premium Cruise Line', 60, 17, ['Twin From $6,934 pp']) }]) }),
+  });
+  const recs = await readPort('sydney');
+  const by = Object.fromEntries(recs.map(r => [r.code, r]));
+  assert.deepEqual(Object.keys(by).sort(), ['pa27-x111', 'pc27-2702', 'rc27-q999']);
+  assert.equal(by['pa27-x111'].ship, 'Carnival Encounter'); assert.equal(by['pa27-x111'].twin, 129); assert.equal(by['pa27-x111'].quad, 99);
+  assert.equal(by['pa27-x111'].nights, 3); assert.equal(by['pa27-x111'].port, 'syd'); assert.equal(by['pa27-x111'].line, 'Carnival');
+  assert.equal(by['pa27-x111'].url, 'https://www.ozcruising.com.au/cruise/pa27-x111'); assert.equal(by['pa27-x111'].title, 'Moreton Island');
+  assert.equal(by['pc27-2702'].triple, 5253, 'read after sorting cheapest first');
+  assert.equal(by['rc27-q999'].line, 'Royal Caribbean'); assert.equal(by['rc27-q999'].twin, 1650);
+  await scanCruises({ only: ['sydney', 'brisbane'] });
+  const st = Object.fromEntries(cz.statusAll.all().map(s => [s.port, s]));
+  assert.equal(st.sydney.last_count, 3);
+  assert.match(st.brisbane.last_error, /HTTP 404/);
+  assert.equal(cz.get.get('oz:pa27-x111').twin, 129);
 });
 
 test('login check: a "My Pickles" menu link alone is not a logged-in session', { skip: !chromeOk }, async () => {

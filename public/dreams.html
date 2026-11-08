@@ -182,6 +182,7 @@ dialog.box textarea.paste { width: 100%; min-height: 220px; background: var(--bg
 * { scrollbar-width: thin; scrollbar-color: var(--rule-2) transparent; }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: var(--rule-2); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+@media (max-width: 900px) { .switch { overflow-x: auto; scrollbar-width: none; min-width: 0; } .switch a { flex: none; } }
 </style>
 </head>
 <body>
@@ -194,7 +195,7 @@ dialog.box textarea.paste { width: 100%; min-height: 220px; background: var(--bg
       </svg>
       <div><b>KAMRADS</b><span>Dreams</span></div>
     </a>
-    <div class="switch"><button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button><a href="/">Auctions</a><a href="/freight">Freight</a><a href="/bought">Bought</a><a href="/finds">Finds</a><a href="/dreams" class="on">Dreams</a></div>
+    <div class="switch"><button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button><a href="/">Auctions</a><a href="/freight">Freight</a><a href="/bought">Bought</a><a href="/finds">Finds</a><a href="/dreams" class="on">Dreams</a><a href="/cruises">Cruises</a></div>
     <div class="top-actions"><button class="btn primary" id="pasteBtn">⇩<span class="lbl"> Paste listings</span></button><span class="who" id="who"></span></div>
   </div>
   <div class="desk" id="desk"></div>

@@ -21,6 +21,7 @@ import { prunePhotos } from './photos.js';
 import { freightLoop } from './freight/loop.js';
 import { pushLoop } from './freight/push.js';
 import { findsLoop } from './finds/loop.js';
+import { cruisesLoop, stopCruises } from './cruises/loop.js';
 import { isPaused, pause, ok as pauseOk, isRateLimit } from './pause.js';
 import { sectorOf } from './categories.js';
 import { runDreams, isDreamKey, dreamFinalAlert, dreamLiveAlerts, startDreams, readMaybeBodies } from './dreams/index.js';
@@ -42,7 +43,7 @@ async function pool(items, n, fn) {
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let stopping = false;
-export const stop = () => { stopping = true; };
+export const stop = () => { stopping = true; stopCruises(); };
 
 async function discoverSite(a) {
   const t0 = Date.now();
@@ -343,4 +344,5 @@ export async function startScheduler() {
   freightLoop();
   pushLoop();
   findsLoop();
+  cruisesLoop();
 }

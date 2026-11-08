@@ -226,6 +226,7 @@ aside:hover { scrollbar-color: var(--rule-2) transparent; }
 aside::-webkit-scrollbar-thumb { background: transparent; }
 aside:hover::-webkit-scrollbar-thumb { background: var(--rule-2); background-clip: padding-box; }
 html { color-scheme: dark; }
+@media (max-width: 900px) { .switch { overflow-x: auto; scrollbar-width: none; min-width: 0; } .switch a { flex: none; } }
 </style>
 </head>
 <body>
@@ -239,7 +240,7 @@ html { color-scheme: dark; }
       </svg>
       <div><b>KAMRADS</b><span>Freight board</span></div>
     </a>
-    <div class="switch"><button class="tbtn menu-btn" id="menuBtn" aria-label="Menu">☰</button><a href="/">Auctions</a><a href="/freight" class="on">Freight</a><a href="/bought">Bought</a><a href="/finds">Finds</a><a href="/dreams">Dreams</a></div>
+    <div class="switch"><button class="tbtn menu-btn" id="menuBtn" aria-label="Menu">☰</button><a href="/">Auctions</a><a href="/freight" class="on">Freight</a><a href="/bought">Bought</a><a href="/finds">Finds</a><a href="/dreams">Dreams</a><a href="/cruises">Cruises</a></div>
     <div class="top-actions">
       <button class="tbtn" id="alertsBtn">🔔<span class="lbl"> Routes &amp; alerts</span> <span class="badge" id="alertsN" hidden></span></button>
       <span class="who" id="who"></span>

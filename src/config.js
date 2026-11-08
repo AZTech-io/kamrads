@@ -159,6 +159,17 @@ export const config = {
     ebay: { clientId: env.EBAY_CLIENT_ID || '', clientSecret: env.EBAY_CLIENT_SECRET || '' },
   },
 
+  // Cruises (/cruises): OzCruising's departure-port pages, read every hour; red-hot deals flagged and pushed
+  cruises: {
+    enabled: bool('CRUISES_ENABLED', true),
+    everyMin: num('CRUISES_EVERY_MIN', 60),
+    ports: list('CRUISE_PORTS', ['sydney', 'brisbane', 'fremantle', 'melbourne', 'adelaide', 'hobart', 'cairns', 'darwin']),
+    maxPages: num('CRUISE_MAX_PAGES', 8),          // "load more" clicks / next pages per port
+    hotPerNight: num('CRUISE_HOT_PER_NIGHT', 50),  // red hot at or under this $ per person per night (each person can change it)
+    keepHours: num('CRUISES_KEEP_HOURS', 12),       // a cruise not listed this long has sold out / come off sale
+    gapMs: num('CRUISE_GAP_MS', 6000),              // pause between port pages (gently)
+  },
+
   // Dreams (/dreams): extra searches so every D-Max and Isuzu truck is seen, live lanes included
   dreams: {
     pickles: list('DREAM_PICKLES_SEARCHES', [

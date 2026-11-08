@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0d1824">
+<title>KAMRADS Cruises</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230d1824'/%3E%3Cpath d='M6 19h20l-3 6H9z' fill='%232fcb8c'/%3E%3Crect x='11' y='12' width='10' height='6' rx='1' fill='%232fcb8c'/%3E%3Crect x='14' y='7' width='3' height='5' fill='%23ef5b67'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b1520; --panel: #101d2b; --raised: #162637; --hover: #1b2e42; --rule: #20334a; --rule-2: #2a4058;
+  --ink: #e4ecf4; --muted: #8496ab; --dim: #5d7086;
+  --gain: #2fcb8c; --gain-bg: rgba(47,203,140,.12); --loss: #ef5b67; --loss-bg: rgba(239,91,103,.13); --warn: #e5a93f; --warn-bg: rgba(229,169,63,.13);
+  --info: #5fa4ee; --info-bg: rgba(95,164,238,.14);
+  --side: 236px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 13.5px/1.45 "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; font-feature-settings: "tnum" 1; }
+html { color-scheme: dark; }
+a { color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); } .dim { color: var(--dim); } .gain { color: var(--gain); } .warn { color: var(--warn); } .loss { color: var(--loss); }
+
+.top { position: sticky; top: 0; z-index: 20; background: var(--panel); border-bottom: 1px solid var(--rule); }
+.topbar { display: grid; grid-template-columns: var(--side) 1fr auto; align-items: center; height: 54px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 18px; text-decoration: none; height: 100%; border-right: 1px solid var(--rule); }
+.brand b { font-size: 17px; font-weight: 700; letter-spacing: .6px; }
+.brand span { display: block; color: var(--gain); font-size: 11px; margin-top: -3px; font-weight: 600; }
+.switch { display: flex; gap: 2px; padding: 0 18px; align-items: center; }
+.switch a { text-decoration: none; padding: 6px 12px; border-radius: 6px; color: var(--muted); }
+.switch a:hover { background: var(--raised); color: var(--ink); }
+.switch a.on { background: var(--raised); color: var(--ink); font-weight: 600; }
+.top-actions { display: flex; align-items: center; gap: 4px; padding: 0 14px; }
+.tbtn { background: none; border: 1px solid transparent; border-radius: 6px; padding: 6px 10px; cursor: pointer; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.tbtn:hover { background: var(--raised); color: var(--ink); }
+.who { color: var(--dim); font-size: 12.5px; padding-left: 10px; border-left: 1px solid var(--rule); margin-left: 4px; }
+.menu-btn { display: none; }
+
+.desk { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--rule); }
+.kpi { padding: 9px 18px 10px; border-right: 1px solid var(--rule); min-width: 0; }
+.kpi:last-child { border-right: 0; }
+.kpi .v { font-size: 19px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi .l { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.frame { display: grid; grid-template-columns: var(--side) minmax(0, 1fr); min-height: calc(100vh - 110px); }
+aside { border-right: 1px solid var(--rule); background: var(--panel); padding: 8px 0 30px; position: sticky; top: 110px; align-self: start; max-height: calc(100vh - 110px); overflow-y: auto; }
+.side-h { color: var(--dim); font-size: 12px; font-weight: 600; padding: 14px 18px 6px; display: flex; justify-content: space-between; align-items: center; }
+.side-h button { background: none; border: 0; color: var(--info); cursor: pointer; font-size: 12px; padding: 0; }
+.nav { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; background: none; border: 0; border-left: 3px solid transparent; padding: 6px 15px; text-align: left; cursor: pointer; color: var(--muted); }
+.nav:hover { background: var(--raised); color: var(--ink); }
+.nav[aria-pressed="true"] { border-left-color: var(--gain); background: var(--raised); color: var(--ink); font-weight: 600; }
+.nav .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+.nav .c { color: var(--dim); font-size: 12px; font-weight: 400; white-space: nowrap; }
+.nav .c b { color: var(--loss); font-weight: 600; }
+.tick { width: 14px; height: 14px; border: 1.5px solid var(--rule-2); border-radius: 3px; flex: none; display: grid; place-items: center; font-size: 10px; line-height: 1; }
+.nav[aria-pressed="true"] .tick { background: var(--gain); border-color: var(--gain); color: #06261a; }
+.nav[aria-pressed="true"] .tick::after { content: "✓"; font-weight: 700; }
+.site-row { display: flex; align-items: center; gap: 9px; padding: 4px 18px; color: var(--muted); font-size: 12.5px; }
+.site-row .c { margin-left: auto; color: var(--dim); font-size: 12px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); flex: none; }
+.dot.ok { background: var(--gain); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--loss); }
+.side-foot { padding: 16px 18px 0; color: var(--dim); font-size: 12px; line-height: 1.8; }
+.side-foot a { color: var(--muted); }
+
+main { padding: 16px 20px 60px; min-width: 0; }
+.head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.head h1 { margin: 0; font-size: 20px; font-weight: 600; }
+.head .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.head .grow { flex: 1; min-width: 200px; }
+.btn { background: var(--raised); border: 1px solid var(--rule-2); border-radius: 6px; padding: 7px 12px; cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.btn:hover { background: var(--hover); }
+.btn.primary { background: var(--gain); border-color: var(--gain); color: #06261a; font-weight: 600; }
+.btn.sm { padding: 4px 10px; font-size: 12.5px; }
+.hotset { display: inline-flex; align-items: center; gap: 6px; background: var(--loss-bg); border: 1px solid rgba(239,91,103,.4); border-radius: 6px; padding: 3px 4px 3px 10px; font-size: 12.5px; color: var(--ink); }
+.hotset input { width: 64px; background: var(--bg); border: 1px solid var(--rule-2); border-radius: 5px; padding: 3px 6px; text-align: right; }
+.toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.seg { display: inline-flex; border: 1px solid var(--rule-2); border-radius: 6px; overflow: hidden; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.seg button { background: none; border: 0; border-right: 1px solid var(--rule-2); padding: 5px 11px; cursor: pointer; color: var(--muted); white-space: nowrap; flex: none; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--raised); color: var(--ink); font-weight: 600; }
+select.sel, input.box { background: var(--panel); border: 1px solid var(--rule-2); border-radius: 6px; padding: 5px 8px; }
+input.box { width: 112px; }
+.chk { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; cursor: pointer; }
+.chk input { accent-color: var(--gain); }
+.count { margin-left: auto; color: var(--muted); font-size: 12.5px; }
+h2.sec { font-size: 14px; font-weight: 600; margin: 22px 0 10px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+h2.sec .muted { font-weight: 400; font-size: 12.5px; }
+h2.sec.hot { color: var(--loss); margin-top: 4px; }
+
+/* red-hot deals */
+.hot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.deal { position: relative; background: linear-gradient(180deg, rgba(239,91,103,.16), var(--panel) 62%); border: 1px solid rgba(239,91,103,.55); border-radius: 10px; padding: 12px 13px 12px; text-decoration: none; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 0 0 1px rgba(239,91,103,.08), 0 6px 22px -12px rgba(239,91,103,.6); }
+.deal:hover { border-color: var(--loss); background: linear-gradient(180deg, rgba(239,91,103,.22), var(--hover) 62%); }
+.flame { position: absolute; top: -9px; left: 12px; background: var(--loss); color: #fff; font-size: 10.5px; font-weight: 700; letter-spacing: .6px; border-radius: 4px; padding: 2px 7px; }
+.deal .pn { font-size: 26px; font-weight: 700; color: var(--loss); line-height: 1.1; margin-top: 4px; }
+.deal .pn small { font-size: 13px; font-weight: 500; color: var(--muted); }
+.deal .sh { font-weight: 600; font-size: 14.5px; }
+.deal .ti { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.deal .mt { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: auto; padding-top: 4px; }
+.deal .mt b { color: var(--ink); font-weight: 600; }
+
+/* everything else */
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.thead, .row { display: grid; grid-template-columns: 112px minmax(0, 1fr) 92px 70px 104px 96px; gap: 12px; align-items: center; padding: 8px 14px; }
+.thead { color: var(--dim); font-size: 11.5px; font-weight: 600; border-bottom: 1px solid var(--rule); background: var(--raised); }
+.thead .r, .row .r { text-align: right; }
+.row { border-bottom: 1px solid var(--rule); text-decoration: none; }
+.row:last-child { border-bottom: 0; }
+.row:hover { background: var(--hover); }
+.row .sh { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .ti { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .pp { font-weight: 600; }
+.row .pn { font-weight: 700; font-size: 14.5px; }
+.pn.t1 { color: var(--loss); } .pn.t2 { color: var(--warn); } .pn.t3 { color: var(--ink); } .pn.t4 { color: var(--muted); font-weight: 600; }
+.chip { font-size: 10.5px; font-weight: 600; color: var(--muted); border: 1px solid var(--rule-2); border-radius: 4px; padding: 0 5px; white-space: nowrap; }
+.chip.port { color: var(--info); border-color: rgba(95,164,238,.4); }
+.chip.drop { color: var(--gain); border-color: rgba(47,203,140,.45); }
+.chip.badge { color: var(--warn); border-color: rgba(229,169,63,.45); }
+.chip.new { background: var(--gain); color: #06261a; border-color: var(--gain); }
+.sub2 { color: var(--dim); font-size: 11.5px; }
+.mob { display: none; }
+.more { display: block; width: 100%; background: none; border: 0; border-top: 1px solid var(--rule); color: var(--info); padding: 10px; cursor: pointer; }
+.empty { color: var(--muted); text-align: center; padding: 36px 20px; background: var(--panel); border: 1px dashed var(--rule-2); border-radius: 8px; }
+.empty b { color: var(--ink); }
+.note { color: var(--dim); font-size: 12px; margin-top: 14px; line-height: 1.6; }
+
+dialog.box { background: var(--panel); color: var(--ink); border: 1px solid var(--rule-2); border-radius: 10px; padding: 18px 20px; width: min(640px, calc(100vw - 24px)); }
+dialog.box::backdrop { background: rgba(3,8,14,.6); }
+dialog.box h2 { margin: 0 0 4px; font-size: 17px; font-weight: 600; }
+dialog.box p.lead { color: var(--muted); margin: 0 0 10px; }
+dialog.box textarea { width: 100%; min-height: 200px; background: var(--bg); border: 1px solid var(--rule-2); border-radius: 6px; padding: 8px 10px; resize: vertical; font-size: 12.5px; }
+.end { display: flex; gap: 8px; margin-top: 12px; align-items: center; flex-wrap: wrap; }
+.end .grow { flex: 1; }
+.err { color: var(--warn); font-size: 12.5px; }
+
+@media (max-width: 900px) {
+  :root { --side: 0px; }
+  .topbar { grid-template-columns: auto 1fr auto; }
+  .brand { border-right: 0; padding: 0 8px 0 12px; } .brand > div { display: none; }
+  .menu-btn { display: inline-flex; } .who, .lbl { display: none; }
+  .switch { padding: 0; overflow-x: auto; scrollbar-width: none; } .switch a { padding: 6px 6px; font-size: 13px; flex: none; }
+  .desk { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kpi:nth-child(n+3) { display: none; }
+  .kpi { padding: 7px 12px; } .kpi .v { font-size: 16px; }
+  .frame { grid-template-columns: 1fr; }
+  aside { position: fixed; top: 0; left: 0; bottom: 0; width: 272px; height: 100vh; height: 100dvh; max-height: none; align-self: auto; overflow-y: auto; overscroll-behavior: contain; z-index: 40; transform: translateX(-100%); transition: transform .18s ease; }
+  aside.open { transform: none; box-shadow: 0 0 0 100vmax rgba(3,8,14,.55); }
+  main { padding: 12px 10px 60px; }
+  .hot-grid { grid-template-columns: 1fr; }
+  .thead { display: none; }
+  .row { grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 9px 12px; }
+  .row > .c-date { grid-column: 1; grid-row: 2; }
+  .row > .c-main { grid-column: 1; grid-row: 1; }
+  .row > .c-port, .row > .c-n { display: none; }
+  .mob { display: inline; }
+  .row > .c-pp { grid-column: 2; grid-row: 2; }
+  .row > .c-pn { grid-column: 2; grid-row: 1; }
+  .count { margin-left: 0; width: 100%; }
+  input.box { width: 96px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+* { scrollbar-width: thin; scrollbar-color: var(--rule-2) transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--rule-2); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+@media (max-width: 900px) { .switch { overflow-x: auto; scrollbar-width: none; min-width: 0; } .switch a { flex: none; } }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="topbar">
+    <a class="brand" href="/cruises">
+      <svg width="30" height="30" viewBox="0 0 34 34" aria-hidden="true">
+        <circle cx="17" cy="17" r="13" fill="none" stroke="#2fcb8c" stroke-width="2.6" stroke-dasharray="62 20" transform="rotate(-50 17 17)"/>
+        <circle cx="17" cy="17" r="7.5" fill="none" stroke="#2fcb8c" stroke-width="2.6" stroke-dasharray="34 13" transform="rotate(-50 17 17)"/>
+        <circle cx="17" cy="17" r="2.6" fill="#2fcb8c"/><line x1="17" y1="17" x2="27" y2="7" stroke="#2fcb8c" stroke-width="2.6" stroke-linecap="round"/>
+      </svg>
+      <div><b>KAMRADS</b><span>Cruises</span></div>
+    </a>
+    <div class="switch"><button class="tbtn menu-btn" id="menuBtn" aria-label="Menu">☰</button><a href="/">Auctions</a><a href="/freight">Freight</a><a href="/bought">Bought</a><a href="/finds">Finds</a><a href="/dreams">Dreams</a><a href="/cruises" class="on">Cruises</a></div>
+    <div class="top-actions"><button class="tbtn" id="pasteBtn" title="Copy a page off OzCruising and paste it in">⇩<span class="lbl"> Paste a page</span></button><span class="who" id="who"></span></div>
+  </div>
+  <div class="desk" id="desk"></div>
+</div>
+
+<div class="frame">
+  <aside id="side">
+    <div class="side-h">Departing from <button id="allPorts">All</button></div>
+    <div id="ports"></div>
+    <div class="side-h">Cruise line</div>
+    <div id="lines"></div>
+    <div class="side-h">OzCruising pages</div>
+    <div id="status"></div>
+    <div class="side-foot"><span id="every"></span><br><a href="#" id="scanNow">Read now</a><br><span id="updated"></span></div>
+  </aside>
+
+  <main>
+    <div class="head">
+      <div class="grow"><h1>Cruises</h1><div class="sub" id="subtitle">Cheap cruises from OzCruising, per person</div></div>
+      <label class="hotset" title="Red hot: at or under this per person, per night">🔥 Red hot ≤ $<input type="number" id="hot" min="5" max="1000" step="5" class="num" aria-label="Red hot dollars per night">/night</label>
+      <button class="btn sm" id="alertBtn" title="Push to your phone when a new red-hot cruise matching these filters turns up"></button>
+    </div>
+    <div class="toolbar">
+      <div class="seg" id="lenSeg"></div>
+      <select class="sel" id="within" aria-label="Departing">
+        <option value="0">Any date</option><option value="1">Next month</option><option value="3">Next 3 months</option><option value="6">Next 6 months</option><option value="12">Next 12 months</option>
+      </select>
+      <input class="box num" type="number" id="maxPrice" min="0" step="50" placeholder="Max $ pp" aria-label="Most per person">
+      <input class="box num" type="number" id="maxNight" min="0" step="5" placeholder="Max/night" aria-label="Most per night">
+      <label class="chk" title="3rd/4th-guest share fares are cheaper per person, but only if you fill the cabin"><input type="checkbox" id="share"> Count 3–4 share fares</label>
+      <select class="sel" id="sort" aria-label="Sort">
+        <option value="night">Cheapest per night</option><option value="price">Cheapest overall</option><option value="soon">Sailing soonest</option><option value="new">Newest found</option><option value="drop">Biggest price drop</option>
+      </select>
+      <span class="count" id="count"></span>
+    </div>
+    <div id="hotBox"></div>
+    <div id="list"></div>
+    <div class="note" id="note"></div>
+  </main>
+</div>
+
+<dialog id="paster" class="box">
+  <h2>Paste a page from OzCruising</h2>
+  <p class="lead">If a port's hourly read isn't working, open its page on OzCruising, press <b>Ctrl+A</b> then <b>Ctrl+C</b>, and paste it here (page by page if there are several).</p>
+  <div class="end" style="margin:0 0 8px"><span class="muted">These cruises leave from</span><select class="sel" id="pastePort"></select></div>
+  <textarea id="pasteText" placeholder="Paste the page here"></textarea>
+  <div class="end"><span class="grow err" id="pasteErr"></span><button class="btn" type="button" id="pasteCancel">Close</button><button class="btn primary" type="button" id="pasteGo">Add cruises</button></div>
+</dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = n => n == null ? '—' : '$' + Math.round(n).toLocaleString('en-AU');
+const LENGTHS = { '': ['Any length', 1, 999], short: ['1–4 nights', 1, 4], week: ['5–8', 5, 8], long: ['9–15', 9, 15], extended: ['16+', 16, 999] };
+const DAY = 864e5;
+let D = { cruises: [], ports: [], view: null }, V = null, skew = 0, shown = 120, saveT = null;
+
+// ---- the same rules the server uses for alerts (src/cruises/view.js) ----
+const nightly = c => { if (!c.nights) return { twin: null, share: null }; const s = [c.triple, c.quad].filter(x => x != null); return { twin: c.twin != null ? c.twin / c.nights : null, share: s.length ? Math.min(...s) / c.nights : null }; };
+function nightOf(c, share) {
+  const n = nightly(c); const list = [n.twin, share ? n.share : null].filter(x => x != null);
+  if (list.length) return { night: Math.min(...list), basis: share && n.share != null && (n.twin == null || n.share < n.twin) ? 'share' : 'twin' };
+  return n.share != null ? { night: n.share, basis: 'share-only' } : { night: null, basis: null };
+}
+const leadOf = (c, share) => { const l = [c.twin, share ? c.triple : null, share ? c.quad : null].filter(x => x != null); return l.length ? Math.min(...l) : [c.triple, c.quad].filter(x => x != null).sort((a, b) => a - b)[0] ?? null; };
+const dayMs = ymd => ymd ? Date.parse(ymd + 'T00:00:00Z') : null;
+function fits(c, v, opt = {}) {
+  if (!opt.ignorePorts && v.ports.length && !v.ports.includes(c.port)) return false;
+  if (!opt.ignoreLine && v.line && c.line !== v.line) return false;
+  const [, lo, hi] = LENGTHS[v.len] || LENGTHS[''];
+  if (c.nights == null || c.nights < lo || c.nights > hi) return false;
+  const lead = leadOf(c, v.share);
+  if (v.maxPrice != null && (lead == null || lead > v.maxPrice)) return false;
+  const { night } = nightOf(c, v.share);
+  if (v.maxNight != null && (night == null || night > v.maxNight)) return false;
+  if (v.within) { const d = dayMs(c.depart); if (d == null || d > Date.now() + skew + v.within * 30.5 * DAY) return false; }
+  return true;
+}
+const isRedHot = (c, v) => { const { night, basis } = nightOf(c, v.share); return night != null && night <= v.hot && (basis !== 'share-only' || v.share); };
+const tier = (night, v) => night == null ? 't4' : night <= v.hot ? 't1' : night <= v.hot * 1.6 ? 't2' : night <= v.hot * 2.6 ? 't3' : 't4';
+
+const portName = k => (D.ports.find(p => p.key === k)?.name || k || '?').replace(/ \(.*\)$/, '');
+const portShort = k => D.ports.find(p => p.key === k)?.short || (k || '?').toUpperCase();
+const dateTxt = ymd => ymd ? new Date(ymd + 'T00:00:00Z').toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }) : 'date ?';
+const yearTxt = ymd => ymd ? ymd.slice(0, 4) : '';
+const ago = t => { if (!t) return 'never'; const m = Math.max(0, Math.round((Date.now() + skew - t) / 60000)); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
+const inDays = ymd => { const d = dayMs(ymd); if (d == null) return ''; const n = Math.round((d - Date.now() - skew) / DAY); return n <= 0 ? 'sails today' : n === 1 ? 'tomorrow' : n < 60 ? `in ${n} days` : `in ${Math.round(n / 30.5)} months`; };
+const nameOf = c => c.ship || c.title || 'Cruise';
+const dropOf = c => c.firstTwin != null && c.twin != null && c.firstTwin > c.twin ? c.firstTwin - c.twin : 0;
+const basisTxt = (b, c) => b === 'share' ? `${c.quad != null ? 'quad' : 'triple'} share` : b === 'share-only' ? 'share fare only' : 'twin share';
+
+function sorted(list, v) {
+  const by = {
+    night: (a, b) => (nightOf(a, v.share).night ?? 1e9) - (nightOf(b, v.share).night ?? 1e9),
+    price: (a, b) => (leadOf(a, v.share) ?? 1e9) - (leadOf(b, v.share) ?? 1e9),
+    soon: (a, b) => (a.depart || '9999').localeCompare(b.depart || '9999'),
+    new: (a, b) => b.firstSeen - a.firstSeen,
+    drop: (a, b) => dropOf(b) - dropOf(a) || (nightOf(a, v.share).night ?? 1e9) - (nightOf(b, v.share).night ?? 1e9),
+  };
+  return list.slice().sort(by[v.sort] || by.night);
+}
+
+function renderSide() {
+  const v = V;
+  const pc = k => D.cruises.filter(c => c.port === k && fits(c, v, { ignorePorts: true })).length;
+  const ph = k => D.cruises.filter(c => c.port === k && fits(c, v, { ignorePorts: true }) && isRedHot(c, v)).length;
+  $('#ports').innerHTML = D.ports.map(p => { const h = ph(p.key); return `<button class="nav" data-port="${p.key}" aria-pressed="${v.ports.includes(p.key)}"><span class="t"><span class="tick"></span>${esc(p.name)}</span><span class="c num">${h ? `<b>🔥${h}</b> · ` : ''}${pc(p.key)}</span></button>`; }).join('');
+  $('#allPorts').textContent = v.ports.length ? 'All' : '';
+  const counts = new Map();
+  for (const c of D.cruises) if (c.line && fits(c, v, { ignoreLine: true })) counts.set(c.line, (counts.get(c.line) || 0) + 1);
+  if (v.line && !counts.has(v.line)) counts.set(v.line, 0);
+  const total = [...counts.values()].reduce((a, b) => a + b, 0);
+  $('#lines').innerHTML = `<button class="nav" data-line="" aria-pressed="${!v.line}"><span class="t">All lines</span><span class="c num">${total}</span></button>` +
+    [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([l, n]) => `<button class="nav" data-line="${esc(l)}" aria-pressed="${v.line === l}"><span class="t">${esc(l)}</span><span class="c num">${n}</span></button>`).join('');
+  $('#status').innerHTML = D.ports.map(p => {
+    const age = p.lastOk ? (Date.now() + skew - p.lastOk) / 60000 : Infinity;
+    const cls = p.error ? 'bad' : age < (D.everyMin || 60) * 2.2 ? 'ok' : p.lastOk ? 'warn' : '';
+    const tip = p.error || (p.lastOk ? `Read ${ago(p.lastOk)}` : 'Waiting for its first read');
+    return `<a class="site-row" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" title="${esc(tip)}" style="text-decoration:none"><span class="dot ${cls}"></span>${esc(p.short)} <span class="dim">${esc(p.name)}</span><span class="c">${p.error ? 'problem' : p.lastCount ?? ''}</span></a>`;
+  }).join('');
+  $('#every').textContent = D.enabled === false ? 'Hourly reads are off (CRUISES_ENABLED)' : `Read every ${D.everyMin >= 60 && D.everyMin % 60 === 0 ? (D.everyMin === 60 ? 'hour' : `${D.everyMin / 60} hours`) : `${D.everyMin} min`}`;
+}
+
+function render() {
+  const v = V;
+  renderSide();
+  $('#hot').value = v.hot;
+  $('#alertBtn').textContent = v.alerts ? '🔔 Alerts on' : '🔕 Alerts off';
+  $('#lenSeg').innerHTML = Object.entries(LENGTHS).map(([k, [l]]) => `<button data-len="${k}" aria-pressed="${v.len === k}">${l}</button>`).join('');
+  $('#within').value = String(v.within || 0); $('#sort').value = v.sort; $('#share').checked = !!v.share;
+  if (document.activeElement !== $('#maxPrice')) $('#maxPrice').value = v.maxPrice ?? '';
+  if (document.activeElement !== $('#maxNight')) $('#maxNight').value = v.maxNight ?? '';
+  $('#subtitle').textContent = [v.ports.length ? 'From ' + v.ports.map(portName).join(', ') : 'From every port', v.line || 'every line', 'per person, ' + (v.share ? 'twin or 3–4 share' : 'twin share')].join(' · ');
+
+  const all = D.cruises.filter(c => fits(c, v));
+  const hot = sorted(all.filter(c => isRedHot(c, v)), { ...v, sort: v.sort === 'soon' || v.sort === 'new' ? v.sort : 'night' });
+  const rest = sorted(all.filter(c => !isRedHot(c, v)), v);
+  const cheapest = all.map(c => ({ c, n: nightOf(c, v.share).night })).filter(x => x.n != null).sort((a, b) => a.n - b.n)[0];
+  const newest = Math.max(0, ...D.ports.map(p => p.lastOk || 0));
+  const k = (val, l, cls = '') => `<div class="kpi"><div class="v num ${cls}">${val}</div><div class="l">${l}</div></div>`;
+  $('#desk').innerHTML = k(`🔥 ${hot.length}`, `Red hot ≤ ${money(v.hot)}/night`, hot.length ? 'loss' : '') +
+    k(cheapest ? `${money(cheapest.n)}/night` : '—', cheapest ? `Cheapest: ${esc(nameOf(cheapest.c))}, ${cheapest.c.nights} nights` : 'Cheapest per night', 'gain') +
+    k(all.length.toLocaleString('en-AU'), `Matching · ${D.cruises.length.toLocaleString('en-AU')} tracked`) + k(ago(newest), 'Last read of OzCruising');
+  $('#count').textContent = `${all.length} cruise${all.length === 1 ? '' : 's'}`;
+
+  $('#hotBox').innerHTML = `<h2 class="sec hot">🔥 Red-hot deals <span class="muted">${hot.length ? `${hot.length} at or under ${money(v.hot)} a night per person` : `none at or under ${money(v.hot)} a night right now`}</span></h2>` +
+    (hot.length ? `<div class="hot-grid">${hot.map(c => {
+      const { night, basis } = nightOf(c, v.share);
+      const drop = dropOf(c);
+      return `<a class="deal" href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">
+        <span class="flame">RED HOT</span>
+        <div class="pn num">${money(night)}<small> /night</small></div>
+        <div class="sh">${esc(nameOf(c))}</div>
+        ${c.title && c.title !== c.ship ? `<div class="ti">${esc(c.title)}</div>` : ''}
+        <div class="mt"><b class="num">${money(leadOf(c, v.share))} pp</b><span>${esc(basisTxt(basis, c))}</span></div>
+        <div class="mt"><span class="chip port">${esc(portShort(c.port))}</span><span><b>${c.nights} nights</b></span><span>${esc(dateTxt(c.depart))} ${esc(yearTxt(c.depart))}</span><span>${esc(inDays(c.depart))}</span></div>
+        <div class="mt">${c.line ? `<span>${esc(c.line)}</span>` : ''}${drop ? `<span class="chip drop">↓ ${money(drop)}</span>` : ''}${c.badge ? `<span class="chip badge">${esc(c.badge)}</span>` : ''}${Date.now() + skew - c.firstSeen < DAY ? '<span class="chip new">NEW</span>' : ''}</div>
+      </a>`;
+    }).join('')}</div>` : '');
+
+  const rows = rest.slice(0, shown);
+  $('#list').innerHTML = `<h2 class="sec">All cruises <span class="muted">${rest.length ? `${rest.length} more, ${({ night: 'cheapest per night', price: 'cheapest overall', soon: 'sailing soonest', new: 'newest found', drop: 'biggest price drop' })[v.sort]} first` : ''}</span></h2>` +
+    (rest.length ? `<div class="panel"><div class="thead"><span>Sails</span><span>Ship · cruise</span><span>From</span><span class="r">Nights</span><span class="r">Per person</span><span class="r">Per night</span></div>${rows.map(c => {
+      const { night, basis } = nightOf(c, v.share);
+      const drop = dropOf(c);
+      return `<a class="row" href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">
+        <div class="c-date"><div class="num">${esc(dateTxt(c.depart))}</div><div class="sub2">${esc(yearTxt(c.depart))} · ${esc(inDays(c.depart))}</div></div>
+        <div class="c-main" style="min-width:0"><div class="sh">${esc(nameOf(c))} ${drop ? `<span class="chip drop">↓ ${money(drop)}</span>` : ''} ${c.badge ? `<span class="chip badge">${esc(c.badge)}</span>` : ''} ${Date.now() + skew - c.firstSeen < DAY ? '<span class="chip new">NEW</span>' : ''}</div>
+          <div class="ti">${[c.title && c.title !== c.ship ? esc(c.title) : '', esc(c.line || '')].filter(Boolean).join(' · ')}<span class="mob"> · <span class="chip port">${esc(portShort(c.port))}</span> ${c.nights} nights</span></div></div>
+        <div class="c-port muted">${esc(portName(c.port))}</div>
+        <div class="c-n r num">${c.nights}</div>
+        <div class="c-pp r"><div class="pp num">${money(leadOf(c, v.share))}</div><div class="sub2">${esc(basisTxt(basis, c))}</div></div>
+        <div class="c-pn r"><span class="pn num ${tier(night, v)}">${money(night)}</span></div>
+      </a>`;
+    }).join('')}${rest.length > shown ? `<button class="more" id="moreBtn">Show ${Math.min(120, rest.length - shown)} more of ${rest.length - shown}</button>` : ''}</div>`
+    : `<div class="empty">${D.cruises.length ? 'Nothing else matches these filters.' : '<b>Reading OzCruising…</b><br>The first read of every port takes a few minutes, then it updates every hour. This page refreshes on its own.'}</div>`);
+  $('#note').innerHTML = 'Prices are OzCruising\'s lead fares per person (cheapest cabin, twin share unless marked), before any extras. Red hot and the colours go by price per person per night: <span class="loss">red</span> red hot, <span class="warn">amber</span> close, white fair. <b>↓</b> is how far the twin fare has dropped since KAMRADS first saw it.';
+}
+
+function setView(patch, now = false) {
+  V = { ...V, ...patch };
+  unsent = true;
+  shown = 120;
+  render();
+  clearTimeout(saveT);
+  if (now) sendView(); else saveT = setTimeout(sendView, 700);
+}
+let unsent = false;
+function sendView() { clearTimeout(saveT); unsent = false; fetch('/api/cruises/view', { method: 'POST', keepalive: true, headers: { 'content-type': 'application/json' }, body: JSON.stringify(V) }).catch(() => {}); }
+// a change made just before leaving the page still gets saved
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && unsent) sendView(); });
+
+async function load() {
+  try {
+    const d = await fetch('/api/cruises').then(r => r.json());
+    D = d; skew = d.now - Date.now();
+    if (!V) V = d.view;
+    $('#updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
+    render();
+  } catch { $('#updated').textContent = 'Connection problem, retrying'; }
+}
+
+document.addEventListener('click', e => {
+  const t = e.target;
+  const p = t.closest('[data-port]');
+  if (p) { const k = p.dataset.port; setView({ ports: V.ports.includes(k) ? V.ports.filter(x => x !== k) : [...V.ports, k] }); return; }
+  const l = t.closest('[data-line]'); if (l) { setView({ line: l.dataset.line }); $('#side').classList.remove('open'); return; }
+  const n = t.closest('[data-len]'); if (n) { setView({ len: n.dataset.len }); return; }
+  if (t.id === 'moreBtn') { shown += 120; render(); }
+});
+$('#allPorts').addEventListener('click', () => setView({ ports: [] }));
+$('#within').addEventListener('change', e => setView({ within: Number(e.target.value) }));
+$('#sort').addEventListener('change', e => setView({ sort: e.target.value }));
+$('#share').addEventListener('change', e => setView({ share: e.target.checked }));
+const numIn = v => (v === '' || Number(v) <= 0 ? null : Number(v));
+$('#maxPrice').addEventListener('input', e => setView({ maxPrice: numIn(e.target.value) }));
+$('#maxNight').addEventListener('input', e => setView({ maxNight: numIn(e.target.value) }));
+$('#hot').addEventListener('change', e => { const h = Math.max(5, Math.min(1000, Number(e.target.value) || D.hotDefault || 50)); setView({ hot: h }, true); });
+$('#alertBtn').addEventListener('click', () => setView({ alerts: !V.alerts }, true));
+$('#menuBtn').addEventListener('click', () => $('#side').classList.toggle('open'));
+$('#scanNow').addEventListener('click', async e => { e.preventDefault(); await fetch('/api/cruises/scan', { method: 'POST' }); $('#updated').textContent = 'Reading OzCruising… a few minutes'; });
+
+// ---- paste a page ----
+$('#pasteBtn').addEventListener('click', () => {
+  $('#pastePort').innerHTML = D.ports.map(p => `<option value="${p.key}">${esc(p.name)}</option>`).join('');
+  if (V.ports.length === 1) $('#pastePort').value = V.ports[0];
+  $('#pasteText').value = ''; $('#pasteErr').textContent = ''; $('#paster').showModal(); $('#pasteText').focus();
+});
+$('#pasteCancel').addEventListener('click', () => $('#paster').close());
+$('#pasteGo').addEventListener('click', async () => {
+  $('#pasteErr').textContent = 'Reading…';
+  const r = await fetch('/api/cruises/paste', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: $('#pasteText').value, port: $('#pastePort').value }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { $('#pasteErr').textContent = d.error || 'Could not read that'; return; }
+  $('#pasteErr').textContent = `Added ${d.read} cruise${d.read === 1 ? '' : 's'} (${d.fresh} new). Paste the next page, or close.`;
+  $('#pasteText').value = '';
+  load();
+});
+
+fetch('/api/me').then(r => r.json()).then(x => { $('#who').textContent = x.user; }).catch(() => {});
+document.querySelector('.switch a.on')?.scrollIntoView({ inline: 'end', block: 'nearest' });
+load();
+setInterval(() => { if (!$('#paster').open) load(); }, 120000);
+</script>
+</body>
+</html>

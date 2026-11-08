@@ -1,6 +1,6 @@
 # KAMRADS — Auction Intelligence
 
-Watches Pickles, Manheim, ALLBIDS (incl. CARBIDS), Lloyds, Grays, Slattery and The Auction Barn, lists every lot by what ends soonest, and pushes an alert to your phone when something is still cheap in its final 10 minutes.
+Watches Pickles, Manheim, ALLBIDS (incl. CARBIDS), Lloyds, Grays, Slattery and The Auction Barn, lists every lot by what ends soonest, and pushes an alert to your phone when something is still cheap in its final 10 minutes. Also: a freight board, Swoopa-style Finds, Dreams, and red-hot cruise deals (`/cruises`).
 
 **Market research:** add your Claude API key under **Settings** (bottom of the dashboard — it's stored on the server only). Claude then searches carsales, Gumtree, Drive, RedBook and others for comparable listings, gives a market average and a realistic resale range for each lot, and flags great prices. Press **Research** on any lot to run it on demand (about 10–20c each). Automatic lookups are off unless you turn them on in Settings.
 
@@ -82,6 +82,18 @@ from every auction site KAMRADS reads. A "Vending machines" search is set up on 
 - **Gumtree** reads the public search pages, newest first.
 - **Facebook** reads Marketplace logged out (best effort: Facebook shows a limited set). For an exact area, paste a
   Marketplace link for your area into the search; otherwise the nearest big city is used.
+
+## Cruises (`/cruises`)
+
+Cheap cruises off **OzCruising**, read every hour from each departure port's page (Sydney, Brisbane, Perth/Fremantle, Melbourne, Adelaide, Hobart, Cairns, Darwin), cheapest first.
+
+- **Filters:** departure ports (tick one or several), cruise line, length (1–4, 5–8, 9–15, 16+ nights), how soon it sails, most per person and most per night. They're saved to your login, so they're the same on your phone and computer.
+- **Per night:** every cruise shows its lead fare per person and what that is **per night**. Fares are twin share unless you tick **Count 3–4 share fares** (cheaper per head, but only if you fill the cabin).
+- **🔥 Red hot:** anything at or under your level (default **$50 a night per person**, change it at the top) is pinned in red above the list. Colours down the list: red red hot, amber close.
+- **Alerts:** a push the first time a red-hot cruise that fits your filters turns up — newly listed, or a price drop that takes it under. What's already red hot when you open the page or change filters is on screen, so it doesn't buzz. **🔔 Alerts on/off** at the top.
+- **↓ $** shows how far the twin fare has dropped since KAMRADS first saw it; fare history is kept (`/api/cruises/history/<key>`).
+- **Paste a page:** if a port's read stops working, open its page on OzCruising, **Ctrl+A, Ctrl+C**, press **⇩ Paste a page** and paste.
+- Reads go gently: one port page at a time with a pause between, once an hour. `CRUISE_PORTS`, `CRUISES_EVERY_MIN`, `CRUISE_HOT_PER_NIGHT` in `.env`. If a port shows red under *OzCruising pages*, run `docker compose exec kamrads npm run probe-cruises -- sydney` and send the developer the folder it saves in `data/probe/`.
 
 ## Install (one time, about 15 minutes)
 
