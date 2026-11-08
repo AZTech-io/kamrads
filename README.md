@@ -120,7 +120,15 @@ docker compose up -d --build
 docker compose logs -f kamrads
 ```
 
-**2. Turn on auto-deploy** so every push to `main` goes live by itself:
+**2. Turn on auto-update** so every push to `main` goes live by itself. Simplest (nothing to set up on GitHub): on the server run
+
+```
+cd /root/kamrads && git pull && sh scripts/auto-update.sh install
+```
+
+It checks GitHub every 10 minutes with the deploy key above and rebuilds when there's a new version (log in `data/auto-update.log`; `sh scripts/auto-update.sh uninstall` turns it off).
+
+Or have GitHub push it (deploys straight after the tests pass):
 
 ```
 ssh-keygen -t ed25519 -N "" -f ~/.ssh/github_actions -C github-actions
