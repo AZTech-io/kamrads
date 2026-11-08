@@ -1,6 +1,6 @@
 // Cruises: every cruise read off OzCruising's departure-port pages, with its fare history.
 import { db } from '../db.js';
-import { keyOf } from './parse.js';
+import { keyOf, MIN_NIGHT } from './parse.js';
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS cruises (
@@ -15,6 +15,15 @@ CREATE INDEX IF NOT EXISTS cruise_prices_key ON cruise_prices(key, at);
 CREATE TABLE IF NOT EXISTS cruise_alerts (user TEXT NOT NULL, key TEXT NOT NULL, at INTEGER NOT NULL, per_night REAL, PRIMARY KEY (user, key));
 CREATE TABLE IF NOT EXISTS cruise_status (port TEXT PRIMARY KEY, last_ok INTEGER, last_count INTEGER, last_error TEXT, last_error_at INTEGER);
 `);
+
+// Fares read wrongly by an earlier version (a "$99 deposit" taken as the fare): cleared, so they're read again
+// on the next scan and never count as first seen / lowest / a price drop.
+db.exec(`UPDATE cruises SET twin = NULL WHERE nights > 0 AND twin IS NOT NULL AND twin / nights < ${MIN_NIGHT}`);
+db.exec(`UPDATE cruises SET triple = NULL WHERE nights > 0 AND triple IS NOT NULL AND triple / nights < ${MIN_NIGHT}`);
+db.exec(`UPDATE cruises SET quad = NULL WHERE nights > 0 AND quad IS NOT NULL AND quad / nights < ${MIN_NIGHT}`);
+db.exec(`UPDATE cruises SET first_twin = NULL, low_twin = NULL, prev_twin = NULL WHERE nights > 0 AND (first_twin / nights < ${MIN_NIGHT} OR low_twin / nights < ${MIN_NIGHT} OR prev_twin / nights < ${MIN_NIGHT})`);
+db.exec(`DELETE FROM cruise_alerts WHERE per_night < ${MIN_NIGHT}`);
+db.exec(`DELETE FROM cruise_prices WHERE key IN (SELECT key FROM cruises WHERE nights > 0) AND (twin / (SELECT nights FROM cruises c WHERE c.key = cruise_prices.key) < ${MIN_NIGHT})`);
 
 const shareOf = r => { const a = [r.triple, r.quad].filter(v => v != null); return a.length ? Math.min(...a) : null; };
 const get = db.prepare('SELECT * FROM cruises WHERE key = ?');

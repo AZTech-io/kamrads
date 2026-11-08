@@ -64,6 +64,38 @@ test('fares: savings, "was" prices, deposits and per-night figures are not fares
   assert.equal(P.dateIn('March 4, 2027'), '2027-03-04'); assert.equal(P.dateIn('04/03/2027'), '2027-03-04');
 });
 
+test('a "$99 per person deposit" special is not the fare (Sapphire Princess, PC27-H801)', () => {
+  const card = ['Princess Cruises', '14 Nights WA Coast & Bali Cruise on the Sapphire Princess', 'PC27-H801', 'Sapphire Princess', '14 Nights', 'WA Coast & Bali',
+    'Departing Fremantle (Perth)', 'Sun 19 Dec 2027', 'Special $99 Per Person Deposit', 'Price Includes: Meals, Entertainment,', 'Port Fees & Taxes', 'Interior from $3,331 pp', 'View Cruise'].join('\n');
+  const c = P.cardFromText(card, { href: 'https://www.ozcruising.com.au/cruise/pc27-h801', now: NOW });
+  assert.equal(c.twin, 3331); assert.equal(c.nights, 14); assert.equal(c.port, 'per'); assert.equal(c.depart, '2027-12-19');
+  assert.equal(c.ship, 'Sapphire Princess'); assert.equal(c.line, 'Princess'); assert.equal(c.badge, '$99 deposit');
+  assert.ok(Math.abs(P.nightly(c).twin - 237.93) < 0.01);
+  // the deposit alone (no fare on the card): no price at all, rather than a wrong one
+  assert.equal(P.cardFromText(card.replace('Interior from $3,331 pp\n', ''), { now: NOW }), null);
+  // other promotions next to a price
+  assert.deepEqual(P.faresIn('Twin from $1,299 pp\nUp to $500 onboard credit\n$200 per cabin to spend onboard\n$1 deposit\nReduced $49 deposit').map(f => f.amount), [1299]);
+  assert.deepEqual(P.faresIn('Inside $899 pp plus $100 drinks package').map(f => f.amount), [899]);
+});
+
+test('an earlier bad read (a deposit taken as the fare) is cleared, so it is read again and never counts as a drop', async () => {
+  const { db } = await import('../src/db.js');
+  db.prepare(`INSERT INTO cruises (key, code, ship, port, nights, depart, twin, first_twin, low_twin, status, first_seen, last_seen) VALUES ('oz:zz-bad', 'zz-bad', 'Sapphire Princess', 'per', 14, ?, 99, 99, 99, 'open', 1, 1)`).run(ymd(400));
+  db.prepare(`INSERT INTO cruise_alerts (user, key, at, per_night) VALUES ('aaron', 'oz:zz-bad', 1, 7.07)`).run();
+  // what the store does on start-up
+  const MIN = P.MIN_NIGHT;
+  db.exec(`UPDATE cruises SET twin = NULL WHERE nights > 0 AND twin IS NOT NULL AND twin / nights < ${MIN}`);
+  db.exec(`UPDATE cruises SET first_twin = NULL, low_twin = NULL, prev_twin = NULL WHERE nights > 0 AND (first_twin / nights < ${MIN} OR low_twin / nights < ${MIN} OR prev_twin / nights < ${MIN})`);
+  db.exec(`DELETE FROM cruise_alerts WHERE per_night < ${MIN}`);
+  assert.equal(cz.get.get('oz:zz-bad').twin, null);
+  assert.equal(V.isRedHot(cz.get.get('oz:zz-bad'), V.defaultView()), false);
+  const r = upsertCruise({ code: 'zz-bad', ship: 'Sapphire Princess', port: 'per', nights: 14, depart: ymd(400), twin: 3331, fares: [] });
+  assert.equal(r.dropped, 0);
+  const row = cz.get.get('oz:zz-bad');
+  assert.equal(row.twin, 3331); assert.equal(row.first_twin, 3331); assert.equal(row.low_twin, 3331);
+  assert.equal(db.prepare(`SELECT COUNT(*) n FROM cruise_alerts WHERE key = 'oz:zz-bad'`).get().n, 0);
+});
+
 test('a whole page of text (pasted): each cruise kept apart, whichever side of the nights its fares sit', () => {
   const page = ['Cruises from Sydney', 'Showing 3 of 212 cruises', 'Sort by',
     'Vanuatu & Fiji', 'Carnival Adventure', "Australia's Favourite Cruise", 'Tuesday 13 January 2027', 'from Sydney', '12 nights', 'Quad From $2,207 pp', 'View Cruise',

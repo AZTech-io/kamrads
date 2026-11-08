@@ -117,6 +117,10 @@ const CABIN = [['inside', /\binside\b|\binterior\b/i], ['oceanview', /ocean\s*vi
 // words right before a price that make it not a fare ("Save $500", "was $2,000", "$200 deposit"...)
 const BEFORE_NOT = /\b(?:save|saving|savings|was|deposit|credit|onboard|obc|bonus|spend|up to|discount of|reduced by|tax(?:es)?|port charges|gratuities|plus)\s*(?:of|up to|an extra|extra)?\s*$/i;
 const AFTER_NOT = /^\s*(?:off\b|onboard|obc\b|credit|deposit|bonus|saving|savings|per\s+night|\/\s*n(?:igh)?t|pn\b|p\.n\.|a\s+night|nightly|discount|per\s+cabin|reduction)/i;
+// a promotion a few words after the price, before any other price: "$99 Per Person Deposit", "$500 onboard credit to spend"
+const PROMO_AFTER = /^[^$]{0,28}?\b(?:deposits?|credit|onboard|obc|spending|bonus|voucher|gift card|drinks?|wi-?fi|package|savings?|discount|off\b|refund)/i;
+// a fare under this per night isn't a fare (a deposit, a booking fee, a per-day add-on read by mistake)
+export const MIN_NIGHT = 12;
 // what can follow a fare and still be its own label: "pp", "per person", "twin share", "(inside)"
 const OWN_AFTER = /^\s*(?:pp\b|per\s+person\b|p\/p\b|pps\b)?\s*(?:\([^)$]{0,24}\)|(?:twin|quad|triple|solo|2|3|4)\s+share\b)?/i;
 /** Every fare in a block of text: "Twin From $1,308 pp", "Inside from $899pp", "Quad From $654 pp". Struck-out
@@ -134,7 +138,8 @@ export function faresIn(text) {
       const rest = line.slice(m.index + m[0].length);
       const own = OWN_AFTER.exec(rest)[0];
       prevEnd = m.index + m[0].length + own.length;
-      if (BEFORE_NOT.test(before) || AFTER_NOT.test(rest) || /\bwas\b[^$]{0,6}$/i.test(before)) continue;
+      if (BEFORE_NOT.test(before) || AFTER_NOT.test(rest) || AFTER_NOT.test(rest.slice(own.length)) || PROMO_AFTER.test(rest) ||
+        /\bwas\b[^$]{0,6}$/i.test(before) || /\b(?:special|reduced|low)\s*$/i.test(before) && /deposit/i.test(rest.slice(0, 40))) continue;
       const amount = Number(m[1].replace(/,/g, ''));
       if (!(amount >= 39 && amount <= 250000)) continue;
       let ctx = `${before.slice(-40)} ${own}`;   // its own label, not the previous fare's
@@ -162,7 +167,7 @@ export function cardFromText(text, { href = null, portKey = null, now = Date.now
   const flat = lines.join('\n');
   const nights = Number((NIGHTS_RX.exec(flat) || [])[1]) || null;
   const depart = dateIn(flat, now);
-  const fares = faresIn(flat);
+  const fares = nights ? faresIn(flat).filter(f => f.amount / nights >= MIN_NIGHT) : [];
   if (!nights || !fares.length) return null;
   const code = codeOf(href);
   // "12 Night Fremantle to Sydney Cruise on the Queen Elizabeth" (a title that carries the ship)
@@ -172,7 +177,9 @@ export function cardFromText(text, { href = null, portKey = null, now = Date.now
   const lineName = (/\b(?:cruise line|line|operator)\s*:\s*([A-Za-z&' ]{3,40})/i.exec(flat) || [])[1] || null;
   const fromLine = lines.find(l => /^(?:from|departs?|departing|ex|leaving|embark(?:s|ing)?)\b[:\s]/i.test(l) || /\bdeparts?\s+(?:from\s+)?[A-Z]/.test(l));
   const port = portKeyOf(fromLine) || portKeyOf((/\bfrom\s+([A-Z][A-Za-z() ]{2,30})/.exec(flat) || [])[1]) || portKey;
-  const badge = lines.find(l => l.length < 40 && !/\$|\d{3}/.test(l) && BADGE.test(l) && !NIGHTS_RX.test(l) && !LINE_BY_TAGLINE.some(([rx]) => rx.test(l))) || null;
+  const deposit = (/\$\s?(\d[\d,]*)\s*(?:per person\s*|pp\s*)?deposit/i.exec(flat) || [])[1];
+  const badge = lines.find(l => l.length < 40 && !/\$|\d{3}/.test(l) && BADGE.test(l) && !NIGHTS_RX.test(l) && !LINE_BY_TAGLINE.some(([rx]) => rx.test(l))) ||
+    (deposit ? `$${deposit} deposit` : null);
   const isOther = l => l === tagline || l === badge || l === fromLine || /\$/.test(l) || NIGHTS_RX.test(l) && l.length < 14 || DATE_RX.test(l) && l.length < 34 ||
     (ship && l.toLowerCase() === ship.toLowerCase()) || NOISE.test(l) || !/[a-z]{3}/i.test(l);
   // the title: the line just above the ship if it is one (OzCruising: "Vanuatu & Fiji" then "Pacific Adventure"), else the first
@@ -266,6 +273,7 @@ export function cardsFromJson(bodies, { portKey = null, now = Date.now() } = {})
           else add(v, k.replace(/([a-z])([A-Z])/g, '$1 $2'));
         }
       }
+      if (nights) for (let i = fares.length - 1; i >= 0; i--) if (fares[i].amount / nights < MIN_NIGHT) fares.splice(i, 1);
       if (!nights || !fares.length) continue;
       const url = href ? (href.startsWith('http') ? href : `${OZ}${href.startsWith('/') ? '' : '/cruise/'}${href}`) : codeTxt ? `${OZ}/cruise/${String(codeTxt).toLowerCase()}` : null;
       const code = codeOf(url) || (codeTxt ? String(codeTxt).toLowerCase() : null);
