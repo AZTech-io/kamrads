@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0d1824">
+<title>KAMRADS Garage</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230d1824'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23e5a93f' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23e5a93f'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b1520; --panel: #101d2b; --raised: #162637; --hover: #1b2e42; --rule: #20334a; --rule-2: #2a4058;
+  --ink: #e4ecf4; --muted: #8496ab; --dim: #5d7086;
+  --gain: #2fcb8c; --gain-bg: rgba(47,203,140,.12); --loss: #ef5b67; --loss-bg: rgba(239,91,103,.12);
+  --warn: #e5a93f; --warn-bg: rgba(229,169,63,.13); --info: #5fa4ee;
+  --side: 236px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 13.5px/1.45 "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; font-feature-settings: "tnum" 1; }
+html { color-scheme: dark; }
+a { color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
+[hidden] { display: none !important; }
+::placeholder { color: var(--dim); opacity: 1; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); } .dim { color: var(--dim); } .gain { color: var(--gain); } .loss { color: var(--loss); } .warn { color: var(--warn); }
+
+.top { position: sticky; top: 0; z-index: 20; background: var(--panel); border-bottom: 1px solid var(--rule); }
+.topbar { display: grid; grid-template-columns: var(--side) 1fr auto; align-items: center; height: 54px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 18px; text-decoration: none; height: 100%; border-right: 1px solid var(--rule); }
+.brand b { font-size: 17px; font-weight: 700; letter-spacing: .6px; }
+.brand span { display: block; color: var(--warn); font-size: 11px; margin-top: -3px; font-weight: 600; }
+.switch { display: flex; gap: 2px; padding: 0 18px; align-items: center; }
+.switch a { text-decoration: none; padding: 6px 12px; border-radius: 6px; color: var(--muted); }
+.switch a:hover { background: var(--raised); color: var(--ink); }
+.switch a.on { background: var(--raised); color: var(--ink); font-weight: 600; }
+.top-actions { display: flex; align-items: center; gap: 8px; padding: 0 14px; }
+.who { color: var(--dim); font-size: 12.5px; padding-left: 10px; border-left: 1px solid var(--rule); }
+.menu-btn { display: none; background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 16px; }
+
+.desk { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--rule); }
+.kpi { padding: 9px 18px 10px; border-right: 1px solid var(--rule); min-width: 0; }
+.kpi:last-child { border-right: 0; }
+.kpi .v { font-size: 19px; font-weight: 600; white-space: nowrap; }
+.kpi .l { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.frame { display: grid; grid-template-columns: var(--side) minmax(0, 1fr); min-height: calc(100vh - 110px); }
+aside { border-right: 1px solid var(--rule); background: var(--panel); padding: 8px 0 30px; position: sticky; top: 110px; align-self: start; max-height: calc(100vh - 110px); overflow-y: auto; }
+.side-h { color: var(--dim); font-size: 12px; font-weight: 600; padding: 14px 18px 6px; }
+.nav { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; background: none; border: 0; border-left: 3px solid transparent; padding: 6px 15px; text-align: left; cursor: pointer; color: var(--muted); }
+.nav:hover { background: var(--raised); color: var(--ink); }
+.nav[aria-pressed="true"] { border-left-color: var(--warn); background: var(--raised); color: var(--ink); font-weight: 600; }
+.nav .c { color: var(--dim); font-size: 12px; font-weight: 400; }
+.side-foot { padding: 16px 18px 0; color: var(--dim); font-size: 12px; line-height: 1.6; }
+.side-foot button { background: none; border: 0; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; }
+
+main { padding: 16px 20px 70px; min-width: 0; }
+.toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.toolbar h1 { margin: 0 6px 0 0; font-size: 18px; font-weight: 600; }
+.toolbar input { background: var(--panel); border: 1px solid var(--rule-2); border-radius: 6px; padding: 6px 10px; min-width: 200px; }
+.count { margin-left: auto; color: var(--muted); font-size: 12.5px; }
+.btn { background: var(--raised); border: 1px solid var(--rule-2); border-radius: 6px; padding: 6px 12px; cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+.btn:hover { background: var(--hover); }
+.btn.primary { background: var(--warn); border-color: var(--warn); color: #241600; font-weight: 600; }
+.btn.sm { padding: 3px 9px; font-size: 12.5px; }
+.btn.danger { color: var(--loss); }
+.btn[disabled] { opacity: .5; cursor: default; }
+.link { background: none; border: 0; padding: 0; color: var(--info); cursor: pointer; }
+
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.sec-h { display: flex; align-items: center; gap: 8px; margin: 18px 0 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.sec-h:first-child { margin-top: 0; }
+.sec-h .sp { flex: 1; }
+.pill { font-size: 11.5px; font-weight: 700; border-radius: 4px; padding: 1px 7px; white-space: nowrap; background: var(--raised); color: var(--muted); }
+.pill.overdue { background: var(--loss-bg); color: var(--loss); } .pill.soon { background: var(--warn-bg); color: var(--warn); } .pill.ok { background: var(--gain-bg); color: var(--gain); }
+
+/* coming up */
+.crow { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--rule); cursor: pointer; }
+.crow:last-child { border-bottom: 0; }
+.crow:hover { background: var(--hover); }
+.crow .ic { font-size: 19px; text-align: center; }
+.crow .t { font-weight: 600; } .crow .m { color: var(--muted); font-size: 12px; }
+
+/* cards */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 10px; }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 12px; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; cursor: pointer; text-align: left; }
+.card:hover { background: var(--hover); }
+.card.gone { opacity: .6; }
+.thumb { width: 64px; height: 64px; border-radius: 8px; background: var(--raised); display: grid; place-items: center; font-size: 30px; overflow: hidden; }
+.thumb img { width: 100%; height: 100%; object-fit: cover; }
+.card .t { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card .m { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 2px 10px; margin: 1px 0 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { font-size: 11.5px; padding: 1px 7px; border-radius: 4px; background: var(--raised); color: var(--muted); white-space: nowrap; }
+.chip.overdue { background: var(--loss-bg); color: var(--loss); font-weight: 600; } .chip.soon { background: var(--warn-bg); color: var(--warn); font-weight: 600; } .chip.ok { color: var(--gain); }
+.chip.unset { color: var(--dim); }
+
+/* one item */
+.back { display: inline-flex; margin-bottom: 10px; color: var(--muted); text-decoration: none; }
+.back:hover { color: var(--ink); }
+.hero { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 14px; align-items: start; }
+.hero .thumb { width: 110px; height: 110px; font-size: 50px; }
+.hero h1 { margin: 0; font-size: 20px; font-weight: 600; }
+.hero .m { color: var(--muted); display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 2px; }
+.reading { margin-top: 8px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.reading b { font-size: 20px; }
+.qa { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0 4px; }
+.facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 0; }
+.fact { padding: 8px 12px; border-bottom: 1px solid var(--rule); border-right: 1px solid var(--rule); min-width: 0; }
+.fact span { display: block; color: var(--dim); font-size: 11.5px; }
+.fact b { font-weight: 500; word-break: break-all; }
+.copy { background: none; border: 0; color: var(--dim); cursor: pointer; padding: 0 0 0 6px; font-size: 12px; }
+.copy:hover { color: var(--info); }
+.due { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; padding: 10px 12px; border-bottom: 1px solid var(--rule); border-left: 3px solid transparent; }
+.due:last-child { border-bottom: 0; }
+.due.overdue { border-left-color: var(--loss); } .due.soon { border-left-color: var(--warn); } .due.ok { border-left-color: var(--gain); }
+.due .h { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } .due .h b { font-size: 14px; }
+.due .s { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.due .s a { color: var(--info); }
+.due .acts { display: flex; gap: 6px; align-items: start; }
+.hist { padding: 10px 12px; border-bottom: 1px solid var(--rule); display: grid; grid-template-columns: 74px minmax(0, 1fr) auto; gap: 10px; }
+.hist:last-child { border-bottom: 0; }
+.hist .d { color: var(--muted); font-size: 12px; }
+.hist .t { font-weight: 600; } .hist .s { color: var(--muted); font-size: 12px; white-space: pre-wrap; }
+.hist .r { text-align: right; } .hist .x { background: none; border: 0; color: var(--dim); cursor: pointer; }
+.hist .x:hover { color: var(--loss); }
+.files { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; padding: 10px; }
+.file { position: relative; aspect-ratio: 1; border-radius: 6px; background: var(--raised); overflow: hidden; display: grid; place-items: center; text-decoration: none; text-align: center; font-size: 11.5px; color: var(--muted); padding: 4px; }
+.file img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.file .pdf { font-size: 28px; display: block; }
+.file .fx { position: absolute; top: 3px; right: 3px; background: rgba(3,8,14,.7); border: 0; border-radius: 4px; color: var(--ink); cursor: pointer; font-size: 11px; padding: 1px 5px; }
+.minis { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
+.minis a { width: 40px; height: 40px; border-radius: 4px; overflow: hidden; background: var(--raised); display: grid; place-items: center; font-size: 16px; text-decoration: none; }
+.minis img { width: 100%; height: 100%; object-fit: cover; }
+.notes { padding: 10px 12px; white-space: pre-wrap; color: var(--muted); }
+.empty { color: var(--muted); text-align: center; padding: 46px 20px; }
+.empty b { color: var(--ink); }
+
+dialog.box { background: var(--panel); color: var(--ink); border: 1px solid var(--rule-2); border-radius: 10px; padding: 18px 20px; width: min(620px, calc(100vw - 16px)); max-height: calc(100dvh - 24px); }
+dialog.box::backdrop { background: rgba(3,8,14,.6); }
+dialog.box h2 { margin: 0 0 4px; font-size: 17px; font-weight: 600; }
+dialog.box p.hint { color: var(--muted); margin: 0 0 10px; font-size: 12.5px; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+.fields label { display: flex; flex-direction: column; gap: 3px; color: var(--muted); font-size: 12px; min-width: 0; }
+.fields input, .fields select, .fields textarea { background: var(--bg); border: 1px solid var(--rule-2); border-radius: 6px; padding: 7px 8px; min-width: 0; width: 100%; font-size: 14px; }
+.fields .full { grid-column: 1 / -1; }
+.fields .grp { grid-column: 1 / -1; color: var(--dim); font-size: 12px; font-weight: 600; margin-top: 6px; border-top: 1px solid var(--rule); padding-top: 10px; }
+.fields .check { flex-direction: row; align-items: center; gap: 8px; color: var(--ink); font-size: 13px; }
+.fields .check input { width: auto; }
+.end { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.end .sp { flex: 1; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--raised); border: 1px solid var(--rule-2); border-radius: 8px; padding: 8px 14px; z-index: 60; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+.adm { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+
+@media (max-width: 900px) {
+  :root { --side: 0px; }
+  .topbar { grid-template-columns: auto 1fr auto; } .brand { border-right: 0; padding: 0 8px 0 12px; } .brand > div { display: none; }
+  .menu-btn { display: inline-flex; } .who, .lbl { display: none; }
+  .switch { padding: 0; gap: 0; overflow-x: auto; scrollbar-width: none; min-width: 0; } .switch a { padding: 6px 7px; font-size: 13px; flex: none; } .top-actions { padding: 0 10px 0 4px; }
+  .desk { grid-template-columns: repeat(4, minmax(0, 1fr)); } .kpi { padding: 7px 10px; } .kpi .v { font-size: 16px; } .kpi .l { font-size: 11px; }
+  .frame { grid-template-columns: 1fr; }
+  aside { position: fixed; top: 0; left: 0; bottom: 0; width: 272px; height: 100vh; height: 100dvh; max-height: none; align-self: auto; overflow-y: auto; overscroll-behavior: contain; z-index: 40; transform: translateX(-100%); transition: transform .18s ease; }
+  aside.open { transform: none; box-shadow: 0 0 0 100vmax rgba(3,8,14,.55); }
+  main { padding: 12px 10px 70px; }
+  .toolbar input { min-width: 0; flex: 1; }
+  .count { margin-left: 0; width: 100%; }
+  .cards { grid-template-columns: 1fr; }
+  .hero { grid-template-columns: 76px minmax(0, 1fr); } .hero .thumb { width: 76px; height: 76px; font-size: 36px; } .hero .edit { grid-column: 1 / -1; }
+  .hero h1 { font-size: 18px; }
+  .qa .btn { flex: 1 1 calc(50% - 6px); justify-content: center; padding: 9px 8px; }
+  .facts { grid-template-columns: 1fr 1fr; }
+  .fields { grid-template-columns: 1fr 1fr; }
+  .fields .wide { grid-column: 1 / -1; }
+  .hide-m { display: none; }
+  dialog.box { padding: 14px 14px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+* { scrollbar-width: thin; scrollbar-color: var(--rule-2) transparent; }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="topbar">
+    <a class="brand" href="/garage">
+      <svg width="30" height="30" viewBox="0 0 34 34" aria-hidden="true">
+        <circle cx="17" cy="17" r="13" fill="none" stroke="#e5a93f" stroke-width="2.6" stroke-dasharray="62 20" transform="rotate(-50 17 17)"/>
+        <circle cx="17" cy="17" r="7.5" fill="none" stroke="#e5a93f" stroke-width="2.6" stroke-dasharray="34 13" transform="rotate(-50 17 17)"/>
+        <circle cx="17" cy="17" r="2.6" fill="#e5a93f"/><line x1="17" y1="17" x2="27" y2="7" stroke="#e5a93f" stroke-width="2.6" stroke-linecap="round"/>
+      </svg>
+      <div><b>KAMRADS</b><span>Garage</span></div>
+    </a>
+    <div class="switch"><button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button><a href="/">Auctions</a><a href="/freight">Freight</a><a href="/bought">Bought</a><a href="/finds">Finds</a><a href="/dreams">Dreams</a><a href="/cruises">Cruises</a><a href="/garage" class="on">Garage</a></div>
+    <div class="top-actions"><button class="btn primary" id="addBtn">+<span class="lbl"> Add</span></button><span class="who" id="who"></span></div>
+  </div>
+  <div class="desk" id="desk"></div>
+</div>
+
+<div class="frame">
+  <aside id="side">
+    <div class="side-h">Type</div><div id="kinds"></div>
+    <div id="whoseBox" hidden><div class="side-h">Whose</div><div id="whose"></div></div>
+    <div class="side-h">Show</div>
+    <button class="nav" id="goneBtn" aria-pressed="false">Sold / gone too</button>
+    <div class="side-foot" id="foot"></div>
+  </aside>
+  <main id="main"><div class="empty">Loading…</div></main>
+</div>
+
+<!-- add / edit an item -->
+<dialog id="assetBox" class="box">
+  <form method="dialog" id="assetForm">
+    <h2 id="assetH">Add to the garage</h2>
+    <p class="hint" id="assetHint">Only the name is needed. Fill in the rest now or later.</p>
+    <div class="fields">
+      <label>Type <select name="kind" id="fKind"></select></label>
+      <label>Name <input name="name" required placeholder="Sea-Doo GTX" id="fName"></label>
+      <label>Make <input name="make" placeholder="Sea-Doo"></label>
+      <label>Model <input name="model" placeholder="GTX 170"></label>
+      <label>Year <input name="year" inputmode="numeric" placeholder="2019"></label>
+      <label>Colour <input name="colour"></label>
+      <label>Rego <input name="rego" autocapitalize="characters" placeholder="ABC123"></label>
+      <label>State <select name="rego_state" id="fState"></select></label>
+      <label class="wide"><span id="fIdentL">VIN</span> <input name="ident" autocapitalize="characters"></label>
+      <label>Engine no. <input name="engine_no" autocapitalize="characters"></label>
+      <label>Counts in <select name="meter" id="fMeter"><option value="hours">Hours</option><option value="km">km</option><option value="">Neither</option></select></label>
+      <label id="fMeterL">Hours now <input name="meter_value" inputmode="decimal" placeholder="e.g. 87.4"></label>
+      <label>Belongs to <input name="belongs_to" placeholder="e.g. Shay"></label>
+      <label>Personal or company <input name="entity" list="entityList" placeholder="Personal"></label>
+      <label>Kept at <input name="kept_at" placeholder="Storage locker"></label>
+      <label>Tracker ID / IMEI <input name="tracker_id" inputmode="numeric"></label>
+      <label id="fOwnerL" hidden>Login it sits under <select name="owner" id="fOwner"></select></label>
+      <label class="full">Notes <textarea name="notes" rows="2" placeholder="Key code, where the spare key is, battery type…"></textarea></label>
+      <div class="grp" id="fDuesH">Dates (optional)</div>
+      <div class="full fields" id="fDues" style="padding:0"></div>
+      <label class="check full" id="fGoneL" hidden><input type="checkbox" name="archived"> Sold / gone (hide it and stop reminders)</label>
+    </div>
+    <div class="end"><button type="button" class="btn danger" id="assetDel" hidden>Delete</button><span class="sp"></span><button type="button" class="btn" data-close>Cancel</button><button class="btn primary" id="assetSave">Add</button></div>
+  </form>
+</dialog>
+
+<!-- log something done -->
+<dialog id="logBox" class="box">
+  <form method="dialog" id="logForm">
+    <h2 id="logH">Log it</h2>
+    <p class="hint" id="logHint"></p>
+    <div class="fields">
+      <label>What <select name="kind" id="lKind"></select></label>
+      <label>Date <input type="date" name="date" id="lDate" required></label>
+      <label id="lMeterL">Hours <input name="meter" id="lMeter" inputmode="decimal"></label>
+      <label>Cost <input name="cost" inputmode="decimal" placeholder="$"></label>
+      <label class="full">Details <input name="title" id="lTitle" placeholder="e.g. Oil, filter, plugs, impeller check"></label>
+      <label>Done by <input name="done_by" placeholder="Myself / dealer"></label>
+      <label>Ticks off <select name="due_id" id="lDue"></select></label>
+      <label id="lNextL">Next due <input type="date" name="next_date" id="lNext"></label>
+      <label id="lNextML">Next due at <input name="next_meter" id="lNextM" inputmode="decimal"></label>
+      <label class="full">Notes <textarea name="notes" rows="2"></textarea></label>
+      <label class="full">Photo or receipt <input type="file" id="lFiles" accept="image/*,application/pdf" multiple></label>
+    </div>
+    <div class="end"><button type="button" class="btn" data-close>Cancel</button><button class="btn primary" id="logSave">Save</button></div>
+  </form>
+</dialog>
+
+<!-- a due item -->
+<dialog id="dueBox" class="box">
+  <form method="dialog" id="dueForm">
+    <h2 id="dueH">Due item</h2>
+    <p class="hint">Reminders go to your phone 30 days, 7 days and on the day (and as the hours / km get close).</p>
+    <div class="fields">
+      <label>Kind <select name="kind" id="dKind"></select></label>
+      <label>Name <input name="label" id="dLabel" placeholder="Rego"></label>
+      <label>Due date <input type="date" name="due_date"></label>
+      <label id="dMeterL">Due at (hours) <input name="due_meter" inputmode="decimal"></label>
+      <label>Repeat every (months) <input name="every_months" inputmode="numeric" placeholder="12"></label>
+      <label id="dEveryML">…or every (hours) <input name="every_meter" inputmode="decimal"></label>
+      <label>Provider <input name="provider" placeholder="RAC, dealer, DoT…"></label>
+      <label>Policy / ref no. <input name="ref"></label>
+      <label>Phone <input name="phone" type="tel"></label>
+      <label>Cost <input name="cost" inputmode="decimal" placeholder="$"></label>
+      <label class="full">Notes <textarea name="notes" rows="2"></textarea></label>
+    </div>
+    <div class="end"><button type="button" class="btn danger" id="dueDel" hidden>Remove</button><span class="sp"></span><button type="button" class="btn" data-close>Cancel</button><button class="btn primary">Save</button></div>
+  </form>
+</dialog>
+
+<!-- who's an admin -->
+<dialog id="admBox" class="box">
+  <h2>Garage admins</h2>
+  <p class="hint">Admins can see and edit everyone's garage. Everyone else only sees their own.</p>
+  <div id="admList"></div>
+  <div class="end"><button type="button" class="btn" data-close>Done</button></div>
+</dialog>
+<datalist id="entityList"><option value="Personal"></datalist>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = n => n == null ? '—' : '$' + Math.round(n).toLocaleString('en-AU');
+const utc = s => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
+const fmt = (s, o = { day: 'numeric', month: 'short', year: 'numeric' }) => s ? new Date(utc(s)).toLocaleDateString('en-AU', { timeZone: 'UTC', ...o }) : '';
+const short = s => fmt(s, { day: 'numeric', month: 'short', ...(s && s.slice(0, 4) !== String(new Date().getFullYear()) ? { year: '2-digit' } : {}) });
+const unitOf = m => m === 'hours' ? 'hrs' : m === 'km' ? 'km' : '';
+const mtr = (v, m) => v == null ? '' : `${Number(v).toLocaleString('en-AU', { maximumFractionDigits: 1 })} ${unitOf(m)}`;
+function addMonths(s, n) { const y = +s.slice(0, 4), m = +s.slice(5, 7) - 1 + n, d = +s.slice(8, 10); const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate(); return new Date(Date.UTC(y, m, Math.min(d, last))).toISOString().slice(0, 10); }
+const when = d => d.days == null ? '' : d.days < 0 ? `${-d.days} day${d.days === -1 ? '' : 's'} overdue` : d.days === 0 ? 'today' : d.days === 1 ? 'tomorrow' : d.days < 60 ? `in ${d.days} days` : `in ${Math.round(d.days / 30.4)} months`;
+const togo = (d, m) => d.left == null ? '' : d.left <= 0 ? `${mtr(-d.left, m)} over` : `${mtr(d.left, m)} to go`;
+const api = (u, b, m = 'POST') => fetch(u, { method: m, headers: { 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined }).then(async r => { const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Something went wrong'); return j; });
+function toast(t) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = t; document.body.append(el); setTimeout(() => el.remove(), 2200); }
+const store = { get(k, d) { try { const v = localStorage.getItem('kg_' + k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem('kg_' + k, JSON.stringify(v)); } catch { /* private mode */ } } };
+
+let M = null, L = { assets: [], coming: [], summary: {} }, A = null;           // meta, the list, the item open
+let kind = '', whose = store.get('whose', 'mine'), gone = false;
+const route = () => { const m = location.hash.match(/^#a(\d+)/); return m ? Number(m[1]) : null; };
+
+// ---------- list ----------
+function visible() {
+  const q = ($('#q')?.value || '').trim().toLowerCase();
+  return L.assets.filter(a => {
+    if (!gone && a.archived) return false;
+    if (kind && a.kind !== kind) return false;
+    if (M.admin && whose === 'mine' && a.owner !== M.me) return false;
+    if (M.admin && whose !== 'mine' && whose !== 'all' && a.owner !== whose) return false;
+    if (q && ![a.name, a.make, a.model, a.rego, a.ident, a.belongsTo, a.keptAt, a.notes, a.owner].join(' ').toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+const chip = (d, m) => `<span class="chip ${d.state}">${esc(d.label)}${d.state === 'unset' ? ': not set' : d.days != null ? ` ${esc(short(d.dueDate))}` : ''}${d.left != null && (d.days == null || d.state !== 'ok') ? ` · ${esc(togo(d, m))}` : ''}</span>`;
+const thumb = a => `<div class="thumb">${a.photo ? `<img src="${esc(a.photo)}" alt="" loading="lazy">` : esc(a.icon)}</div>`;
+
+function renderSide() {
+  const live = L.assets.filter(a => !a.archived && (!M.admin || whose === 'all' || a.owner === (whose === 'mine' ? M.me : whose)));
+  const kinds = Object.entries(M.kinds).filter(([k]) => live.some(a => a.kind === k));
+  $('#kinds').innerHTML = `<button class="nav" data-kind="" aria-pressed="${!kind}">Everything<span class="c num">${live.length || ''}</span></button>`
+    + kinds.map(([k, v]) => `<button class="nav" data-kind="${k}" aria-pressed="${kind === k}">${v.icon} ${esc(v.label)}<span class="c num">${live.filter(a => a.kind === k).length}</span></button>`).join('');
+  $('#whoseBox').hidden = !M.admin;
+  if (M.admin) $('#whose').innerHTML = [['mine', 'Mine'], ['all', 'Everyone'], ...M.users.filter(u => u !== M.me).map(u => [u, u])]
+    .map(([k, l]) => `<button class="nav" data-whose="${esc(k)}" aria-pressed="${whose === k}">${esc(l)}<span class="c num">${L.assets.filter(a => !a.archived && (k === 'all' || a.owner === (k === 'mine' ? M.me : k))).length || ''}</span></button>`).join('');
+  $('#goneBtn').setAttribute('aria-pressed', gone);
+  $('#foot').innerHTML = `Reminders go to your phone (the same alert link as auctions) 30 days, 7 days and on the day.${M.main ? '<br><br><button id="admBtn">Who can see everything (admins)</button>' : ''}`;
+}
+
+function renderDesk() {
+  const mine = L.assets.filter(a => !a.archived && (!M.admin || whose === 'all' || a.owner === (whose === 'mine' ? M.me : whose)));
+  const ids = new Set(mine.map(a => a.id));
+  const coming = L.coming.filter(d => ids.has(d.assetId));
+  const k = (v, l, cls = '') => `<div class="kpi"><div class="v num ${cls}">${v}</div><div class="l">${l}</div></div>`;
+  const over = coming.filter(d => d.state === 'overdue').length, soon = coming.filter(d => d.state === 'soon').length;
+  $('#desk').innerHTML = k(mine.length, 'Items') + k(over, 'Overdue', over ? 'loss' : '') + k(soon, 'Due in 30 days', soon ? 'warn' : '') + k(money(mine.reduce((s, a) => s + a.spent12, 0)), 'Spent (12 mo)');
+}
+
+function renderList() {
+  document.title = 'KAMRADS Garage';
+  const rows = visible();
+  const ids = new Set(rows.map(a => a.id));
+  const coming = L.coming.filter(d => ids.has(d.assetId));
+  const q = $('#q')?.value || '';
+  $('#main').innerHTML = `<div class="toolbar"><h1>${kind ? esc(M.kinds[kind].label) : 'Garage'}</h1><input type="search" id="q" placeholder="Search: rego, VIN, name…" value="${esc(q)}"><span class="count">${rows.length} item${rows.length === 1 ? '' : 's'}</span></div>
+    ${coming.length ? `<div class="sec-h">Coming up</div><div class="panel">${coming.map(d => `
+      <div class="crow" data-open="${d.assetId}"><div class="ic">${esc(d.icon)}</div>
+        <div><div class="t">${esc(d.assetName)} · ${esc(d.label)}</div><div class="m">${[d.dueDate ? `${esc(fmt(d.dueDate))} (${esc(when(d))})` : '', d.left != null ? esc(togo(d, d.meter)) : '', M.admin && d.owner !== M.me ? esc(d.owner) : ''].filter(Boolean).join(' · ')}</div></div>
+        <span class="pill ${d.state}">${d.state === 'overdue' ? 'Overdue' : 'Soon'}</span></div>`).join('')}</div>` : ''}
+    <div class="sec-h">${coming.length ? 'Everything' : ''}</div>
+    ${rows.length ? `<div class="cards">${rows.map(a => `
+      <div class="card ${a.archived ? 'gone' : ''}" data-open="${a.id}" role="button" tabindex="0">${thumb(a)}
+        <div style="min-width:0"><div class="t">${esc(a.name)}</div>
+          <div class="m">${[a.rego ? `<b>${esc(a.rego)}</b>${a.regoState ? ' ' + esc(a.regoState) : ''}` : '', a.meterValue != null ? esc(mtr(a.meterValue, a.meter)) : '', a.belongsTo ? esc(a.belongsTo) : '', M.admin && a.owner !== M.me ? `<span class="dim">${esc(a.owner)}</span>` : '', a.archived ? 'sold / gone' : ''].filter(Boolean).join('<span class="dim">·</span>')}</div>
+          <div class="chips">${a.dues.slice(0, 4).map(d => chip(d, a.meter)).join('')}</div></div></div>`).join('')}</div>`
+    : `<div class="panel empty">${L.assets.length ? 'Nothing here.' : '<b>Nothing in the garage yet.</b><br>Press <b>+ Add</b> for each jet ski, car, bike, trailer or EPIRB.<br>Each type comes with the usual things to track (rego, insurance, service, battery).'}</div>`}`;
+  const qi = $('#q'); qi.addEventListener('input', () => { const pos = qi.selectionStart; renderList(); const n = $('#q'); n.focus(); n.setSelectionRange(pos, pos); });
+  if (q) { qi.focus(); }
+}
+
+// ---------- one item ----------
+const copyBtn = v => v ? `<button class="copy" data-copy="${esc(v)}" title="Copy">⧉</button>` : '';
+const fact = (l, v, copy = false) => v == null || v === '' ? '' : `<div class="fact"><span>${esc(l)}</span><b>${esc(v)}</b>${copy ? copyBtn(v) : ''}</div>`;
+function renderAsset() {
+  const a = A;
+  document.title = `${a.name} · Garage`;
+  const u = unitOf(a.meter);
+  const dueRow = d => `<div class="due ${d.state}">
+    <div><div class="h"><b>${esc(d.label)}</b>${d.state === 'unset' ? '<span class="pill">Not set</span>' : `<span class="pill ${d.state}">${d.state === 'overdue' ? 'Overdue' : d.state === 'soon' ? 'Due soon' : 'OK'}</span>`}</div>
+      ${d.dueDate || d.dueMeter != null ? `<div class="s">${[d.dueDate ? `${['rego', 'insurance', 'registration'].includes(d.kind) || /expir/i.test(d.label) ? 'Expires' : 'Due'} <b>${esc(fmt(d.dueDate, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }))}</b> (${esc(when(d))})` : '', d.dueMeter != null ? `at <b>${esc(mtr(d.dueMeter, a.meter))}</b>${d.left != null ? ` (${esc(togo(d, a.meter))})` : ''}` : ''].filter(Boolean).join(' or ')}</div>` : `<div class="s">No date yet. ${d.everyMonths || d.everyMeter ? 'Press <b>Done</b> with the last date to start it, or <b>Edit</b> to type the due date.' : 'Press <b>Edit</b> to add the date.'}</div>`}
+      ${d.everyMonths || d.everyMeter ? `<div class="s">Every ${[d.everyMonths ? `${d.everyMonths} months` : '', d.everyMeter ? mtr(d.everyMeter, a.meter) : ''].filter(Boolean).join(' or ')}${d.everyMonths && d.everyMeter ? ', whichever comes first' : ''}</div>` : ''}
+      ${d.provider || d.ref || d.phone ? `<div class="s">${[esc(d.provider), d.ref ? `${esc(d.ref)}${copyBtn(d.ref)}` : '', d.phone ? `<a href="tel:${esc(d.phone.replace(/[^\d+]/g, ''))}">${esc(d.phone)}</a>` : ''].filter(Boolean).join(' · ')}</div>` : ''}
+      ${d.lastDate ? `<div class="s dim">Last done ${esc(fmt(d.lastDate))}${d.lastMeter != null ? ` at ${esc(mtr(d.lastMeter, a.meter))}` : ''}${d.cost ? ` · ${money(d.cost)}` : ''}</div>` : d.cost ? `<div class="s dim">${money(d.cost)}</div>` : ''}
+      ${d.notes ? `<div class="s">${esc(d.notes)}</div>` : ''}</div>
+    <div class="acts"><button class="btn sm primary" data-done="${d.id}">Done</button><button class="btn sm" data-editdue="${d.id}">Edit</button></div></div>`;
+  const fileTile = f => `<a class="file" href="${esc(f.url)}" target="_blank" rel="noopener">${f.mime.startsWith('image/') && f.mime !== 'image/heic' ? `<img src="${esc(f.url)}" alt="${esc(f.name)}" loading="lazy">` : `<span><span class="pdf">${f.mime === 'application/pdf' ? '📄' : '🖼️'}</span>${esc(f.name)}</span>`}
+    <button class="fx" data-delfile="${f.id}" title="Delete">✕</button>${f.mime.startsWith('image/') && f.mime !== 'image/heic' && A.photo !== f.url ? `<button class="fx" style="right:auto;left:3px" data-cover="${f.id}" title="Use as the main photo">★</button>` : ''}</a>`;
+  const loose = a.files.filter(f => !f.logId);
+  $('#main').innerHTML = `<a class="back" href="#">← Garage</a>
+    <div class="hero">${thumb(a)}
+      <div style="min-width:0"><h1>${esc(a.name)}</h1>
+        <div class="m"><span>${esc(a.icon)} ${esc(a.kindLabel)}</span>${[a.year, a.make, a.model].filter(Boolean).length ? `<span>${esc([a.year, a.make, a.model].filter(Boolean).join(' '))}</span>` : ''}${a.belongsTo ? `<span>${esc(a.belongsTo)}'s</span>` : ''}${a.keptAt ? `<span>📍 ${esc(a.keptAt)}</span>` : ''}${M.admin && a.owner !== M.me ? `<span class="dim">under ${esc(a.owner)}</span>` : ''}${a.archived ? '<span class="loss">sold / gone</span>' : ''}</div>
+        ${a.meter ? `<div class="reading"><b class="num">${a.meterValue != null ? esc(mtr(a.meterValue, a.meter)) : `— ${u}`}</b><span class="muted">${a.meterDate ? `as at ${esc(fmt(a.meterDate))}` : 'no reading yet'}</span></div>` : ''}
+      </div>
+      <div class="edit"><button class="btn sm" id="editBtn">Edit details</button></div>
+    </div>
+    <div class="qa">
+      ${a.meter ? `<button class="btn" data-quick="reading">⏱ Log ${a.meter === 'hours' ? 'hours' : 'km'}</button>` : ''}
+      ${a.kind !== 'beacon' ? '<button class="btn" data-quick="service">🔧 Service</button>' : ''}
+      <button class="btn" data-quick="battery">🔋 Battery</button>
+      <button class="btn" data-quick="repair">📝 Repair / note</button>
+      <label class="btn">📷 Photo / doc<input type="file" id="upFiles" accept="image/*,application/pdf" multiple hidden></label>
+    </div>
+    <div class="sec-h">Details</div>
+    <div class="panel"><div class="facts">
+      ${fact(a.regoState ? `Rego (${a.regoState})` : 'Rego', a.rego, true)}${fact(a.identLabel, a.ident, true)}${fact('Engine no.', a.engineNo, true)}
+      ${fact('Make / model', [a.make, a.model].filter(Boolean).join(' '))}${fact('Year', a.year)}${fact('Colour', a.colour)}
+      ${fact('Personal or company', a.entity)}${fact('Tracker', a.trackerId, true)}${fact('Spent, last 12 months', a.spent12 ? money(a.spent12) : '')}
+    </div>${a.notes ? `<div class="notes">${esc(a.notes)}</div>` : ''}${!a.rego && !a.ident && !a.make && !a.notes ? '<div class="notes dim">No details yet: press <b>Edit details</b> to add rego, VIN / HIN and so on.</div>' : ''}</div>
+    <div class="sec-h">Due<span class="sp"></span><button class="btn sm" id="addDue">+ Add</button></div>
+    <div class="panel">${a.dues.length ? a.dues.map(dueRow).join('') : '<div class="empty" style="padding:20px">Nothing tracked yet. Press <b>+ Add</b> for rego, insurance, service, battery…</div>'}</div>
+    <div class="sec-h">History<span class="sp"></span><span class="dim" style="font-weight:400">${a.logs.length || ''}</span></div>
+    <div class="panel">${a.logs.length ? a.logs.map(l => `<div class="hist"><div class="d num">${esc(fmt(l.date))}</div>
+      <div style="min-width:0"><div class="t">${esc(l.kind === 'reading' && l.title === l.kindLabel ? (a.meter === 'hours' ? 'Hours reading' : 'km reading') : l.title || l.kindLabel)}</div><div class="s">${[l.kindLabel !== l.title ? l.kindLabel : '', l.meter != null ? mtr(l.meter, a.meter) : '', l.doneBy].filter(Boolean).map(esc).join(' · ')}</div>${l.notes ? `<div class="s">${esc(l.notes)}</div>` : ''}
+        ${l.files.length ? `<div class="minis">${l.files.map(f => `<a href="${esc(f.url)}" target="_blank" rel="noopener">${f.mime.startsWith('image/') && f.mime !== 'image/heic' ? `<img src="${esc(f.url)}" alt="" loading="lazy">` : '📄'}</a>`).join('')}</div>` : ''}</div>
+      <div class="r">${l.cost ? `<div class="num">${money(l.cost)}</div>` : ''}<button class="x" data-dellog="${l.id}" title="Remove">✕</button></div></div>`).join('')
+      : '<div class="empty" style="padding:20px">Nothing logged yet. Use the buttons up top: services, batteries, repairs, hours.</div>'}</div>
+    <div class="sec-h">Photos &amp; documents<span class="sp"></span><span class="dim hide-m" style="font-weight:400">rego papers, insurance, receipts</span></div>
+    <div class="panel">${loose.length ? `<div class="files">${loose.map(fileTile).join('')}</div>` : '<div class="empty" style="padding:20px">None yet. <b>📷 Photo / doc</b> takes a photo or picks a PDF.</div>'}</div>`;
+  $('#upFiles').addEventListener('change', async e => { const files = [...e.target.files]; if (!files.length) return; await uploadAll(a.id, files); openAsset(a.id); });
+  $('#editBtn').addEventListener('click', () => assetForm(a));
+  $('#addDue').addEventListener('click', () => dueForm(null));
+}
+
+// ---------- photos: shrunk on the phone first (a 4 MB photo goes up as ~400 KB) ----------
+async function shrink(file) {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size < 900000) return file;
+  try {
+    const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    const k = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.85));
+    return blob && blob.size < file.size ? new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }) : file;
+  } catch { return file; }
+}
+async function uploadAll(assetId, files, logId) {
+  let n = 0;
+  for (const f of files) {
+    try {
+      const body = await shrink(f);
+      const r = await fetch(`/api/garage/assets/${assetId}/files?name=${encodeURIComponent(body.name || f.name)}${logId ? `&log=${logId}` : ''}`, { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || `Upload failed (${r.status})`);
+      n++;
+    } catch (e) { alert(`${f.name}: ${e.message}`); }
+  }
+  if (n) toast(`${n} file${n === 1 ? '' : 's'} saved`);
+}
+
+// ---------- add / edit an item ----------
+let editing = null;
+function setKindBits(k, a) {
+  const kd = M.kinds[k];
+  $('#fIdentL').textContent = kd.ident;
+  const meter = a ? a.meter || '' : kd.meter || '';
+  if (!a) $('#fMeter').value = meter;
+  const mv = $('#fMeter').value;
+  $('#fMeterL').firstChild.textContent = mv === 'hours' ? 'Hours now ' : 'km now ';
+  $('#fMeterL').hidden = !mv;
+  $('#fName').placeholder = { jetski: 'Sea-Doo GTX', car: "Shay's Corolla", motorbike: 'Perth bike', truck: 'Isuzu NPR', boat: 'Quintrex', trailer: 'Jet ski trailer', beacon: 'GME EPIRB', other: 'Generator' }[k] || '';
+  // on add: the usual dates for this kind
+  $('#fDues').innerHTML = a ? '' : kd.dues.map(d => `<label>${esc(d.ask === 'last' ? `${d.label}: last done` : `${d.label}: expires`)}<input type="date" data-due="${d.kind}"></label>`).join('');
+  $('#fDuesH').hidden = !!a || !kd.dues.length;
+}
+function assetForm(a) {
+  editing = a;
+  const f = $('#assetForm');
+  f.reset();
+  $('#fKind').innerHTML = Object.entries(M.kinds).map(([k, v]) => `<option value="${k}">${v.icon} ${esc(v.label)}</option>`).join('');
+  $('#fState').innerHTML = '<option value=""></option>' + M.states.map(s => `<option>${s}</option>`).join('');
+  $('#fOwnerL').hidden = !M.admin;
+  $('#fOwner').innerHTML = M.users.map(u => `<option value="${esc(u)}">${esc(u)}${u === M.me ? ' (me)' : ''}</option>`).join('');
+  const ents = [...new Set(L.assets.map(x => x.entity).filter(Boolean)), 'Personal'];
+  $('#entityList').innerHTML = [...new Set(ents)].map(e => `<option value="${esc(e)}">`).join('');
+  $('#assetH').textContent = a ? `Edit ${a.name}` : 'Add to the garage';
+  $('#assetHint').hidden = !!a;
+  $('#assetSave').textContent = a ? 'Save' : 'Add';
+  $('#assetDel').hidden = !a; $('#fGoneL').hidden = !a;
+  const k = a ? a.kind : kind || 'jetski';
+  $('#fKind').value = k;
+  if (a) {
+    const map = { name: a.name, make: a.make, model: a.model, year: a.year, colour: a.colour, rego: a.rego, rego_state: a.regoState, ident: a.ident, engine_no: a.engineNo,
+      meter: a.meter || '', meter_value: a.meterValue, belongs_to: a.belongsTo, entity: a.entity, kept_at: a.keptAt, tracker_id: a.trackerId, owner: a.owner, notes: a.notes };
+    for (const [n, v] of Object.entries(map)) if (f.elements[n]) f.elements[n].value = v ?? '';
+    f.elements.archived.checked = a.archived;
+  } else {
+    f.elements.owner.value = M.me;
+    f.elements.rego_state.value = store.get('state', '');
+  }
+  setKindBits(k, a);
+  $('#assetBox').showModal();
+}
+$('#fKind').addEventListener('change', e => setKindBits(e.target.value, editing));
+$('#fMeter').addEventListener('change', () => { const mv = $('#fMeter').value; $('#fMeterL').firstChild.textContent = mv === 'hours' ? 'Hours now ' : 'km now '; $('#fMeterL').hidden = !mv; });
+$('#assetForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.target, body = {};
+  for (const el of f.elements) if (el.name) body[el.name] = el.type === 'checkbox' ? el.checked : el.value;
+  if (!M.admin) delete body.owner;
+  try {
+    if (editing) {
+      if (String(editing.meterValue ?? '') === String(body.meter_value)) delete body.meter_value; // untouched: keep the reading's date
+      await api(`/api/garage/assets/${editing.id}`, body, 'PATCH');
+      $('#assetBox').close(); toast('Saved'); openAsset(editing.id);
+    } else {
+      body.dues = Object.fromEntries([...f.querySelectorAll('[data-due]')].filter(i => i.value).map(i => [i.dataset.due, i.value]));
+      if (body.rego_state) store.set('state', body.rego_state);
+      const r = await api('/api/garage/assets', body);
+      $('#assetBox').close(); toast('Added'); await load(); location.hash = `a${r.id}`;
+    }
+  } catch (err) { alert(err.message); }
+});
+$('#assetDel').addEventListener('click', async () => {
+  if (!editing || !confirm(`Delete ${editing.name} with all its history and files? This can't be undone.\n\n(If you sold it, tick "Sold / gone" instead to keep the records.)`)) return;
+  try { await api(`/api/garage/assets/${editing.id}`, null, 'DELETE'); $('#assetBox').close(); location.hash = ''; load(); } catch (err) { alert(err.message); }
+});
+
+// ---------- log something done ----------
+const LOG_DUE = { service: 'service', battery: 'battery', rego: 'rego', insurance: 'insurance', registration: 'registration', tyres: 'tyres' };
+function nextAfter(d, on, meter) {
+  const base = ['rego', 'insurance', 'registration'].includes(d.kind) && d.dueDate ? d.dueDate : on;
+  return { date: d.everyMonths && on ? addMonths(base, d.everyMonths) : '', meter: d.everyMeter && meter !== '' && meter != null && !isNaN(+meter) ? +meter + d.everyMeter : '' };
+}
+function refreshNext() {
+  const d = A.dues.find(x => String(x.id) === $('#lDue').value);
+  $('#lNextL').hidden = !d; $('#lNextML').hidden = !d || !d.everyMeter || !A.meter;
+  if (!d) return;
+  const n = nextAfter(d, $('#lDate').value, $('#lMeter').value);
+  $('#lNext').placeholder = n.date; $('#lNextM').placeholder = n.meter === '' ? '' : `auto: ${mtr(n.meter, A.meter)}`;
+  if (!$('#lNext').dataset.touched) $('#lNext').value = n.date;
+}
+function logForm(k, dueId) {
+  const f = $('#logForm'); f.reset();
+  $('#lNext').dataset.touched = '';
+  $('#lKind').innerHTML = Object.entries(M.logKinds).map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('');
+  $('#lKind').value = k;
+  $('#lDate').value = M.today;
+  $('#lMeterL').hidden = !A.meter;
+  if (A.meter) { $('#lMeterL').firstChild.textContent = A.meter === 'hours' ? 'Hours ' : 'km '; $('#lMeter').placeholder = A.meterValue != null ? `last: ${mtr(A.meterValue, A.meter)}` : ''; }
+  $('#lDue').innerHTML = '<option value="none">Nothing</option>' + A.dues.map(d => `<option value="${d.id}">${esc(d.label)}</option>`).join('');
+  const match = dueId ? A.dues.find(d => d.id === dueId) : LOG_DUE[k] ? A.dues.filter(d => d.kind === LOG_DUE[k]) : [];
+  $('#lDue').value = dueId ? String(dueId) : match.length === 1 ? String(match[0].id) : 'none';
+  const due = A.dues.find(d => String(d.id) === $('#lDue').value);
+  $('#logH').textContent = due ? `${due.label} done: ${A.name}` : k === 'reading' ? `${A.meter === 'hours' ? 'Hours' : 'km'} reading: ${A.name}` : `Log it: ${A.name}`;
+  const renewal = due && ['rego', 'insurance', 'registration'].includes(due.kind);
+  $('#logHint').textContent = due ? `Saving this ticks off ${due.label} and works out when the next one is due${renewal ? ' (from the old expiry). If the new papers say a different date, change it below.' : due.everyMonths || due.everyMeter ? '. Change it below if the workshop says otherwise.' : '. Type the new date below (e.g. the expiry on the new battery).'}` : k === 'reading' ? 'Just the reading: it keeps the service countdown up to date.' : '';
+  $('#lTitle').placeholder = { service: 'e.g. Oil, filter, plugs, impeller check', battery: 'e.g. Century YTX20L-BS', rego: 'e.g. 12 months', reading: 'optional', repair: 'What was done', note: 'Note' }[k] || '';
+  refreshNext();
+  $('#logBox').showModal();
+  if (k === 'reading') setTimeout(() => $('#lMeter').focus(), 50);
+}
+for (const id of ['#lDue', '#lDate', '#lMeter']) $(id).addEventListener('input', refreshNext);
+$('#lDue').addEventListener('change', () => { $('#lNext').dataset.touched = ''; refreshNext(); });
+$('#lNext').addEventListener('input', () => { $('#lNext').dataset.touched = '1'; });
+$('#lKind').addEventListener('change', e => { const m = LOG_DUE[e.target.value] ? A.dues.filter(d => d.kind === LOG_DUE[e.target.value]) : []; $('#lDue').value = m.length === 1 ? String(m[0].id) : 'none'; $('#lNext').dataset.touched = ''; refreshNext(); });
+$('#logForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.target, body = Object.fromEntries([...f.elements].filter(el => el.name).map(el => [el.name, el.value]));
+  if (body.kind === 'reading' && body.meter === '') return alert(`Type the ${A.meter === 'hours' ? 'hours' : 'km'} reading.`);
+  if (body.due_id === 'none') { delete body.next_date; delete body.next_meter; }
+  const files = [...$('#lFiles').files];
+  $('#logSave').disabled = true;
+  try {
+    const r = await api(`/api/garage/assets/${A.id}/logs`, body);
+    if (files.length) await uploadAll(A.id, files, r.id);
+    $('#logBox').close(); toast('Saved'); openAsset(A.id); load(true);
+  } catch (err) { alert(err.message); } finally { $('#logSave').disabled = false; }
+});
+
+// ---------- due items ----------
+let editDue = null;
+function dueForm(d) {
+  editDue = d;
+  const f = $('#dueForm'); f.reset();
+  $('#dKind').innerHTML = Object.entries(M.dueKinds).map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('');
+  $('#dueH').textContent = d ? `${d.label}: ${A.name}` : `Track something on ${A.name}`;
+  $('#dueDel').hidden = !d;
+  $('#dMeterL').hidden = $('#dEveryML').hidden = !A.meter;
+  $('#dMeterL').firstChild.textContent = `Due at (${unitOf(A.meter)}) `; $('#dEveryML').firstChild.textContent = `…or every (${unitOf(A.meter)}) `;
+  if (d) {
+    const map = { kind: d.kind, label: d.label, due_date: d.dueDate, due_meter: d.dueMeter, every_months: d.everyMonths, every_meter: d.everyMeter, provider: d.provider, ref: d.ref, phone: d.phone, cost: d.cost, notes: d.notes };
+    for (const [n, v] of Object.entries(map)) f.elements[n].value = v ?? '';
+  }
+  $('#dueBox').showModal();
+}
+$('#dKind').addEventListener('change', e => { if (!editDue && !$('#dLabel').value) $('#dLabel').placeholder = M.dueKinds[e.target.value]; });
+$('#dueForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const body = Object.fromEntries([...e.target.elements].filter(el => el.name).map(el => [el.name, el.value]));
+  try {
+    if (editDue) await api(`/api/garage/dues/${editDue.id}`, body, 'PATCH'); else await api(`/api/garage/assets/${A.id}/dues`, body);
+    $('#dueBox').close(); openAsset(A.id); load(true);
+  } catch (err) { alert(err.message); }
+});
+$('#dueDel').addEventListener('click', async () => {
+  if (!editDue || !confirm(`Stop tracking ${editDue.label}? (History stays.)`)) return;
+  await api(`/api/garage/dues/${editDue.id}`, null, 'DELETE'); $('#dueBox').close(); openAsset(A.id); load(true);
+});
+
+// ---------- admins ----------
+async function admins() {
+  try {
+    const r = await api('/api/garage/admins', null, 'GET');
+    $('#admList').innerHTML = r.admins.map(x => `<div class="adm"><span>${esc(x.user)}${x.main ? ' <span class="dim">(main login, always admin)</span>' : ''}</span>${x.main ? '' : `<label class="check"><input type="checkbox" data-adm="${esc(x.user)}" ${x.admin ? 'checked' : ''}> Admin</label>`}</div>`).join('');
+    $('#admBox').showModal();
+  } catch (e) { alert(e.message); }
+}
+
+// ---------- loading and clicks ----------
+async function load(quiet) {
+  try {
+    const r = await api('/api/garage', null, 'GET');
+    M = r; L = r;
+    $('#who').textContent = r.me;
+    if (!M.admin) whose = 'mine';
+    renderSide(); renderDesk();
+    if (!route() && !quiet) renderList();
+    else if (!route()) renderList();
+  } catch (e) { $('#main').innerHTML = `<div class="empty">Couldn't load the garage: ${esc(e.message)}</div>`; }
+}
+async function openAsset(id) {
+  try { A = await api(`/api/garage/assets/${id}`, null, 'GET'); renderAsset(); }
+  catch (e) { $('#main').innerHTML = `<div class="empty">${esc(e.message === 'Not found' ? 'That one isn\'t in your garage.' : e.message)}<br><br><a href="#">← Garage</a></div>`; }
+}
+async function go() { const id = route(); if (!M) await load(); if (id) { await openAsset(id); window.scrollTo(0, 0); } else { A = null; renderList(); } }
+window.addEventListener('hashchange', go);
+
+document.addEventListener('click', async e => {
+  const t = e.target;
+  if (t.closest('[data-close]')) return t.closest('dialog').close();
+  const cp = t.closest('[data-copy]'); if (cp) { e.preventDefault(); try { await navigator.clipboard.writeText(cp.dataset.copy); toast('Copied'); } catch { prompt('Copy:', cp.dataset.copy); } return; }
+  const k = t.closest('[data-kind]'); if (k) { kind = k.dataset.kind; $('#side').classList.remove('open'); renderSide(); if (route()) location.hash = ''; else renderList(); return; }
+  const w = t.closest('[data-whose]'); if (w) { whose = w.dataset.whose; store.set('whose', whose); $('#side').classList.remove('open'); renderSide(); renderDesk(); if (route()) location.hash = ''; else renderList(); return; }
+  if (t.closest('#goneBtn')) { gone = !gone; renderSide(); if (!route()) renderList(); return; }
+  if (t.closest('#admBtn')) return admins();
+  const o = t.closest('[data-open]'); if (o) { location.hash = `a${o.dataset.open}`; return; }
+  const q = t.closest('[data-quick]'); if (q) return logForm(q.dataset.quick);
+  const dn = t.closest('[data-done]'); if (dn) { const d = A.dues.find(x => x.id === Number(dn.dataset.done)); return logForm(Object.entries(LOG_DUE).find(([, v]) => v === d.kind)?.[0] || 'other', d.id); }
+  const ed = t.closest('[data-editdue]'); if (ed) return dueForm(A.dues.find(x => x.id === Number(ed.dataset.editdue)));
+  const dl = t.closest('[data-dellog]'); if (dl) { if (!confirm('Remove this history entry? (It doesn\'t change any due dates.)')) return; await api(`/api/garage/logs/${dl.dataset.dellog}`, null, 'DELETE'); openAsset(A.id); load(true); return; }
+  const df = t.closest('[data-delfile]'); if (df) { e.preventDefault(); if (!confirm('Delete this file?')) return; await api(`/api/garage/files/${df.dataset.delfile}`, null, 'DELETE'); openAsset(A.id); load(true); return; }
+  const cv = t.closest('[data-cover]'); if (cv) { e.preventDefault(); await api(`/api/garage/assets/${A.id}/cover`, { fileId: Number(cv.dataset.cover) }); openAsset(A.id); load(true); return; }
+});
+document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.card[data-open]')) { e.preventDefault(); location.hash = `a${e.target.dataset.open}`; } });
+document.addEventListener('change', async e => {
+  const a = e.target.closest('[data-adm]'); if (!a) return;
+  try { await api('/api/garage/admins', { user: a.dataset.adm, admin: a.checked }); toast(a.checked ? `${a.dataset.adm} can now see everyone's garage` : `${a.dataset.adm} sees only their own now`); }
+  catch (err) { alert(err.message); a.checked = !a.checked; }
+});
+$('#menuBtn').addEventListener('click', () => $('#side').classList.toggle('open'));
+$('#addBtn').addEventListener('click', () => { if (M) assetForm(null); });
+go();
+</script>
+</body>
+</html>
