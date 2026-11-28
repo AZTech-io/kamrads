@@ -8,7 +8,7 @@ import path from 'node:path';
 
 process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'kamrads-garage-'));
 process.env.DASH_USER = 'aaron'; process.env.DASH_PASS = 'a'; process.env.DASH_USERS = 'matthew:m,sam:s';
-process.env.PORT = '18793'; process.env.HOST = '127.0.0.1';
+process.env.PORT = '18797'; process.env.HOST = '127.0.0.1';
 process.env.DIGEST_TZ = 'Australia/Perth';
 
 const g = await import('../src/garage/store.js');
@@ -17,7 +17,7 @@ startServer();
 await new Promise(r => setTimeout(r, 300));
 const H = (u, type = 'application/json') => ({ authorization: 'Basic ' + Buffer.from(u).toString('base64'), 'content-type': type });
 const api = async (m, p, body, who = 'aaron:a') => {
-  const r = await fetch('http://127.0.0.1:18793' + p, { method: m, headers: H(who), body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch('http://127.0.0.1:18797' + p, { method: m, headers: H(who), body: body ? JSON.stringify(body) : undefined });
   const text = await r.text();
   let json = null; try { json = JSON.parse(text); } catch { /* page */ }
   return { status: r.status, json, text };
@@ -134,22 +134,22 @@ test('each login sees only their own; admins see everyone; only the main login p
   const shay = await api('POST', '/api/garage/assets', { kind: 'car', name: "Shay's car", owner: 'sam' });
   assert.equal((await api('GET', `/api/garage/assets/${shay.json.id}`, null, 'sam:s')).json.owner, 'sam');
   assert.equal((await api('GET', '/garage', null, 'sam:s')).status, 200);
-  assert.equal((await fetch('http://127.0.0.1:18793/api/garage')).status, 401, 'login needed');
+  assert.equal((await fetch('http://127.0.0.1:18797/api/garage')).status, 401, 'login needed');
 });
 
 test('photos and PDFs: stored, served only to people who can see the item', async () => {
   const png = Buffer.from('89504e470d0a1a0a0000000d4948445200000001000000010806000000', 'hex');
-  const up = await fetch(`http://127.0.0.1:18793/api/garage/assets/${ski}/files?name=rego%20papers.png`, { method: 'POST', headers: H('aaron:a', 'application/octet-stream'), body: png });
+  const up = await fetch(`http://127.0.0.1:18797/api/garage/assets/${ski}/files?name=rego%20papers.png`, { method: 'POST', headers: H('aaron:a', 'application/octet-stream'), body: png });
   const j = await up.json();
   assert.equal(up.status, 200, JSON.stringify(j));
   const a = (await api('GET', `/api/garage/assets/${ski}`)).json;
   assert.equal(a.files[0].name, 'rego papers.png'); assert.equal(a.photo, `/api/garage/files/${j.id}`, 'first photo becomes the main one');
-  const got = await fetch(`http://127.0.0.1:18793/api/garage/files/${j.id}`, { headers: H('aaron:a') });
+  const got = await fetch(`http://127.0.0.1:18797/api/garage/files/${j.id}`, { headers: H('aaron:a') });
   assert.equal(got.status, 200); assert.equal(got.headers.get('content-type'), 'image/png');
-  assert.equal((await fetch(`http://127.0.0.1:18793/api/garage/files/${j.id}`, { headers: H('matthew:m') })).status, 404);
-  const html = await fetch(`http://127.0.0.1:18793/api/garage/assets/${ski}/files?name=x.html`, { method: 'POST', headers: H('aaron:a', 'application/octet-stream'), body: '<script>alert(1)</script>' });
+  assert.equal((await fetch(`http://127.0.0.1:18797/api/garage/files/${j.id}`, { headers: H('matthew:m') })).status, 404);
+  const html = await fetch(`http://127.0.0.1:18797/api/garage/assets/${ski}/files?name=x.html`, { method: 'POST', headers: H('aaron:a', 'application/octet-stream'), body: '<script>alert(1)</script>' });
   assert.equal(html.status, 400, 'only photos and PDFs');
-  const pdf = await fetch(`http://127.0.0.1:18793/api/garage/assets/${ski}/files?name=insurance.pdf`, { method: 'POST', headers: H('aaron:a', 'application/octet-stream'), body: Buffer.from('%PDF-1.4\n%fake\n') });
+  const pdf = await fetch(`http://127.0.0.1:18797/api/garage/assets/${ski}/files?name=insurance.pdf`, { method: 'POST', headers: H('aaron:a', 'application/octet-stream'), body: Buffer.from('%PDF-1.4\n%fake\n') });
   assert.equal(pdf.status, 200);
   const stored = fs.readdirSync(g.FILE_DIR);
   assert.equal(stored.length, 2);
