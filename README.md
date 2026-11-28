@@ -38,6 +38,17 @@ What we've bought and what each item owes us. Press **Won it** on a lot you won 
 - Each item shows **it owes us** (total cost), break-even and +20% prices, our own value guide, asking price, and **profit / margin / days held** once sold.
 - Filter by status (bought, in transit, repairing, for sale, sold, keeping) and by the company that bought it. **Download all (CSV)** for the accountant.
 
+## Garage (`/garage`)
+
+Our own vehicles, jet skis, bikes, trailers and EPIRBs (personal or company): rego, insurance, VIN / HIN, service and battery history, hours or km, photos of the papers, and phone reminders before anything runs out.
+
+- **Each login sees only their own.** Admins see and edit everyone's. The main login (`DASH_USER`) is always admin and can make others admin under **Who can see everything** in the Garage sidebar. Admins can also file an item under another login.
+- **+ Add** picks a type, which brings the usual things to track: jet ski / boat = rego, insurance, service every 100 hrs or 12 months, battery; car / bike / truck = the same in km; trailer = rego, bearings; EPIRB = battery expiry, AMSA registration (every 24 months). Change any interval, or add your own (tyres, safety gear…).
+- **Done** on a due item (or **Service**, **Battery**, **Log hours** up top) logs it with date, hours / km, cost, who did it, notes and photos, and rolls the item on: a service from the day it's done (months *and* hours, whichever comes first), rego and insurance from the old expiry (paying early doesn't move it). Type a different next date if the new papers say so.
+- **Reminders** to the owner's phone (their own alert link, or the shared one with their name on it) 30 days, 7 days and on the day, then weekly while overdue (up to 8 weeks); for hours / km when within 10% of the interval and when it's reached. Only between 8am and 8pm in the person's time zone (Settings). Tick **Sold / gone** to stop them and hide it.
+- **Photos & documents** (JPG, PNG, HEIC, PDF up to 15 MB; photos are shrunk on the phone first) are kept in `data/garage/` and only sent to people who can see that item. The database is in the daily backup (`data/backups/`); the photo folder is not, so copy `data/garage/` off the server now and then.
+- Tap ⧉ to copy a rego, VIN / HIN or policy number. A **Tracker ID** can be stored now, ready for km readings to come in from the GPS platform later.
+
 ## Dreams (`/dreams`)
 
 The vehicles we want to own, hunted until we find a deal. Two dreams are set up to start: **Isuzu D-Max** (Katara 3 upgrade) and **Isuzu curtainsider**. **+ New** adds more (a custom one takes search words, e.g. `toyota hiace -crash`).

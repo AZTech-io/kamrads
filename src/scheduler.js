@@ -25,6 +25,7 @@ import { cruisesLoop, stopCruises } from './cruises/loop.js';
 import { isPaused, pause, ok as pauseOk, isRateLimit } from './pause.js';
 import { sectorOf } from './categories.js';
 import { runDreams, isDreamKey, dreamFinalAlert, dreamLiveAlerts, startDreams, readMaybeBodies } from './dreams/index.js';
+import { garageTick } from './garage/loop.js';
 
 export const adapters = { pickles, manheim, allbids, lloyds, grays, slattery, auctionbarn };
 // Sites where a re-read is cheap (learned JSON feed, or plain-HTML lot pages)
@@ -297,6 +298,7 @@ async function choresLoop() {
     try { await checkPending(); } catch (e) { log.warn('check', e.message); }
     try { await dreamLiveAlerts(); } catch (e) { log.warn('dreams', e.message); }
     if (n % 60 === 0) prunePhotos();
+    if (n % 15 === 1) { try { await garageTick(); } catch (e) { log.warn('garage', e.message); } }
     if (n % 5 === 2) { try { await readMaybeBodies(); } catch (e) { log.warn('dreams', e.message); } }
     if (n++ % 5 === 0) { try { await geocodePending(q.openLots.all(Date.now())); } catch (e) { log.warn('geo', e.message); } }
     await sleep(60000);

@@ -20,6 +20,7 @@ import { apiRoutes } from './freight/api.js';
 import { sendPage, savePref } from './pages.js';
 import { findsRoutes } from './finds/routes.js';
 import { cruisesRoutes } from './cruises/routes.js';
+import { garageRoutes } from './garage/routes.js';
 import { isVehicle } from './extract.js';
 import { push } from './notify.js';
 import { watchUrl } from './scheduler.js';
@@ -116,6 +117,7 @@ export function startServer() {
   freightRoutes(app);
   findsRoutes(app);
   cruisesRoutes(app);
+  garageRoutes(app);   // Garage: our own vehicles, jet skis and beacons (each login sees their own)
   // ---- Bought: items we've won, every cost logged, what each one owes us ----
   app.get('/bought', (req, res) => sendPage(res, 'bought.html', req.user));
   app.get('/api/purchases', (_req, res) => res.json(purchases.list()));
